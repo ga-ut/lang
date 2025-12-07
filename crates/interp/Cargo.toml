@@ -1,0 +1,13 @@
+[package]
+name = "interp"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+frontend = { path = "../frontend" }
+runtime = { path = "../runtime" }
+thiserror = "1"
+indexmap = "2"

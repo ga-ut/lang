@@ -1,0 +1,7 @@
+// Placeholder for bytes helpers; currently only passthrough and aliasing.
+
+alias BytesAlias = Bytes
+
+identity(buf: Bytes) -> Bytes = buf
+
+// 실제 길이/슬라이스/IO 관련 기능은 런타임 제공 시 확장 예정.

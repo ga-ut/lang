@@ -1,0 +1,11 @@
+global greeting: Str = "hello"
+
+print(msg: Str) = {
+  // placeholder: runtime would map to stdout
+  msg
+}
+
+main() = {
+  msg: Str = greeting + " world"
+  print(msg)
+}

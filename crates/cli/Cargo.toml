@@ -1,0 +1,14 @@
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+frontend = { path = "../frontend" }
+interp = { path = "../interp" }
+runtime = { path = "../runtime" }
+thiserror = "1"
+
+[[bin]]
+name = "gaut"
+path = "src/main.rs"

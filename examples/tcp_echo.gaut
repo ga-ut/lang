@@ -1,0 +1,19 @@
+import net
+
+global greeting: Str = "hello"
+
+handle(conn: net.Conn) -> Unit = {
+  buf: Bytes = net.read(conn)
+  // placeholder parser; in real code parse name from buf
+  name: Str = "world"
+  msg: Str = greeting + ", " + name
+  net.write(conn, msg)
+}
+
+main() = {
+  listener: net.Listener = net.listen(8080)
+  loop {
+    conn: net.Conn = net.accept(listener)
+    { handle(conn) }
+  }
+}

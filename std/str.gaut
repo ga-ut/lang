@@ -1,0 +1,7 @@
+// Minimal string helpers for 1차 스펙
+
+global empty: Str = ""
+
+concat(a: Str, b: Str) -> Str = a + b
+
+// prefix/suffix checks 등은 런타임 지원 전까지 후속 과제로 둔다.

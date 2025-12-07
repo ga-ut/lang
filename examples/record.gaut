@@ -1,0 +1,17 @@
+type Point = { x: i32, y: i32 }
+
+shift(p: Point, dx: i32, dy: i32) -> Point = {
+  mut moved: Point = p
+  moved.x = moved.x + dx
+  moved.y = moved.y + dy
+  moved
+}
+
+length_x(p: &Point) -> i32 = p.x
+
+main() = {
+  origin: Point = { x: 0, y: 0 }
+  p1: Point = shift(origin, 5, 0)
+  px: i32 = length_x(&p1)
+  copy px
+}

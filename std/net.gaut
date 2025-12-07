@@ -1,0 +1,22 @@
+// Thin Net wrapper signatures for 1차 스펙 예제용 (실제 구현은 런타임에 있음).
+
+type Listener = Unit
+type Conn = Unit
+
+listen(port: i32) -> Listener = {
+  // runtime-provided in real build
+  ()
+}
+
+accept(l: Listener) -> Conn = {
+  ()
+}
+
+read(c: Conn) -> Bytes = {
+  // placeholder bytes
+  b""
+}
+
+write(c: Conn, data: Bytes) -> Unit = {
+  ()
+}
