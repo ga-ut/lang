@@ -1,13 +1,18 @@
 #![forbid(unsafe_code)]
 
+use cgen::generate_c;
 use frontend::ast::*;
 use frontend::parser::Parser;
 use frontend::typecheck::TypeChecker;
-use interp::{Interpreter, Value};
+use interp::Interpreter;
+#[cfg(test)]
+use interp::Value;
 use std::collections::HashSet;
 use std::env;
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -16,29 +21,152 @@ enum CliError {
     Message(String),
 }
 
+#[derive(Debug, Clone)]
+enum Mode {
+    Run {
+        file: PathBuf,
+    },
+    Emit {
+        file: PathBuf,
+        emit_c: PathBuf,
+        build: Option<PathBuf>,
+    },
+}
+
 fn main() -> Result<(), CliError> {
-    let mut args = env::args().skip(1).collect::<Vec<_>>();
+    let mode = parse_args(env::args().skip(1).collect())?;
+
+    match mode {
+        Mode::Run { file } => run_interpreter(&file),
+        Mode::Emit {
+            file,
+            emit_c,
+            build,
+        } => emit_and_maybe_build(&file, &emit_c, build.as_ref()),
+    }
+}
+
+fn parse_args(args: Vec<String>) -> Result<Mode, CliError> {
     if args.is_empty() {
-        eprintln!("usage: gaut <file.gaut>");
+        eprintln!("usage: gaut [--emit-c out.c] [--build out_bin] <file.gaut>");
         std::process::exit(1);
     }
+    let mut emit_c = None;
+    let mut build = None;
+    let mut file = None;
 
-    let file = PathBuf::from(args.remove(0));
-    let std_dir = env::var("GAUT_STD_DIR").map(PathBuf::from).unwrap_or_else(|_| PathBuf::from("std"));
-    let program = load_with_imports(&file, &std_dir)?;
+    let mut iter = args.into_iter();
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--emit-c" => {
+                let path = iter
+                    .next()
+                    .ok_or_else(|| CliError::Message("expected path after --emit-c".into()))?;
+                emit_c = Some(PathBuf::from(path));
+            }
+            "--build" => {
+                let path = iter.next().ok_or_else(|| {
+                    CliError::Message("expected binary path after --build".into())
+                })?;
+                build = Some(PathBuf::from(path));
+            }
+            other if file.is_none() => {
+                file = Some(PathBuf::from(other));
+            }
+            _ => return Err(CliError::Message("unexpected arguments".into())),
+        }
+    }
 
-    // builtin stubs for typechecker
+    let file = file.ok_or_else(|| CliError::Message("no input file provided".into()))?;
+    if emit_c.is_none() && build.is_some() {
+        emit_c = Some(PathBuf::from("target/gaut_out.c"));
+    }
+
+    if let Some(out) = emit_c {
+        Ok(Mode::Emit {
+            file,
+            emit_c: out,
+            build,
+        })
+    } else {
+        Ok(Mode::Run { file })
+    }
+}
+
+fn run_interpreter(file: &Path) -> Result<(), CliError> {
+    let std_dir = std_dir();
+    let program = load_with_imports(file, &std_dir)?;
+
     let mut decls = program.decls;
     append_builtin_prints(&mut decls);
     let program = Program { decls };
 
     let mut tc = TypeChecker::new();
-    tc.check_program(&program).map_err(|e| CliError::Message(format!("type error: {e}")))?;
+    tc.check_program(&program)
+        .map_err(|e| CliError::Message(format!("type error: {e}")))?;
 
     let mut interp = Interpreter::new(1024 * 1024);
-    interp.load_program(&program).map_err(|e| CliError::Message(format!("interp load error: {e}")))?;
-    let result = interp.run_main().map_err(|e| CliError::Message(format!("runtime error: {e}")))?;
+    interp
+        .load_program(&program)
+        .map_err(|e| CliError::Message(format!("interp load error: {e}")))?;
+    let result = interp
+        .run_main()
+        .map_err(|e| CliError::Message(format!("runtime error: {e}")))?;
     println!("{result:?}");
+    Ok(())
+}
+
+fn emit_and_maybe_build(
+    file: &Path,
+    c_out: &Path,
+    build: Option<&PathBuf>,
+) -> Result<(), CliError> {
+    let std_dir = std_dir();
+    let program = load_with_imports(file, &std_dir)?;
+    let mut decls = program.decls;
+    append_builtin_prints(&mut decls);
+    let program = Program { decls };
+
+    let mut tc = TypeChecker::new();
+    tc.check_program(&program)
+        .map_err(|e| CliError::Message(format!("type error: {e}")))?;
+
+    let c_src = generate_c(&program).map_err(|e| CliError::Message(format!("cgen error: {e}")))?;
+    if let Some(parent) = c_out.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| CliError::Message(format!("create dir {}: {e}", parent.display())))?;
+    }
+    let mut f = fs::File::create(c_out)
+        .map_err(|e| CliError::Message(format!("write {}: {e}", c_out.display())))?;
+    f.write_all(c_src.as_bytes())
+        .map_err(|e| CliError::Message(format!("write {}: {e}", c_out.display())))?;
+
+    if let Some(bin) = build {
+        build_c_binary(c_out, bin)?;
+    }
+    Ok(())
+}
+
+fn build_c_binary(c_path: &Path, bin: &Path) -> Result<(), CliError> {
+    let runtime_dir = runtime_c_dir();
+    let runtime_c = runtime_dir.join("runtime.c");
+    let status = Command::new("clang")
+        .arg("-std=gnu11")
+        .arg("-O2")
+        .arg("-I")
+        .arg(&runtime_dir)
+        .arg(c_path)
+        .arg(&runtime_c)
+        .arg("-o")
+        .arg(bin)
+        .status()
+        .map_err(|e| CliError::Message(format!("failed to run clang: {e}")))?;
+
+    if !status.success() {
+        return Err(CliError::Message(format!(
+            "clang failed with status {status}"
+        )));
+    }
     Ok(())
 }
 
@@ -49,7 +177,12 @@ fn load_with_imports(entry: &Path, std_dir: &Path) -> Result<Program, CliError> 
     Ok(Program { decls })
 }
 
-fn load_recursive(path: &Path, std_dir: &Path, visited: &mut HashSet<PathBuf>, out: &mut Vec<Decl>) -> Result<(), CliError> {
+fn load_recursive(
+    path: &Path,
+    std_dir: &Path,
+    visited: &mut HashSet<PathBuf>,
+    out: &mut Vec<Decl>,
+) -> Result<(), CliError> {
     let path = path
         .canonicalize()
         .map_err(|_| CliError::Message(format!("cannot canonicalize {}", path.display())))?;
@@ -99,7 +232,11 @@ fn append_builtin_prints(decls: &mut Vec<Decl>) {
             _ => None,
         })
         .collect();
-    let print_param = Param { mutable: false, name: Ident("msg".into()), ty: Type::Named(Ident("Str".into())) };
+    let print_param = Param {
+        mutable: false,
+        name: Ident("msg".into()),
+        ty: Type::Named(Ident("Str".into())),
+    };
     if !names.contains("print") {
         decls.push(Decl::Func(FuncDecl {
             name: Ident("print".into()),
@@ -116,6 +253,25 @@ fn append_builtin_prints(decls: &mut Vec<Decl>) {
             body: Expr::Path(Path(vec![Ident("msg".into())])),
         }));
     }
+}
+
+fn std_dir() -> PathBuf {
+    env::var("GAUT_STD_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("std"))
+}
+
+fn runtime_c_dir() -> PathBuf {
+    if let Ok(p) = env::var("GAUT_RUNTIME_C_DIR") {
+        return PathBuf::from(p);
+    }
+    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    manifest
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("runtime/c")
 }
 
 #[cfg(test)]

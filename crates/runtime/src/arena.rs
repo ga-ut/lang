@@ -16,7 +16,10 @@ pub enum ArenaError {
 impl Arena {
     /// Create a new arena with a fixed capacity.
     pub fn with_capacity(cap: usize) -> Self {
-        Self { buf: vec![0; cap], off: 0 }
+        Self {
+            buf: vec![0; cap],
+            off: 0,
+        }
     }
 
     /// Total capacity in bytes.
@@ -32,7 +35,10 @@ impl Arena {
     /// Allocate `size` bytes and return a mutable view.
     pub fn alloc(&mut self, size: usize) -> Result<&mut [u8], ArenaError> {
         if size > self.remaining() {
-            return Err(ArenaError::OutOfCapacity { requested: size, remaining: self.remaining() });
+            return Err(ArenaError::OutOfCapacity {
+                requested: size,
+                remaining: self.remaining(),
+            });
         }
 
         let start = self.off;
@@ -54,7 +60,7 @@ mod tests {
     #[test]
     fn alloc_and_reset() {
         let mut arena = Arena::with_capacity(16);
-        let slice = arena.alloc(8).expect("alloc 8" );
+        let slice = arena.alloc(8).expect("alloc 8");
         slice.copy_from_slice(&[1u8; 8]);
         assert_eq!(arena.remaining(), 8);
 
@@ -69,6 +75,12 @@ mod tests {
     fn overflow_errors() {
         let mut arena = Arena::with_capacity(4);
         let err = arena.alloc(8).expect_err("should overflow");
-        assert_eq!(err, ArenaError::OutOfCapacity { requested: 8, remaining: 4 });
+        assert_eq!(
+            err,
+            ArenaError::OutOfCapacity {
+                requested: 8,
+                remaining: 4
+            }
+        );
     }
 }

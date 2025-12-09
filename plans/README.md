@@ -10,3 +10,4 @@ Plans are split into independent, sequential units. Complete them in order to re
 8) 08-examples.md
 9) 09-tcp.md (optional after 08)
 10) 10-cli.md (hello world 실행용 바이너리 추가)
+11) 11-self-host.md (self-host 가능한 C 백엔드/빌드 파이프라인)

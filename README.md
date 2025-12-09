@@ -26,36 +26,34 @@ cargo test -p interp
 - `examples/record.gaut` : 구조체/참조/이동
 - `examples/hello.gaut` : 전역 문자열 결합
 
-## 3) C 코드 생성 확인
+## 3) CLI와 C 백엔드
 
-간단한 프로그램을 C로 내리는 스켈레톤을 제공합니다. 테스트로 예제를 확인할 수 있습니다.
+- 인터프리터 실행: `cargo run -p cli -- examples/hello.gaut`
+- C 코드 생성: `cargo run -p cli -- --emit-c /tmp/hello.c examples/hello.gaut`
+- C 코드 생성 후 빌드: `cargo run -p cli -- --emit-c /tmp/hello.c --build /tmp/hello examples/hello.gaut`
+- 환경 변수: `GAUT_STD_DIR`(표준 모듈 경로), `GAUT_RUNTIME_C_DIR`(C 런타임 위치). `clang -std=gnu11`로 `runtime/c/runtime.{c,h}`를 함께 빌드합니다.
+- 문자열/바이트 결합은 함수/블록 아레나(`GAUT_DEFAULT_ARENA_CAP`)에서 할당하며, 함수 반환 시에는 힙으로 승격해 수명을 보장합니다.
 
-```bash
-cargo test -p cgen
-```
+## 4) Self-host 스모크/결정성 체크
 
-직접 생성해보기:
+`./scripts/self_host.sh`는 예제(`hello`, `calc`, `record`)를 대상으로
+1) 두 번 C 코드를 생성해 sha256이 동일한지 확인하고,
+2) `--build`로 바이너리를 만든 뒤 실행까지 진행합니다. 산출물은 `target/self_host/`에 저장됩니다.
 
-```bash
-cat examples/calc.gaut | cargo run -p cgen --quiet > /tmp/calc.c  # cargo run 훅은 필요 시 구현
-```
-
-현재는 라이브러리 형태이므로 `generate_c_from_source`를 직접 호출하는 바이너리가 필요합니다. 테스트(`cgen::tests::simple_program`)에서 동작을 확인할 수 있습니다.
-
-## 4) std/네트워크 예제
+## 5) std/네트워크 예제
 
 - 표준 스텁: `std/str.gaut`, `std/bytes.gaut`, `std/net.gaut` (net은 타입 시그니처만, 런타임 연결 미구현)
 - TCP 예제: `examples/tcp_echo.gaut`는 네트워크 래퍼가 실제로 연결된 후 사용할 수 있습니다.
 
-## 5) 새 .gaut 파일 작성/실행 팁
+## 6) 새 .gaut 파일 작성/실행 팁
 
 1. `.gaut` 확장자로 저장합니다.
 2. `import foo`는 `foo.gaut`를 같은 디렉터리나 std 경로에서 찾습니다.
 3. 실행하려면:
-   - 간단히 Rust 테스트에 예제를 추가해 `cargo test -p interp`로 실행 결과를 확인하거나,
-   - 별도 바이너리를 작성해 `frontend::parser`로 파싱 → `typecheck` → `interp` 호출 흐름을 구현합니다.
+   - CLI: `cargo run -p cli -- my.gaut` (또는 `--emit-c/--build`),
+   - 또는 Rust 테스트에 예제를 추가해 `cargo test -p interp`로 실행 결과를 확인합니다.
 
-## 6) 주의사항
+## 7) 주의사항
 
 - 현재 IO/네트워크는 스텁 수준입니다. 실제 출력/소켓 동작은 런타임과 언어를 더 연결해야 합니다.
 - 경고: parser의 Token 가시성과 interp의 `IndexMap::remove` 경고가 남아있지만 기능에는 영향 없습니다.
@@ -64,8 +62,11 @@ cat examples/calc.gaut | cargo run -p cgen --quiet > /tmp/calc.c  # cargo run �
 
 ### 실행
 - 로컬 빌드 후 실행: `cargo run -p cli -- examples/hello.gaut`
+- C 코드만 뽑기: `cargo run -p cli -- --emit-c /tmp/hello.c examples/hello.gaut`
+- C 코드 빌드까지: `cargo run -p cli -- --emit-c /tmp/hello.c --build /tmp/hello examples/hello.gaut`
 - 설치 후 실행: `gaut examples/hello.gaut` (PATH에 등록 시)
 - std 경로 변경: `GAUT_STD_DIR=/path/to/std gaut myfile.gaut`
+- C 런타임 경로 변경: `GAUT_RUNTIME_C_DIR=/path/to/runtime/c gaut --emit-c ...`
 
 ### 빌드/설치
 - 릴리스 빌드: `cargo build -p cli --release` → `target/release/gaut`

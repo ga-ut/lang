@@ -5,14 +5,15 @@ This guide explains how to work on the Gaut language workspace and contribute sa
 ## Project Structure & Module Organization
 - Workspace root: `Cargo.toml` with crates `frontend` (parser/typechecker), `runtime` (arena + std stubs), `interp` (evaluator), `cgen` (C emitter), `cli` (binary wrapper).
 - Language assets: `examples/*.gaut` for fixtures, `std/` for standard modules, `docs/lang-spec.md` for the current spec.
-- Utility scripts: `scripts/run_examples.sh` for interp + cgen smoke runs.
+- Runtime helpers: `runtime/c/*` for generated-C builds (arena helpers + string/bytes concat).
+- Utility scripts: `scripts/run_examples.sh` for interp + cgen smoke runs; `scripts/self_host.sh` emits each example twice to check C-output determinism and clang-builds binaries into `target/self_host/`.
 
 ## Build, Test, and Development Commands
 - Format and lint: `cargo fmt` then `cargo clippy --all-targets --all-features -- -D warnings`.
 - Full test sweep: `cargo test` (workspace); scoped checks like `cargo test -p interp` or `cargo test -p cgen`.
-- Example smoke run: `./scripts/run_examples.sh` to exercise key .gaut programs and C generation.
+- Example smoke run: `./scripts/run_examples.sh` to exercise key .gaut programs and C generation; `./scripts/self_host.sh` to hash-compare duplicate C emission and build example binaries via clang.
 - CLI usage during dev: `cargo run -p cli -- examples/hello.gaut`; release binary: `cargo build -p cli --release`.
-- Std path override when running binaries: `GAUT_STD_DIR=/path/to/std gaut file.gaut`.
+- Emit C / build from CLI: `cargo run -p cli -- --emit-c /tmp/out.c examples/hello.gaut` and optionally `--build /tmp/hello`; overrides via `GAUT_STD_DIR`, `GAUT_RUNTIME_C_DIR` (clang uses `-std=gnu11`).
 
 ## Coding Style & Naming Conventions
 - Rust style: `rustfmt` defaults (4-space indent), `#![forbid(unsafe_code)]` enforced across crates; prefer explicit types over inference when readability helps.

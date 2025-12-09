@@ -8,7 +8,10 @@ pub enum ParserError {
     #[error("unexpected end of input")]
     Eof,
     #[error("unexpected token: expected {expected}, found {found:?}")]
-    UnexpectedToken { expected: &'static str, found: Token },
+    UnexpectedToken {
+        expected: &'static str,
+        found: Token,
+    },
     #[error("invalid number literal: {0}")]
     InvalidNumber(String),
     #[error("lexer error: {0}")]
@@ -63,7 +66,11 @@ pub struct Parser<'a> {
 impl<'a> Parser<'a> {
     pub fn new(source: &'a str) -> Result<Self, ParserError> {
         let tokens = lex(source)?;
-        Ok(Self { tokens, pos: 0, _src: source })
+        Ok(Self {
+            tokens,
+            pos: 0,
+            _src: source,
+        })
     }
 
     pub fn parse_program(&mut self) -> Result<Program, ParserError> {
@@ -109,7 +116,12 @@ impl<'a> Parser<'a> {
             };
             self.expect(&Token::Assign, "'=' before function body")?;
             let body = self.parse_expr()?;
-            return Ok(Decl::Func(FuncDecl { name, params, ret, body }));
+            return Ok(Decl::Func(FuncDecl {
+                name,
+                params,
+                ret,
+                body,
+            }));
         }
 
         let binding = self.parse_binding()?;
@@ -138,7 +150,12 @@ impl<'a> Parser<'a> {
         let ty = self.parse_type()?;
         self.expect(&Token::Assign, "'=' after binding type")?;
         let value = self.parse_expr()?;
-        Ok(Binding { mutable, name, ty, value })
+        Ok(Binding {
+            mutable,
+            name,
+            ty,
+            value,
+        })
     }
 
     fn parse_type(&mut self) -> Result<Type, ParserError> {
@@ -207,7 +224,12 @@ impl<'a> Parser<'a> {
             let ty = self.parse_type()?;
             self.expect(&Token::Assign, "'=' after binding type")?;
             let value = self.parse_expr()?;
-            return Ok(Stmt::Binding(Binding { mutable: true, name, ty, value }));
+            return Ok(Stmt::Binding(Binding {
+                mutable: true,
+                name,
+                ty,
+                value,
+            }));
         }
 
         if self.peek_is_ident() && self.peek_next_is(Token::Colon) {
@@ -221,7 +243,10 @@ impl<'a> Parser<'a> {
             if let Ok(path) = self.try_parse_path() {
                 if self.matches(&[Token::Assign]) {
                     let value = self.parse_expr()?;
-                    return Ok(Stmt::Assign(Assign { target: path, value }));
+                    return Ok(Stmt::Assign(Assign {
+                        target: path,
+                        value,
+                    }));
                 }
             }
             self.pos = save; // rewind if not assign
@@ -240,7 +265,11 @@ impl<'a> Parser<'a> {
         let mut expr = self.parse_and()?;
         while self.matches(&[Token::OrOr]) {
             let right = self.parse_and()?;
-            expr = Expr::Binary(BinaryExpr { left: Box::new(expr), op: BinaryOp::Or, right: Box::new(right) });
+            expr = Expr::Binary(BinaryExpr {
+                left: Box::new(expr),
+                op: BinaryOp::Or,
+                right: Box::new(right),
+            });
         }
         Ok(expr)
     }
@@ -249,7 +278,11 @@ impl<'a> Parser<'a> {
         let mut expr = self.parse_eq()?;
         while self.matches(&[Token::AndAnd]) {
             let right = self.parse_eq()?;
-            expr = Expr::Binary(BinaryExpr { left: Box::new(expr), op: BinaryOp::And, right: Box::new(right) });
+            expr = Expr::Binary(BinaryExpr {
+                left: Box::new(expr),
+                op: BinaryOp::And,
+                right: Box::new(right),
+            });
         }
         Ok(expr)
     }
@@ -258,7 +291,11 @@ impl<'a> Parser<'a> {
         let mut expr = self.parse_rel()?;
         while self.matches(&[Token::EqEq]) {
             let right = self.parse_rel()?;
-            expr = Expr::Binary(BinaryExpr { left: Box::new(expr), op: BinaryOp::Eq, right: Box::new(right) });
+            expr = Expr::Binary(BinaryExpr {
+                left: Box::new(expr),
+                op: BinaryOp::Eq,
+                right: Box::new(right),
+            });
         }
         Ok(expr)
     }
@@ -267,7 +304,11 @@ impl<'a> Parser<'a> {
         let mut expr = self.parse_add()?;
         while self.matches(&[Token::Lt]) {
             let right = self.parse_add()?;
-            expr = Expr::Binary(BinaryExpr { left: Box::new(expr), op: BinaryOp::Lt, right: Box::new(right) });
+            expr = Expr::Binary(BinaryExpr {
+                left: Box::new(expr),
+                op: BinaryOp::Lt,
+                right: Box::new(right),
+            });
         }
         Ok(expr)
     }
@@ -277,10 +318,18 @@ impl<'a> Parser<'a> {
         loop {
             if self.matches(&[Token::Plus]) {
                 let right = self.parse_mul()?;
-                expr = Expr::Binary(BinaryExpr { left: Box::new(expr), op: BinaryOp::Add, right: Box::new(right) });
+                expr = Expr::Binary(BinaryExpr {
+                    left: Box::new(expr),
+                    op: BinaryOp::Add,
+                    right: Box::new(right),
+                });
             } else if self.matches(&[Token::Minus]) {
                 let right = self.parse_mul()?;
-                expr = Expr::Binary(BinaryExpr { left: Box::new(expr), op: BinaryOp::Sub, right: Box::new(right) });
+                expr = Expr::Binary(BinaryExpr {
+                    left: Box::new(expr),
+                    op: BinaryOp::Sub,
+                    right: Box::new(right),
+                });
             } else {
                 break;
             }
@@ -293,10 +342,18 @@ impl<'a> Parser<'a> {
         loop {
             if self.matches(&[Token::Star]) {
                 let right = self.parse_unary()?;
-                expr = Expr::Binary(BinaryExpr { left: Box::new(expr), op: BinaryOp::Mul, right: Box::new(right) });
+                expr = Expr::Binary(BinaryExpr {
+                    left: Box::new(expr),
+                    op: BinaryOp::Mul,
+                    right: Box::new(right),
+                });
             } else if self.matches(&[Token::Slash]) {
                 let right = self.parse_unary()?;
-                expr = Expr::Binary(BinaryExpr { left: Box::new(expr), op: BinaryOp::Div, right: Box::new(right) });
+                expr = Expr::Binary(BinaryExpr {
+                    left: Box::new(expr),
+                    op: BinaryOp::Div,
+                    right: Box::new(right),
+                });
             } else {
                 break;
             }
@@ -307,11 +364,17 @@ impl<'a> Parser<'a> {
     fn parse_unary(&mut self) -> Result<Expr, ParserError> {
         if self.matches(&[Token::Minus]) {
             let expr = self.parse_unary()?;
-            return Ok(Expr::Unary(UnaryExpr { op: UnaryOp::Neg, expr: Box::new(expr) }));
+            return Ok(Expr::Unary(UnaryExpr {
+                op: UnaryOp::Neg,
+                expr: Box::new(expr),
+            }));
         }
         if self.matches(&[Token::Bang]) {
             let expr = self.parse_unary()?;
-            return Ok(Expr::Unary(UnaryExpr { op: UnaryOp::Not, expr: Box::new(expr) }));
+            return Ok(Expr::Unary(UnaryExpr {
+                op: UnaryOp::Not,
+                expr: Box::new(expr),
+            }));
         }
         if self.matches(&[Token::KwCopy]) {
             let expr = self.parse_unary()?;
@@ -331,7 +394,11 @@ impl<'a> Parser<'a> {
             let then_branch = self.parse_expr()?;
             self.expect(&Token::KwElse, "'else' in if expression")?;
             let else_branch = self.parse_expr()?;
-            return Ok(Expr::If(Box::new(IfExpr { cond, then_branch, else_branch })));
+            return Ok(Expr::If(Box::new(IfExpr {
+                cond,
+                then_branch,
+                else_branch,
+            })));
         }
         self.parse_postfix()
     }
@@ -344,7 +411,10 @@ impl<'a> Parser<'a> {
                 let path = if let Expr::Path(p) = expr {
                     p
                 } else {
-                    return Err(ParserError::UnexpectedToken { expected: "callable path", found: self.prev().clone() });
+                    return Err(ParserError::UnexpectedToken {
+                        expected: "callable path",
+                        found: self.prev().clone(),
+                    });
                 };
                 let args = if self.matches(&[Token::RParen]) {
                     Vec::new()
@@ -393,7 +463,10 @@ impl<'a> Parser<'a> {
                 // disambiguate record literal vs block with simple lookahead
                 if self.check(Token::RBrace) {
                     self.advance();
-                    return Ok(Expr::Block(Block { stmts: Vec::new(), tail: None }));
+                    return Ok(Expr::Block(Block {
+                        stmts: Vec::new(),
+                        tail: None,
+                    }));
                 }
                 if self.looks_like_record_literal() {
                     let mut fields = Vec::new();
@@ -415,7 +488,10 @@ impl<'a> Parser<'a> {
                     Ok(Expr::Block(self.parse_block()?))
                 }
             }
-            other => Err(ParserError::UnexpectedToken { expected: "expression", found: other }),
+            other => Err(ParserError::UnexpectedToken {
+                expected: "expression",
+                found: other,
+            }),
         }
     }
 
@@ -467,7 +543,9 @@ impl<'a> Parser<'a> {
     }
 
     fn prev(&self) -> &Token {
-        self.tokens.get(self.pos.saturating_sub(1)).unwrap_or(&Token::Eof)
+        self.tokens
+            .get(self.pos.saturating_sub(1))
+            .unwrap_or(&Token::Eof)
     }
 
     fn expect(&mut self, token: &Token, msg: &'static str) -> Result<(), ParserError> {
@@ -475,14 +553,20 @@ impl<'a> Parser<'a> {
             self.advance();
             Ok(())
         } else {
-            Err(ParserError::UnexpectedToken { expected: msg, found: self.peek().clone() })
+            Err(ParserError::UnexpectedToken {
+                expected: msg,
+                found: self.peek().clone(),
+            })
         }
     }
 
     fn expect_ident(&mut self, msg: &'static str) -> Result<Ident, ParserError> {
         match self.advance() {
             Token::Ident(name) => Ok(Ident(name)),
-            other => Err(ParserError::UnexpectedToken { expected: msg, found: other }),
+            other => Err(ParserError::UnexpectedToken {
+                expected: msg,
+                found: other,
+            }),
         }
     }
 
@@ -490,11 +574,15 @@ impl<'a> Parser<'a> {
         // Assumes current position is just after '{'
         let mut idx = self.pos;
         // need ident ':' pattern
-        let Some(tok0) = self.tokens.get(idx) else { return false; };
+        let Some(tok0) = self.tokens.get(idx) else {
+            return false;
+        };
         if !matches!(tok0, Token::Ident(_)) {
             return false;
         }
-        let Some(tok1) = self.tokens.get(idx + 1) else { return false; };
+        let Some(tok1) = self.tokens.get(idx + 1) else {
+            return false;
+        };
         if tok1 != &Token::Colon {
             return false;
         }
@@ -546,17 +634,50 @@ fn lex(src: &str) -> Result<Vec<Token>, ParserError> {
                     tokens.push(Token::Slash);
                 }
             }
-            '{' => { chars.next(); tokens.push(Token::LBrace); }
-            '}' => { chars.next(); tokens.push(Token::RBrace); }
-            '(' => { chars.next(); tokens.push(Token::LParen); }
-            ')' => { chars.next(); tokens.push(Token::RParen); }
-            ':' => { chars.next(); tokens.push(Token::Colon); }
-            ',' => { chars.next(); tokens.push(Token::Comma); }
-            '.' => { chars.next(); tokens.push(Token::Dot); }
-            '+' => { chars.next(); tokens.push(Token::Plus); }
-            '*' => { chars.next(); tokens.push(Token::Star); }
-            '<' => { chars.next(); tokens.push(Token::Lt); }
-            '!' => { chars.next(); tokens.push(Token::Bang); }
+            '{' => {
+                chars.next();
+                tokens.push(Token::LBrace);
+            }
+            '}' => {
+                chars.next();
+                tokens.push(Token::RBrace);
+            }
+            '(' => {
+                chars.next();
+                tokens.push(Token::LParen);
+            }
+            ')' => {
+                chars.next();
+                tokens.push(Token::RParen);
+            }
+            ':' => {
+                chars.next();
+                tokens.push(Token::Colon);
+            }
+            ',' => {
+                chars.next();
+                tokens.push(Token::Comma);
+            }
+            '.' => {
+                chars.next();
+                tokens.push(Token::Dot);
+            }
+            '+' => {
+                chars.next();
+                tokens.push(Token::Plus);
+            }
+            '*' => {
+                chars.next();
+                tokens.push(Token::Star);
+            }
+            '<' => {
+                chars.next();
+                tokens.push(Token::Lt);
+            }
+            '!' => {
+                chars.next();
+                tokens.push(Token::Bang);
+            }
             '=' => {
                 chars.next();
                 if chars.peek() == Some(&'=') {
@@ -600,7 +721,9 @@ fn lex(src: &str) -> Result<Vec<Token>, ParserError> {
                 let mut s = String::new();
                 while let Some(&c) = chars.peek() {
                     chars.next();
-                    if c == '"' { break; }
+                    if c == '"' {
+                        break;
+                    }
                     s.push(c);
                 }
                 tokens.push(Token::Str(s));
@@ -615,7 +738,9 @@ fn lex(src: &str) -> Result<Vec<Token>, ParserError> {
                         break;
                     }
                 }
-                let val: i64 = num.parse().map_err(|_| ParserError::InvalidNumber(num.clone()))?;
+                let val: i64 = num
+                    .parse()
+                    .map_err(|_| ParserError::InvalidNumber(num.clone()))?;
                 tokens.push(Token::Int(val));
             }
             c if is_ident_start(c) => {

@@ -1,0 +1,127 @@
+// Minimal C runtime for Gaut-generated programs.
+#include "runtime.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+gaut_arena gaut_arena_from_buffer(uint8_t* buf, size_t cap) {
+    gaut_arena arena = {.buf = buf, .cap = cap, .off = 0};
+    return arena;
+}
+
+gaut_scope gaut_scope_enter(gaut_arena* arena) {
+    gaut_scope scope = {.mark = arena ? arena->off : 0};
+    return scope;
+}
+
+void gaut_scope_leave(gaut_arena* arena, gaut_scope scope) {
+    if (!arena || !arena->buf) {
+        return;
+    }
+    if (scope.mark <= arena->cap) {
+        arena->off = scope.mark;
+    } else {
+        arena->off = arena->cap;
+    }
+}
+
+void* gaut_arena_alloc(gaut_arena* arena, size_t size) {
+    if (!arena || !arena->buf) {
+        return NULL;
+    }
+    if (size > arena->cap || arena->off + size > arena->cap) {
+        return NULL;
+    }
+    void* ptr = arena->buf + arena->off;
+    arena->off += size;
+    return ptr;
+}
+
+static size_t gaut_strlen(const char* s) {
+    if (!s) {
+        return 0;
+    }
+    return strlen(s);
+}
+
+static void* gaut_alloc_bytes(gaut_arena* arena, size_t size) {
+    if (size == 0) {
+        return NULL;
+    }
+    if (arena) {
+        void* ptr = gaut_arena_alloc(arena, size);
+        if (ptr) {
+            return ptr;
+        }
+    }
+    return malloc(size);
+}
+
+static char* gaut_str_concat_inner(gaut_arena* arena, const char* a, const char* b) {
+    const size_t len_a = gaut_strlen(a);
+    const size_t len_b = gaut_strlen(b);
+    char* out = (char*)gaut_alloc_bytes(arena, len_a + len_b + 1);
+    if (!out) {
+        return NULL;
+    }
+    if (a) {
+        memcpy(out, a, len_a);
+    }
+    if (b) {
+        memcpy(out + len_a, b, len_b);
+    }
+    out[len_a + len_b] = '\0';
+    return out;
+}
+
+char* gaut_str_concat_arena(gaut_arena* arena, const char* a, const char* b) {
+    return gaut_str_concat_inner(arena, a, b);
+}
+
+char* gaut_str_concat_heap(const char* a, const char* b) {
+    return gaut_str_concat_inner(NULL, a, b);
+}
+
+static gaut_bytes gaut_bytes_concat_inner(gaut_arena* arena, const gaut_bytes* a, const gaut_bytes* b) {
+    const size_t len_a = a ? a->len : 0;
+    const size_t len_b = b ? b->len : 0;
+    gaut_bytes out = {.ptr = NULL, .len = len_a + len_b};
+    if (out.len == 0) {
+        return out;
+    }
+    out.ptr = (uint8_t*)gaut_alloc_bytes(arena, out.len);
+    if (!out.ptr) {
+        out.len = 0;
+        return out;
+    }
+    if (a && a->ptr) {
+        memcpy(out.ptr, a->ptr, len_a);
+    }
+    if (b && b->ptr) {
+        memcpy(out.ptr + len_a, b->ptr, len_b);
+    }
+    return out;
+}
+
+gaut_bytes gaut_bytes_concat_arena(gaut_arena* arena, const gaut_bytes* a, const gaut_bytes* b) {
+    return gaut_bytes_concat_inner(arena, a, b);
+}
+
+gaut_bytes gaut_bytes_concat_heap(const gaut_bytes* a, const gaut_bytes* b) {
+    return gaut_bytes_concat_inner(NULL, a, b);
+}
+
+void gaut_print(const char* s) {
+    if (s) {
+        fputs(s, stdout);
+    }
+    fflush(stdout);
+}
+
+void gaut_println(const char* s) {
+    if (s) {
+        fputs(s, stdout);
+    }
+    fputc('\n', stdout);
+    fflush(stdout);
+}

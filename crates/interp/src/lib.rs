@@ -53,12 +53,18 @@ pub struct Interpreter {
 
 impl Interpreter {
     pub fn new(arena_cap: usize) -> Self {
-        Self { globals: HashMap::new(), funcs: HashMap::new(), arena_cap }
+        Self {
+            globals: HashMap::new(),
+            funcs: HashMap::new(),
+            arena_cap,
+        }
     }
 
     pub fn from_source(src: &str) -> Result<Self, RuntimeError> {
         let mut parser = Parser::new(src).map_err(|e| RuntimeError::Type(e.to_string()))?;
-        let program = parser.parse_program().map_err(|e| RuntimeError::Type(e.to_string()))?;
+        let program = parser
+            .parse_program()
+            .map_err(|e| RuntimeError::Type(e.to_string()))?;
         let mut interp = Interpreter::new(1024 * 1024);
         interp.load_program(&program)?;
         Ok(interp)
@@ -75,8 +81,18 @@ impl Interpreter {
         for decl in &program.decls {
             match decl {
                 Decl::Global(b) | Decl::Let(b) => {
-                    let val = self.eval_expr(&b.value, &mut Env::new_with_arena(self.arena_cap), EvalMode::Move)?;
-                    self.globals.insert(b.name.0.clone(), Binding { mutable: b.mutable, value: Some(val) });
+                    let val = self.eval_expr(
+                        &b.value,
+                        &mut Env::new_with_arena(self.arena_cap),
+                        EvalMode::Move,
+                    )?;
+                    self.globals.insert(
+                        b.name.0.clone(),
+                        Binding {
+                            mutable: b.mutable,
+                            value: Some(val),
+                        },
+                    );
                 }
                 _ => {}
             }
@@ -94,13 +110,24 @@ impl Interpreter {
         self.call_function(&main_fn, vec![], &mut env)
     }
 
-    fn call_function(&mut self, func: &FuncDecl, args: Vec<Value>, env: &mut Env) -> Result<Value, RuntimeError> {
+    fn call_function(
+        &mut self,
+        func: &FuncDecl,
+        args: Vec<Value>,
+        env: &mut Env,
+    ) -> Result<Value, RuntimeError> {
         if func.params.len() != args.len() {
             return Err(RuntimeError::Type("arity mismatch".into()));
         }
         env.push_scope();
         for (param, arg) in func.params.iter().zip(args.into_iter()) {
-            env.insert_binding(param.name.0.clone(), Binding { mutable: param.mutable, value: Some(arg) });
+            env.insert_binding(
+                param.name.0.clone(),
+                Binding {
+                    mutable: param.mutable,
+                    value: Some(arg),
+                },
+            );
         }
 
         let result = match &func.body {
@@ -129,7 +156,13 @@ impl Interpreter {
         match stmt {
             Stmt::Binding(b) => {
                 let val = self.eval_expr(&b.value, env, EvalMode::Move)?;
-                env.insert_binding(b.name.0.clone(), Binding { mutable: b.mutable, value: Some(val) });
+                env.insert_binding(
+                    b.name.0.clone(),
+                    Binding {
+                        mutable: b.mutable,
+                        value: Some(val),
+                    },
+                );
                 Ok(())
             }
             Stmt::Assign(a) => {
@@ -143,7 +176,12 @@ impl Interpreter {
         }
     }
 
-    fn eval_expr(&mut self, expr: &Expr, env: &mut Env, mode: EvalMode) -> Result<Value, RuntimeError> {
+    fn eval_expr(
+        &mut self,
+        expr: &Expr,
+        env: &mut Env,
+        mode: EvalMode,
+    ) -> Result<Value, RuntimeError> {
         match expr {
             Expr::Literal(l) => Ok(match l {
                 Literal::Int(v) => Value::Int(*v),
@@ -244,11 +282,18 @@ impl Interpreter {
     }
 }
 
-fn eval_builtin(name: &str, args: &[Expr], interp: &mut Interpreter, env: &mut Env) -> Result<Option<Value>, RuntimeError> {
+fn eval_builtin(
+    name: &str,
+    args: &[Expr],
+    interp: &mut Interpreter,
+    env: &mut Env,
+) -> Result<Option<Value>, RuntimeError> {
     match name {
         "print" | "println" => {
             if args.len() != 1 {
-                return Err(RuntimeError::Type("print/println expects one argument".into()));
+                return Err(RuntimeError::Type(
+                    "print/println expects one argument".into(),
+                ));
             }
             let val = interp.eval_expr(&args[0], env, EvalMode::Move)?;
             let s = match val {
@@ -275,7 +320,10 @@ struct Env {
 
 impl Env {
     fn new_with_arena(cap: usize) -> Self {
-        Self { scopes: Vec::new(), arena: Arena::with_capacity(cap) }
+        Self {
+            scopes: Vec::new(),
+            arena: Arena::with_capacity(cap),
+        }
     }
 
     fn init_globals(&mut self, globals: &HashMap<String, Binding>) {
@@ -305,7 +353,10 @@ impl Env {
     }
 
     fn resolve_path(&mut self, path: &Path, mode: EvalMode) -> Result<Value, RuntimeError> {
-        let (head, rest) = path.0.split_first().ok_or_else(|| RuntimeError::UnknownIdent("".into()))?;
+        let (head, rest) = path
+            .0
+            .split_first()
+            .ok_or_else(|| RuntimeError::UnknownIdent("".into()))?;
         // find binding from innermost to outer
         let mut idx = self.scopes.len();
         let mut binding_idx = None;
@@ -324,14 +375,20 @@ impl Env {
 
         match mode {
             EvalMode::Move => {
-                let mut val = binding.value.take().ok_or_else(|| RuntimeError::Moved(head.0.clone()))?;
+                let mut val = binding
+                    .value
+                    .take()
+                    .ok_or_else(|| RuntimeError::Moved(head.0.clone()))?;
                 for field in rest {
                     val = extract_field(val, &field.0)?;
                 }
                 Ok(val)
             }
             EvalMode::Copy | EvalMode::Borrow => {
-                let val = binding.value.as_ref().ok_or_else(|| RuntimeError::Moved(head.0.clone()))?;
+                let val = binding
+                    .value
+                    .as_ref()
+                    .ok_or_else(|| RuntimeError::Moved(head.0.clone()))?;
                 let mut out = val.clone();
                 for field in rest {
                     out = extract_field(out, &field.0)?;
@@ -342,7 +399,10 @@ impl Env {
     }
 
     fn assign_path(&mut self, path: &Path, value: Value) -> Result<(), RuntimeError> {
-        let (head, rest) = path.0.split_first().ok_or_else(|| RuntimeError::UnknownIdent("".into()))?;
+        let (head, rest) = path
+            .0
+            .split_first()
+            .ok_or_else(|| RuntimeError::UnknownIdent("".into()))?;
         let mut idx = self.scopes.len();
         let mut binding_idx = None;
         while idx > 0 {
@@ -375,7 +435,9 @@ impl Env {
 
 fn extract_field(val: Value, field: &str) -> Result<Value, RuntimeError> {
     match val {
-        Value::Record(mut m) => m.remove(field).ok_or_else(|| RuntimeError::FieldNotFound(field.into())),
+        Value::Record(mut m) => m
+            .remove(field)
+            .ok_or_else(|| RuntimeError::FieldNotFound(field.into())),
         _ => Err(RuntimeError::Type("field access on non-record".into())),
     }
 }
@@ -396,16 +458,24 @@ fn set_field(target: &mut Value, path: &[Ident], value: Value) -> Result<(), Run
                     Err(RuntimeError::FieldNotFound(key))
                 }
             } else {
-                let next = m.get_mut(&key).ok_or_else(|| RuntimeError::FieldNotFound(key.clone()))?;
+                let next = m
+                    .get_mut(&key)
+                    .ok_or_else(|| RuntimeError::FieldNotFound(key.clone()))?;
                 set_field(next, &path[1..], value)
             }
         }
-        _ => Err(RuntimeError::Type("assignment into non-record field".into())),
+        _ => Err(RuntimeError::Type(
+            "assignment into non-record field".into(),
+        )),
     }
 }
 
 fn path_to_string(path: &Path) -> String {
-    path.0.iter().map(|i| i.0.as_str()).collect::<Vec<_>>().join(".")
+    path.0
+        .iter()
+        .map(|i| i.0.as_str())
+        .collect::<Vec<_>>()
+        .join(".")
 }
 
 #[cfg(test)]

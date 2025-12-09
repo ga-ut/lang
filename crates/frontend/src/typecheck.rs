@@ -64,7 +64,12 @@ impl TypeChecker {
             types.insert(name.to_string(), Type::Named(Ident(name.to_string())));
         }
         let builtins = types.keys().cloned().collect();
-        Self { types, funcs: HashMap::new(), scopes: Vec::new(), builtins }
+        Self {
+            types,
+            funcs: HashMap::new(),
+            scopes: Vec::new(),
+            builtins,
+        }
     }
 
     pub fn check_program(&mut self, program: &Program) -> Result<(), TypeError> {
@@ -76,7 +81,13 @@ impl TypeChecker {
                 }
                 Decl::Func(f) => {
                     let ret = f.ret.clone();
-                    self.funcs.insert(f.name.0.clone(), FuncSig { params: f.params.clone(), ret });
+                    self.funcs.insert(
+                        f.name.0.clone(),
+                        FuncSig {
+                            params: f.params.clone(),
+                            ret,
+                        },
+                    );
                 }
                 _ => {}
             }
@@ -102,7 +113,11 @@ impl TypeChecker {
     }
 
     fn check_func(&mut self, func: &FuncDecl) -> Result<(), TypeError> {
-        let sig = self.funcs.get(&func.name.0).cloned().ok_or_else(|| TypeError::UnknownFunc(func.name.0.clone()))?;
+        let sig = self
+            .funcs
+            .get(&func.name.0)
+            .cloned()
+            .ok_or_else(|| TypeError::UnknownFunc(func.name.0.clone()))?;
         self.push_scope();
         let depth = self.current_depth();
         for p in &sig.params {
@@ -165,7 +180,11 @@ impl TypeChecker {
         Ok(())
     }
 
-    fn check_block(&mut self, block: &Block, allow_escape_values: bool) -> Result<TyInfo, TypeError> {
+    fn check_block(
+        &mut self,
+        block: &Block,
+        allow_escape_values: bool,
+    ) -> Result<TyInfo, TypeError> {
         self.push_scope();
         let depth = self.current_depth();
         for stmt in &block.stmts {
@@ -183,13 +202,25 @@ impl TypeChecker {
             if allow_escape_values {
                 // normalize origin to this depth; escapable only if it has no refs
                 let ty_clone = info.ty.clone();
-                TyInfo { ty: info.ty, origin_depth: depth, escapable: !type_contains_ref(&ty_clone) }
+                TyInfo {
+                    ty: info.ty,
+                    origin_depth: depth,
+                    escapable: !type_contains_ref(&ty_clone),
+                }
             } else {
                 // value produced in an inner block expression should not be allowed to escape further
-                TyInfo { ty: info.ty, origin_depth: info.origin_depth, escapable: false }
+                TyInfo {
+                    ty: info.ty,
+                    origin_depth: info.origin_depth,
+                    escapable: false,
+                }
             }
         } else {
-            TyInfo { ty: Type::Named(Ident("Unit".into())), origin_depth: depth, escapable: true }
+            TyInfo {
+                ty: Type::Named(Ident("Unit".into())),
+                origin_depth: depth,
+                escapable: true,
+            }
         };
         self.pop_scope();
         Ok(tail_ty)
@@ -197,7 +228,11 @@ impl TypeChecker {
 
     fn check_expr(&mut self, expr: &Expr, mode: ValueMode) -> Result<TyInfo, TypeError> {
         match expr {
-            Expr::Literal(l) => Ok(TyInfo { ty: literal_type(l), origin_depth: self.current_depth(), escapable: true }),
+            Expr::Literal(l) => Ok(TyInfo {
+                ty: literal_type(l),
+                origin_depth: self.current_depth(),
+                escapable: true,
+            }),
             Expr::Path(p) => self.eval_path(p, mode),
             Expr::Copy(inner) => {
                 let info = self.check_expr(inner, ValueMode::Copy)?;
@@ -205,7 +240,11 @@ impl TypeChecker {
             }
             Expr::Ref(inner) => {
                 let info = self.check_expr(inner, ValueMode::Borrow)?;
-                Ok(TyInfo { ty: Type::Ref(Box::new(info.ty)), origin_depth: info.origin_depth, escapable: info.escapable })
+                Ok(TyInfo {
+                    ty: Type::Ref(Box::new(info.ty)),
+                    origin_depth: info.origin_depth,
+                    escapable: info.escapable,
+                })
             }
             Expr::FuncCall(fc) => self.eval_call(fc),
             Expr::If(ifexpr) => {
@@ -214,7 +253,11 @@ impl TypeChecker {
                 let t = self.check_expr(&ifexpr.then_branch, ValueMode::Move)?;
                 let e = self.check_expr(&ifexpr.else_branch, ValueMode::Move)?;
                 self.ensure_type(&t.ty, &e.ty)?;
-                Ok(TyInfo { ty: t.ty, origin_depth: std::cmp::max(t.origin_depth, e.origin_depth), escapable: t.escapable && e.escapable })
+                Ok(TyInfo {
+                    ty: t.ty,
+                    origin_depth: std::cmp::max(t.origin_depth, e.origin_depth),
+                    escapable: t.escapable && e.escapable,
+                })
             }
             Expr::Block(b) => self.check_block(b, false),
             Expr::RecordLit(r) => {
@@ -225,15 +268,24 @@ impl TypeChecker {
                     let val = self.check_expr(&f.value, ValueMode::Move)?;
                     max_depth = max_depth.max(val.origin_depth);
                     escapable = escapable && val.escapable;
-                    fields.push(FieldType { name: f.name.clone(), ty: val.ty });
+                    fields.push(FieldType {
+                        name: f.name.clone(),
+                        ty: val.ty,
+                    });
                 }
-                Ok(TyInfo { ty: Type::Record(fields), origin_depth: max_depth, escapable })
+                Ok(TyInfo {
+                    ty: Type::Record(fields),
+                    origin_depth: max_depth,
+                    escapable,
+                })
             }
             Expr::Unary(u) => {
                 let val = self.check_expr(&u.expr, ValueMode::Move)?;
                 match u.op {
                     UnaryOp::Neg => self.ensure_type(&Type::Named(Ident("i32".into())), &val.ty)?,
-                    UnaryOp::Not => self.ensure_type(&Type::Named(Ident("bool".into())), &val.ty)?,
+                    UnaryOp::Not => {
+                        self.ensure_type(&Type::Named(Ident("bool".into())), &val.ty)?
+                    }
                 }
                 Ok(val)
             }
@@ -244,22 +296,45 @@ impl TypeChecker {
                     BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div => {
                         // allow i32 math, and Str + Str as concatenation (other combos are errors)
                         let escapable = l.escapable && r.escapable;
-                        if self.type_eq(&l.ty, &Type::Named(Ident("i32".into())))? && self.type_eq(&r.ty, &Type::Named(Ident("i32".into())))? {
-                            Ok(TyInfo { ty: Type::Named(Ident("i32".into())), origin_depth: std::cmp::max(l.origin_depth, r.origin_depth), escapable })
-                        } else if self.type_eq(&l.ty, &Type::Named(Ident("Str".into())))? && self.type_eq(&r.ty, &Type::Named(Ident("Str".into())))? {
-                            Ok(TyInfo { ty: Type::Named(Ident("Str".into())), origin_depth: std::cmp::max(l.origin_depth, r.origin_depth), escapable })
+                        if self.type_eq(&l.ty, &Type::Named(Ident("i32".into())))?
+                            && self.type_eq(&r.ty, &Type::Named(Ident("i32".into())))?
+                        {
+                            Ok(TyInfo {
+                                ty: Type::Named(Ident("i32".into())),
+                                origin_depth: std::cmp::max(l.origin_depth, r.origin_depth),
+                                escapable,
+                            })
+                        } else if self.type_eq(&l.ty, &Type::Named(Ident("Str".into())))?
+                            && self.type_eq(&r.ty, &Type::Named(Ident("Str".into())))?
+                        {
+                            Ok(TyInfo {
+                                ty: Type::Named(Ident("Str".into())),
+                                origin_depth: std::cmp::max(l.origin_depth, r.origin_depth),
+                                escapable,
+                            })
                         } else {
-                            Err(TypeError::TypeMismatch { expected: l.ty.clone(), found: r.ty.clone() })
+                            Err(TypeError::TypeMismatch {
+                                expected: l.ty.clone(),
+                                found: r.ty.clone(),
+                            })
                         }
                     }
                     BinaryOp::Lt | BinaryOp::Eq => {
                         self.ensure_type(&l.ty, &r.ty)?;
-                        Ok(TyInfo { ty: Type::Named(Ident("bool".into())), origin_depth: std::cmp::max(l.origin_depth, r.origin_depth), escapable: l.escapable && r.escapable })
+                        Ok(TyInfo {
+                            ty: Type::Named(Ident("bool".into())),
+                            origin_depth: std::cmp::max(l.origin_depth, r.origin_depth),
+                            escapable: l.escapable && r.escapable,
+                        })
                     }
                     BinaryOp::And | BinaryOp::Or => {
                         self.ensure_type(&Type::Named(Ident("bool".into())), &l.ty)?;
                         self.ensure_type(&Type::Named(Ident("bool".into())), &r.ty)?;
-                        Ok(TyInfo { ty: Type::Named(Ident("bool".into())), origin_depth: std::cmp::max(l.origin_depth, r.origin_depth), escapable: l.escapable && r.escapable })
+                        Ok(TyInfo {
+                            ty: Type::Named(Ident("bool".into())),
+                            origin_depth: std::cmp::max(l.origin_depth, r.origin_depth),
+                            escapable: l.escapable && r.escapable,
+                        })
                     }
                 }
             }
@@ -281,7 +356,11 @@ impl TypeChecker {
                 }
             }
         }
-        Ok(TyInfo { ty: info.ty.clone(), origin_depth: info.origin_depth, escapable: false })
+        Ok(TyInfo {
+            ty: info.ty.clone(),
+            origin_depth: info.origin_depth,
+            escapable: false,
+        })
     }
 
     fn eval_call(&mut self, call: &FuncCall) -> Result<TyInfo, TypeError> {
@@ -289,9 +368,16 @@ impl TypeChecker {
             return Err(TypeError::UnknownFunc(path_to_string(&call.callee)));
         }
         let name = call.callee.0[0].0.clone();
-        let sig = self.funcs.get(&name).ok_or_else(|| TypeError::UnknownFunc(name.clone()))?.clone();
+        let sig = self
+            .funcs
+            .get(&name)
+            .ok_or_else(|| TypeError::UnknownFunc(name.clone()))?
+            .clone();
         if sig.params.len() != call.args.len() {
-            return Err(TypeError::ArityMismatch { expected: sig.params.len(), found: call.args.len() });
+            return Err(TypeError::ArityMismatch {
+                expected: sig.params.len(),
+                found: call.args.len(),
+            });
         }
         for (arg_expr, param) in call.args.iter().zip(sig.params.iter()) {
             let arg = self.check_expr(arg_expr, ValueMode::Move)?;
@@ -299,14 +385,21 @@ impl TypeChecker {
             self.ensure_type(&pty, &arg.ty)?;
         }
         let ret_ty = sig.ret.clone().unwrap_or(Type::Named(Ident("Unit".into())));
-        Ok(TyInfo { ty: ret_ty.clone(), origin_depth: self.current_depth(), escapable: !type_contains_ref(&ret_ty) })
+        Ok(TyInfo {
+            ty: ret_ty.clone(),
+            origin_depth: self.current_depth(),
+            escapable: !type_contains_ref(&ret_ty),
+        })
     }
 
     fn ensure_type(&self, expected: &Type, found: &Type) -> Result<(), TypeError> {
         if self.type_eq(expected, found)? {
             Ok(())
         } else {
-            Err(TypeError::TypeMismatch { expected: expected.clone(), found: found.clone() })
+            Err(TypeError::TypeMismatch {
+                expected: expected.clone(),
+                found: found.clone(),
+            })
         }
     }
 
@@ -329,7 +422,9 @@ impl TypeChecker {
                 if af.len() != bf.len() {
                     false
                 } else {
-                    af.iter().zip(bf.iter()).all(|(a, b)| a.name == b.name && self.type_eq(&a.ty, &b.ty).unwrap_or(false))
+                    af.iter().zip(bf.iter()).all(|(a, b)| {
+                        a.name == b.name && self.type_eq(&a.ty, &b.ty).unwrap_or(false)
+                    })
                 }
             }
             _ => false,
@@ -354,7 +449,10 @@ impl TypeChecker {
             Type::Record(fields) => {
                 let mut out = Vec::new();
                 for f in fields {
-                    out.push(FieldType { name: f.name.clone(), ty: self.resolve_type(&f.ty)? });
+                    out.push(FieldType {
+                        name: f.name.clone(),
+                        ty: self.resolve_type(&f.ty)?,
+                    });
                 }
                 Ok(Type::Record(out))
             }
@@ -362,7 +460,9 @@ impl TypeChecker {
     }
 
     fn push_scope(&mut self) {
-        self.scopes.push(Scope { vars: HashMap::new() });
+        self.scopes.push(Scope {
+            vars: HashMap::new(),
+        });
     }
 
     fn pop_scope(&mut self) {
@@ -375,12 +475,23 @@ impl TypeChecker {
 
     fn insert_var(&mut self, name: String, ty: Type, mutable: bool, origin_depth: usize) {
         if let Some(scope) = self.scopes.last_mut() {
-            scope.vars.insert(name, BindingInfo { ty, mutable, moved: false, origin_depth });
+            scope.vars.insert(
+                name,
+                BindingInfo {
+                    ty,
+                    mutable,
+                    moved: false,
+                    origin_depth,
+                },
+            );
         }
     }
 
     fn lookup_binding(&self, path: &Path) -> Result<(usize, BindingInfo), TypeError> {
-        let (head, rest) = path.0.split_first().ok_or_else(|| TypeError::UnknownIdent("".into()))?;
+        let (head, rest) = path
+            .0
+            .split_first()
+            .ok_or_else(|| TypeError::UnknownIdent("".into()))?;
         for (depth_rev, scope) in self.scopes.iter().rev().enumerate() {
             if let Some(info) = scope.vars.get(&head.0) {
                 let depth = self.scopes.len().saturating_sub(1) - depth_rev;
@@ -408,14 +519,25 @@ impl TypeChecker {
                         _ => return Err(TypeError::UnknownIdent(field.0.clone())),
                     }
                 }
-                return Ok((depth, BindingInfo { ty, mutable: info.mutable, moved: info.moved, origin_depth: info.origin_depth }));
+                return Ok((
+                    depth,
+                    BindingInfo {
+                        ty,
+                        mutable: info.mutable,
+                        moved: info.moved,
+                        origin_depth: info.origin_depth,
+                    },
+                ));
             }
         }
         Err(TypeError::UnknownIdent(head.0.clone()))
     }
 
     fn set_moved(&mut self, path: &Path, moved: bool) -> Result<(), TypeError> {
-        let (head, rest) = path.0.split_first().ok_or_else(|| TypeError::UnknownIdent("".into()))?;
+        let (head, rest) = path
+            .0
+            .split_first()
+            .ok_or_else(|| TypeError::UnknownIdent("".into()))?;
         for scope in self.scopes.iter_mut().rev() {
             if let Some(info) = scope.vars.get_mut(&head.0) {
                 if !rest.is_empty() {
@@ -456,7 +578,11 @@ fn type_contains_ref(ty: &Type) -> bool {
 }
 
 fn path_to_string(path: &Path) -> String {
-    path.0.iter().map(|i| i.0.as_str()).collect::<Vec<_>>().join(".")
+    path.0
+        .iter()
+        .map(|i| i.0.as_str())
+        .collect::<Vec<_>>()
+        .join(".")
 }
 
 #[cfg(test)]

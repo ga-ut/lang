@@ -17,7 +17,9 @@ pub struct Conn {
 
 impl Listener {
     pub fn listen<A: ToSocketAddrs>(addr: A) -> std::io::Result<Self> {
-        Ok(Self { inner: TcpListener::bind(addr)? })
+        Ok(Self {
+            inner: TcpListener::bind(addr)?,
+        })
     }
 
     pub fn accept(&self) -> std::io::Result<Conn> {
