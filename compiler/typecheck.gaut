@@ -1,0 +1,3 @@
+import parser
+
+check(prog: parser.Program) -> parser.Program = prog

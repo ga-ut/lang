@@ -1,0 +1,8 @@
+import ast
+
+type Program = ast.Program
+
+parse(src: Str) -> Program = {
+  decls: i32 = 0
+  { decls: decls }
+}

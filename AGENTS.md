@@ -6,7 +6,7 @@ This guide explains how to work on the Gaut language workspace and contribute sa
 - Workspace root: `Cargo.toml` with crates `frontend` (parser/typechecker), `runtime` (arena + std stubs), `interp` (evaluator), `cgen` (C emitter), `cli` (binary wrapper).
 - Language assets: `examples/*.gaut` for fixtures, `std/` for standard modules, `docs/lang-spec.md` for the current spec.
 - Runtime helpers: `runtime/c/*` for generated-C builds (arena helpers + string/bytes concat).
-- Utility scripts: `scripts/run_examples.sh` for interp + cgen smoke runs; `scripts/self_host.sh` emits each example twice to check C-output determinism and clang-builds binaries into `target/self_host/`.
+- Utility scripts: `scripts/run_examples.sh` for interp + cgen smoke runs; `scripts/self_host.sh` emits each example twice to check C-output determinism and clang-builds binaries into `target/self_host/` (set `SELF_HOST_COMPILER=1` for experimental compiler stage loop, `SELF_HOST_SKIP=1` to skip).
 
 ## Build, Test, and Development Commands
 - Format and lint: `cargo fmt` then `cargo clippy --all-targets --all-features -- -D warnings`.

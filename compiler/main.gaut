@@ -1,0 +1,11 @@
+import parser
+import typecheck
+import cgen
+
+main() -> Str = {
+  src: Str = ""
+  prog: parser.Program = parser.parse(src)
+  checked: parser.Program = typecheck.check(prog)
+  c: Str = cgen.emit(checked)
+  c
+}

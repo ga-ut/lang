@@ -39,6 +39,7 @@ cargo test -p interp
 `./scripts/self_host.sh`는 예제(`hello`, `calc`, `record`)를 대상으로
 1) 두 번 C 코드를 생성해 sha256이 동일한지 확인하고,
 2) `--build`로 바이너리를 만든 뒤 실행까지 진행합니다. 산출물은 `target/self_host/`에 저장됩니다.
+- 옵션: `SELF_HOST_SKIP=1`로 self_host 루프를 건너뛰고, `SELF_HOST_COMPILER=1`이면 `compiler/main.gaut`가 있을 때 stage0→stage1→stage2 해시/빌드 루프도 수행합니다(실험적).
 
 ## 5) std/네트워크 예제
 
