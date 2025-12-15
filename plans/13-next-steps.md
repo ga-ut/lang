@@ -12,8 +12,8 @@
    - Gaut std 바인딩 추가, 컴파일러에서 파일 IO/입력 인자 처리에 사용.
 
 3) self_host 루프 보강
-   - `SELF_HOST_COMPILER=1 ./scripts/self_host.sh` 경로에서 stage0→stage1→stage2 C 해시 비교를 실패 시 non-zero로 종료.
-   - 컴파일러 C 출력 해시를 로그에 명확히 표시하고, 예제와 동일한 결정성 흐름 유지.
+   - `SELF_HOST_COMPILER=1 ./scripts/self_host.sh` 경로에서 gautc1이 실제로 C를 생성하도록 컴파일러 구현, stage0→stage1→stage2 C 해시 비교를 실패 시 non-zero로 종료.
+   - 컴파일러 C 출력 해시를 로그에 명확히 표시하고, 예제와 동일한 결정성 흐름 유지. gautc1이 C를 만들지 못하면 현재처럼 명시적 메시지 후 건너뛰기.
 
 4) 경고/정리
    - parser Token 가시성 수정으로 `private_interfaces` 경고 해소.

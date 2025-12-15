@@ -8,4 +8,6 @@ main() -> Unit = {
   prog: Program = parse(src)
   checked: Program = check(prog)
   c: Str = emit(checked)
+  // 임시: self_host 스크립트가 기대하는 경로로 C를 기록하는 스텁.
+  write_file("target/self_host/gautc2.stage1.c", c)
 }

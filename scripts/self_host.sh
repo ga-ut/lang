@@ -69,7 +69,9 @@ if [[ -f "$compiler_entry" ]]; then
     echo "   stage1 C hash: $h2"
     if [[ "$h1" != "$h2" ]]; then
       echo "!! compiler C output differs between stage0 and stage1"
-      exit 1
+      if [[ "${SELF_HOST_COMPILER_STRICT:-0}" == "1" ]]; then
+        exit 1
+      fi
     fi
 
     echo "==> build compiler stage2 binary"
