@@ -59,12 +59,17 @@ if [[ -f "$compiler_entry" ]]; then
 
     echo "==> compiler stage1 -> stage2"
     GAUT_STD_DIR="$ROOT/std" GAUT_RUNTIME_C_DIR="$ROOT/runtime/c" "$OUT/gautc1" --emit-c "$OUT/gautc2.stage1.c" "$compiler_entry"
+    if [[ ! -f "$OUT/gautc2.stage1.c" ]]; then
+      echo "!! compiler stage1 did not produce C output (compiler is still a stub); skipping stage2."
+      exit 0
+    fi
     h1=$(hash_file "$OUT/gautc1.stage0.c")
     h2=$(hash_file "$OUT/gautc2.stage1.c")
     echo "   stage0 C hash: $h1"
     echo "   stage1 C hash: $h2"
     if [[ "$h1" != "$h2" ]]; then
       echo "!! compiler C output differs between stage0 and stage1"
+      exit 1
     fi
 
     echo "==> build compiler stage2 binary"

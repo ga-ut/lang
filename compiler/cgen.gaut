@@ -1,3 +1,4 @@
+import ast
 import parser
 
-emit(prog: parser.Program) -> Str = "/* cgen stub */"
+emit(prog: Program) -> Str = "/* cgen stub */"

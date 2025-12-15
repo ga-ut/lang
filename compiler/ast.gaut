@@ -1,1 +1,2 @@
+// Core AST placeholder; keep names simple (no module-qualified types).
 type Program = { decls: i32 }

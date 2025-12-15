@@ -1,0 +1,14 @@
+// 호스트에서 제공하는 IO/인자 빌트인 시그니처. 구현은 런타임 C에 연결된다.
+
+read_file(path: Str) -> Str = {
+  // placeholder; 실제 구현은 런타임에 있음
+  ""
+}
+
+write_file(path: Str, data: Str) -> Unit = {
+  ()
+}
+
+args() -> Bytes = {
+  b""
+}

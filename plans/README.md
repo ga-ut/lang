@@ -12,3 +12,4 @@ Plans are split into independent, sequential units. Complete them in order to re
 10) 10-cli.md (hello world 실행용 바이너리 추가)
 11) 11-self-host.md (self-host 가능한 C 백엔드/빌드 파이프라인)
 12) 12-bootstrap.md (Gaut-작성 컴파일러 + stage1/2 self-host 루프)
+13) 13-next-steps.md (부트스트랩 후속 상세 TODO)

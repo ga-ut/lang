@@ -436,7 +436,7 @@ impl Env {
 fn extract_field(val: Value, field: &str) -> Result<Value, RuntimeError> {
     match val {
         Value::Record(mut m) => m
-            .remove(field)
+            .shift_remove(field)
             .ok_or_else(|| RuntimeError::FieldNotFound(field.into())),
         _ => Err(RuntimeError::Type("field access on non-record".into())),
     }

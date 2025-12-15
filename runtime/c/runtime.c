@@ -125,3 +125,54 @@ void gaut_println(const char* s) {
     fputc('\n', stdout);
     fflush(stdout);
 }
+
+char* gaut_read_file(const char* path) {
+    if (!path) {
+        return NULL;
+    }
+    FILE* f = fopen(path, "rb");
+    if (!f) {
+        return NULL;
+    }
+    if (fseek(f, 0, SEEK_END) != 0) {
+        fclose(f);
+        return NULL;
+    }
+    long len = ftell(f);
+    if (len < 0) {
+        fclose(f);
+        return NULL;
+    }
+    if (fseek(f, 0, SEEK_SET) != 0) {
+        fclose(f);
+        return NULL;
+    }
+    char* buf = (char*)malloc((size_t)len + 1);
+    if (!buf) {
+        fclose(f);
+        return NULL;
+    }
+    size_t read = fread(buf, 1, (size_t)len, f);
+    fclose(f);
+    buf[read] = '\0';
+    return buf;
+}
+
+int gaut_write_file(const char* path, const char* data) {
+    if (!path || !data) {
+        return -1;
+    }
+    FILE* f = fopen(path, "wb");
+    if (!f) {
+        return -1;
+    }
+    size_t len = strlen(data);
+    size_t written = fwrite(data, 1, len, f);
+    fclose(f);
+    return written == len ? 0 : -1;
+}
+
+gaut_bytes gaut_args(void) {
+    gaut_bytes out = {.ptr = NULL, .len = 0};
+    return out;
+}

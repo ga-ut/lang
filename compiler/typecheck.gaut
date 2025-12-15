@@ -1,3 +1,4 @@
+import ast
 import parser
 
-check(prog: parser.Program) -> parser.Program = prog
+check(prog: Program) -> Program = prog

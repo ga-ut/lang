@@ -35,5 +35,8 @@ gaut_bytes gaut_bytes_concat_arena(gaut_arena* arena, const gaut_bytes* a, const
 gaut_bytes gaut_bytes_concat_heap(const gaut_bytes* a, const gaut_bytes* b);
 void gaut_print(const char* s);
 void gaut_println(const char* s);
+char* gaut_read_file(const char* path);
+int gaut_write_file(const char* path, const char* data);
+gaut_bytes gaut_args(void);
 
 #endif // GAUT_RUNTIME_H

@@ -19,7 +19,7 @@ pub enum ParserError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum Token {
+pub enum Token {
     Ident(String),
     Int(i64),
     Str(String),

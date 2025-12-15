@@ -52,6 +52,22 @@ impl TypeCtx {
                 types.insert(t.name.0.clone(), t.ty.clone());
             }
         }
+        // Builtins
+        funcs.entry("print".into()).or_insert(FuncSig {
+            ret: Some(Type::Named(Ident("Str".into()))),
+        });
+        funcs.entry("println".into()).or_insert(FuncSig {
+            ret: Some(Type::Named(Ident("Str".into()))),
+        });
+        funcs.entry("read_file".into()).or_insert(FuncSig {
+            ret: Some(Type::Named(Ident("Str".into()))),
+        });
+        funcs.entry("write_file".into()).or_insert(FuncSig {
+            ret: Some(Type::Named(Ident("Unit".into()))),
+        });
+        funcs.entry("args".into()).or_insert(FuncSig {
+            ret: Some(Type::Named(Ident("Bytes".into()))),
+        });
 
         let mut ctx = Self {
             types,
@@ -248,6 +264,14 @@ pub fn generate_c(program: &Program) -> Result<String, CgenError> {
     writeln!(out, "#include <stddef.h>").map_err(|e| CgenError::Fmt(e.to_string()))?;
     writeln!(out, "#include \"runtime.h\"\n").map_err(|e| CgenError::Fmt(e.to_string()))?;
 
+    let mut func_names = HashSet::new();
+    for decl in &program.decls {
+        if let Decl::Func(f) = decl {
+            func_names.insert(f.name.0.clone());
+        }
+    }
+    emit_builtin_shims(&mut out, &func_names)?;
+
     // forward declare type aliases
     for decl in &program.decls {
         if let Decl::Type(t) = decl {
@@ -270,6 +294,42 @@ pub fn generate_c(program: &Program) -> Result<String, CgenError> {
     }
 
     Ok(out)
+}
+
+fn emit_builtin_shims(out: &mut String, func_names: &HashSet<String>) -> Result<(), CgenError> {
+    if !func_names.contains("print") {
+        writeln!(
+            out,
+            "char* print(char* msg) {{ gaut_print(msg); return msg; }}"
+        )
+        .map_err(|e| CgenError::Fmt(e.to_string()))?;
+    }
+    if !func_names.contains("println") {
+        writeln!(
+            out,
+            "char* println(char* msg) {{ gaut_println(msg); return msg; }}"
+        )
+        .map_err(|e| CgenError::Fmt(e.to_string()))?;
+    }
+    if !func_names.contains("read_file") {
+        writeln!(
+            out,
+            "char* read_file(char* path) {{ return gaut_read_file(path); }}"
+        )
+        .map_err(|e| CgenError::Fmt(e.to_string()))?;
+    }
+    if !func_names.contains("write_file") {
+        writeln!(
+            out,
+            "void write_file(char* path, char* data) {{ gaut_write_file(path, data); }}"
+        )
+        .map_err(|e| CgenError::Fmt(e.to_string()))?;
+    }
+    if !func_names.contains("args") {
+        writeln!(out, "gaut_bytes args() {{ return gaut_args(); }}")
+            .map_err(|e| CgenError::Fmt(e.to_string()))?;
+    }
+    writeln!(out).map_err(|e| CgenError::Fmt(e.to_string()))
 }
 
 fn emit_type_decl(ty: &TypeDecl, out: &mut String, ctx: &mut TypeCtx) -> Result<(), CgenError> {
@@ -303,6 +363,10 @@ fn emit_global(binding: &Binding, out: &mut String, ctx: &mut TypeCtx) -> Result
 fn emit_function(func: &FuncDecl, out: &mut String, ctx: &mut TypeCtx) -> Result<(), CgenError> {
     if func.name.0 == "print" || func.name.0 == "println" {
         emit_builtin_print(func, out, ctx)?;
+        return Ok(());
+    }
+    if func.name.0 == "read_file" || func.name.0 == "write_file" || func.name.0 == "args" {
+        emit_builtin_io(func, out, ctx)?;
         return Ok(());
     }
 
@@ -385,6 +449,34 @@ fn emit_builtin_print(func: &FuncDecl, out: &mut String, ctx: &TypeCtx) -> Resul
     writeln!(out, "  {}(msg);", call).map_err(|e| CgenError::Fmt(e.to_string()))?;
     writeln!(out, "  return msg;").map_err(|e| CgenError::Fmt(e.to_string()))?;
     writeln!(out, "}}\n").map_err(|e| CgenError::Fmt(e.to_string()))
+}
+
+fn emit_builtin_io(func: &FuncDecl, out: &mut String, ctx: &TypeCtx) -> Result<(), CgenError> {
+    match func.name.0.as_str() {
+        "read_file" => {
+            let ret_cty = map_type(&Type::Named(Ident("Str".into())), ctx)?;
+            let path_cty = map_type(&Type::Named(Ident("Str".into())), ctx)?;
+            writeln!(out, "{} read_file({} path) {{", ret_cty, path_cty)
+                .map_err(|e| CgenError::Fmt(e.to_string()))?;
+            writeln!(out, "  return gaut_read_file(path);")
+                .map_err(|e| CgenError::Fmt(e.to_string()))?;
+            writeln!(out, "}}\n").map_err(|e| CgenError::Fmt(e.to_string()))
+        }
+        "write_file" => {
+            writeln!(out, "void write_file(char* path, char* data) {{")
+                .map_err(|e| CgenError::Fmt(e.to_string()))?;
+            writeln!(out, "  gaut_write_file(path, data);")
+                .map_err(|e| CgenError::Fmt(e.to_string()))?;
+            writeln!(out, "}}\n").map_err(|e| CgenError::Fmt(e.to_string()))
+        }
+        "args" => {
+            let ret_cty = map_type(&Type::Named(Ident("Bytes".into())), ctx)?;
+            writeln!(out, "{} args() {{", ret_cty).map_err(|e| CgenError::Fmt(e.to_string()))?;
+            writeln!(out, "  return gaut_args();").map_err(|e| CgenError::Fmt(e.to_string()))?;
+            writeln!(out, "}}\n").map_err(|e| CgenError::Fmt(e.to_string()))
+        }
+        _ => Ok(()),
+    }
 }
 
 fn emit_block(
@@ -837,5 +929,35 @@ mod tests {
         "#;
         let c = generate_c_from_source(src).unwrap();
         assert!(c.contains("gaut_str_concat"));
+    }
+
+    #[test]
+    fn record_ref_uses_arrow() {
+        let src = r#"
+        type Point = { x: i32, y: i32 }
+
+        length_x(p: &Point) -> i32 = p.x
+
+        main() = {
+          origin: Point = { x: 0, y: 0 }
+          px: i32 = length_x(&origin)
+          px
+        }
+        "#;
+        let c = generate_c_from_source(src).unwrap();
+        assert!(c.contains("p->x"));
+        assert!(c.contains("Point origin"));
+    }
+
+    #[test]
+    fn read_file_calls_runtime() {
+        let src = r#"
+        main() = {
+          content: Str = read_file("foo.txt")
+          content
+        }
+        "#;
+        let c = generate_c_from_source(src).unwrap();
+        assert!(c.contains("gaut_read_file"));
     }
 }

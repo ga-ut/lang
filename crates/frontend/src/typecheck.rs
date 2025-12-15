@@ -64,9 +64,70 @@ impl TypeChecker {
             types.insert(name.to_string(), Type::Named(Ident(name.to_string())));
         }
         let builtins = types.keys().cloned().collect();
+
+        let mut funcs = HashMap::new();
+        funcs.insert(
+            "print".into(),
+            FuncSig {
+                params: vec![Param {
+                    mutable: false,
+                    name: Ident("msg".into()),
+                    ty: Type::Named(Ident("Str".into())),
+                }],
+                ret: Some(Type::Named(Ident("Str".into()))),
+            },
+        );
+        funcs.insert(
+            "println".into(),
+            FuncSig {
+                params: vec![Param {
+                    mutable: false,
+                    name: Ident("msg".into()),
+                    ty: Type::Named(Ident("Str".into())),
+                }],
+                ret: Some(Type::Named(Ident("Str".into()))),
+            },
+        );
+        funcs.insert(
+            "read_file".into(),
+            FuncSig {
+                params: vec![Param {
+                    mutable: false,
+                    name: Ident("path".into()),
+                    ty: Type::Named(Ident("Str".into())),
+                }],
+                ret: Some(Type::Named(Ident("Str".into()))),
+            },
+        );
+        funcs.insert(
+            "write_file".into(),
+            FuncSig {
+                params: vec![
+                    Param {
+                        mutable: false,
+                        name: Ident("path".into()),
+                        ty: Type::Named(Ident("Str".into())),
+                    },
+                    Param {
+                        mutable: false,
+                        name: Ident("data".into()),
+                        ty: Type::Named(Ident("Str".into())),
+                    },
+                ],
+                ret: Some(Type::Named(Ident("Unit".into()))),
+            },
+        );
+        funcs.insert(
+            "args".into(),
+            FuncSig {
+                params: Vec::new(),
+                ret: Some(Type::Named(Ident("Bytes".into()))),
+            },
+        );
+
         Self {
             types,
-            funcs: HashMap::new(),
+            funcs,
             scopes: Vec::new(),
             builtins,
         }
