@@ -5,6 +5,7 @@ use frontend::parser::Parser;
 use indexmap::IndexMap;
 use runtime::Arena;
 use std::collections::HashMap;
+use std::fs;
 use std::io::{self, Write};
 use thiserror::Error;
 
@@ -13,6 +14,7 @@ pub enum Value {
     Int(i64),
     Bool(bool),
     Str(String),
+    Bytes(Vec<u8>),
     Record(IndexMap<String, Value>),
     Unit,
 }
@@ -251,6 +253,12 @@ impl Interpreter {
             BinaryOp::Add => match (l, r) {
                 (Value::Int(a), Value::Int(b)) => Ok(Value::Int(a + b)),
                 (Value::Str(a), Value::Str(b)) => Ok(Value::Str(format!("{}{}", a, b))),
+                (Value::Bytes(a), Value::Bytes(b)) => {
+                    let mut out = Vec::with_capacity(a.len() + b.len());
+                    out.extend_from_slice(a);
+                    out.extend_from_slice(b);
+                    Ok(Value::Bytes(out))
+                }
                 _ => Err(RuntimeError::Type("invalid operands for +".into())),
             },
             BinaryOp::Sub => match (l, r) {
@@ -307,6 +315,95 @@ fn eval_builtin(
                 println!("{}", s);
             }
             Ok(Some(Value::Str(s)))
+        }
+        "args" => {
+            if !args.is_empty() {
+                return Err(RuntimeError::Type("args expects no arguments".into()));
+            }
+            let parts: Vec<String> = std::env::args().collect();
+            let joined = parts.join("\n");
+            Ok(Some(Value::Bytes(joined.into_bytes())))
+        }
+        "bytes_to_str" => {
+            if args.len() != 1 {
+                return Err(RuntimeError::Type(
+                    "bytes_to_str expects one argument".into(),
+                ));
+            }
+            let val = interp.eval_expr(&args[0], env, EvalMode::Move)?;
+            let Value::Bytes(bytes) = val else {
+                return Err(RuntimeError::Type("bytes_to_str expects Bytes".into()));
+            };
+            let s = String::from_utf8_lossy(&bytes).to_string();
+            Ok(Some(Value::Str(s)))
+        }
+        "try_read_file" => {
+            if args.len() != 1 {
+                return Err(RuntimeError::Type(
+                    "try_read_file expects one argument".into(),
+                ));
+            }
+            let val = interp.eval_expr(&args[0], env, EvalMode::Move)?;
+            let Value::Str(path) = val else {
+                return Err(RuntimeError::Type("try_read_file expects Str".into()));
+            };
+            let mut map = IndexMap::new();
+            match fs::read_to_string(&path) {
+                Ok(data) => {
+                    map.insert("ok".into(), Value::Bool(true));
+                    map.insert("data".into(), Value::Str(data));
+                }
+                Err(_) => {
+                    map.insert("ok".into(), Value::Bool(false));
+                    map.insert("data".into(), Value::Str(String::new()));
+                }
+            }
+            Ok(Some(Value::Record(map)))
+        }
+        "read_file" => {
+            if args.len() != 1 {
+                return Err(RuntimeError::Type("read_file expects one argument".into()));
+            }
+            let val = interp.eval_expr(&args[0], env, EvalMode::Move)?;
+            let Value::Str(path) = val else {
+                return Err(RuntimeError::Type("read_file expects Str".into()));
+            };
+            let data = fs::read_to_string(&path).unwrap_or_default();
+            Ok(Some(Value::Str(data)))
+        }
+        "try_write_file" => {
+            if args.len() != 2 {
+                return Err(RuntimeError::Type(
+                    "try_write_file expects two arguments".into(),
+                ));
+            }
+            let path = interp.eval_expr(&args[0], env, EvalMode::Move)?;
+            let data = interp.eval_expr(&args[1], env, EvalMode::Move)?;
+            let Value::Str(path) = path else {
+                return Err(RuntimeError::Type("try_write_file expects Str path".into()));
+            };
+            let Value::Str(data) = data else {
+                return Err(RuntimeError::Type("try_write_file expects Str data".into()));
+            };
+            let ok = fs::write(path, data).is_ok();
+            Ok(Some(Value::Bool(ok)))
+        }
+        "write_file" => {
+            if args.len() != 2 {
+                return Err(RuntimeError::Type(
+                    "write_file expects two arguments".into(),
+                ));
+            }
+            let path = interp.eval_expr(&args[0], env, EvalMode::Move)?;
+            let data = interp.eval_expr(&args[1], env, EvalMode::Move)?;
+            let Value::Str(path) = path else {
+                return Err(RuntimeError::Type("write_file expects Str path".into()));
+            };
+            let Value::Str(data) = data else {
+                return Err(RuntimeError::Type("write_file expects Str data".into()));
+            };
+            let _ = fs::write(path, data);
+            Ok(Some(Value::Unit))
         }
         _ => Ok(None),
     }
@@ -532,5 +629,35 @@ mod tests {
         "#;
         let v = run(src);
         assert_eq!(v, Value::Int(5));
+    }
+
+    #[test]
+    fn builtin_file_io_roundtrip() {
+        let unique = format!(
+            "gaut_interp_{}_{}.txt",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        let path_buf = std::env::temp_dir().join(unique);
+        let path = path_buf
+            .to_string_lossy()
+            .replace('\\', "\\\\")
+            .replace('\"', "\\\"");
+
+        let src = format!(
+            r#"
+            main() = {{
+              _ok: bool = try_write_file("{path}", "hello")
+              res: ReadFileResult = try_read_file("{path}")
+              res.data
+            }}
+            "#
+        );
+        let v = run(&src);
+        assert_eq!(v, Value::Str("hello".into()));
+        let _ = std::fs::remove_file(path_buf);
     }
 }

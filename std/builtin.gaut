@@ -1,5 +1,7 @@
 // 호스트에서 제공하는 IO/인자 빌트인 시그니처. 구현은 런타임 C에 연결된다.
 
+type ReadFileResult = { ok: bool, data: Str }
+
 read_file(path: Str) -> Str = {
   // placeholder; 실제 구현은 런타임에 있음
   ""
@@ -9,6 +11,19 @@ write_file(path: Str, data: Str) -> Unit = {
   ()
 }
 
-args() -> Bytes = {
-  b""
+// NOTE: `args()`는 런타임 제공 빌트인이며, Gaut 소스에서 직접 구현하지 않는다.
+
+bytes_to_str(buf: Bytes) -> Str = {
+  // placeholder; 실제 구현은 런타임에 있음
+  ""
+}
+
+try_read_file(path: Str) -> ReadFileResult = {
+  // placeholder; 실제 구현은 런타임에 있음
+  { ok: false, data: "" }
+}
+
+try_write_file(path: Str, data: Str) -> bool = {
+  // placeholder; 실제 구현은 런타임에 있음
+  false
 }

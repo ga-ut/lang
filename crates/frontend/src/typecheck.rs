@@ -22,6 +22,8 @@ pub enum TypeError {
     NotMutable(String),
     #[error("value escapes its defining block")]
     Escape,
+    #[error("main must not take parameters")]
+    MainHasParams,
 }
 
 #[derive(Debug, Clone)]
@@ -63,6 +65,19 @@ impl TypeChecker {
         for name in ["i32", "i64", "u8", "bool", "Str", "Bytes", "Unit"] {
             types.insert(name.to_string(), Type::Named(Ident(name.to_string())));
         }
+        types.insert(
+            "ReadFileResult".into(),
+            Type::Record(vec![
+                FieldType {
+                    name: Ident("ok".into()),
+                    ty: Type::Named(Ident("bool".into())),
+                },
+                FieldType {
+                    name: Ident("data".into()),
+                    ty: Type::Named(Ident("Str".into())),
+                },
+            ]),
+        );
         let builtins = types.keys().cloned().collect();
 
         let mut funcs = HashMap::new();
@@ -124,6 +139,46 @@ impl TypeChecker {
                 ret: Some(Type::Named(Ident("Bytes".into()))),
             },
         );
+        funcs.insert(
+            "bytes_to_str".into(),
+            FuncSig {
+                params: vec![Param {
+                    mutable: false,
+                    name: Ident("buf".into()),
+                    ty: Type::Named(Ident("Bytes".into())),
+                }],
+                ret: Some(Type::Named(Ident("Str".into()))),
+            },
+        );
+        funcs.insert(
+            "try_read_file".into(),
+            FuncSig {
+                params: vec![Param {
+                    mutable: false,
+                    name: Ident("path".into()),
+                    ty: Type::Named(Ident("Str".into())),
+                }],
+                ret: Some(Type::Named(Ident("ReadFileResult".into()))),
+            },
+        );
+        funcs.insert(
+            "try_write_file".into(),
+            FuncSig {
+                params: vec![
+                    Param {
+                        mutable: false,
+                        name: Ident("path".into()),
+                        ty: Type::Named(Ident("Str".into())),
+                    },
+                    Param {
+                        mutable: false,
+                        name: Ident("data".into()),
+                        ty: Type::Named(Ident("Str".into())),
+                    },
+                ],
+                ret: Some(Type::Named(Ident("bool".into()))),
+            },
+        );
 
         Self {
             types,
@@ -174,6 +229,9 @@ impl TypeChecker {
     }
 
     fn check_func(&mut self, func: &FuncDecl) -> Result<(), TypeError> {
+        if func.name.0 == "main" && !func.params.is_empty() {
+            return Err(TypeError::MainHasParams);
+        }
         let sig = self
             .funcs
             .get(&func.name.0)

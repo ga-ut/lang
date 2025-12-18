@@ -4,6 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+static int gaut_argc = 0;
+static char** gaut_argv = NULL;
+
 gaut_arena gaut_arena_from_buffer(uint8_t* buf, size_t cap) {
     gaut_arena arena = {.buf = buf, .cap = cap, .off = 0};
     return arena;
@@ -172,7 +175,59 @@ int gaut_write_file(const char* path, const char* data) {
     return written == len ? 0 : -1;
 }
 
+void gaut_args_init(int argc, char** argv) {
+    gaut_argc = argc;
+    gaut_argv = argv;
+}
+
 gaut_bytes gaut_args(void) {
     gaut_bytes out = {.ptr = NULL, .len = 0};
+    if (gaut_argc <= 0 || !gaut_argv) {
+        return out;
+    }
+    // Encode argv as UTF-8 bytes joined by '\n' (including argv[0]).
+    size_t total = 0;
+    for (int i = 0; i < gaut_argc; i++) {
+        const char* s = gaut_argv[i] ? gaut_argv[i] : "";
+        total += strlen(s);
+        if (i + 1 < gaut_argc) {
+            total += 1;
+        }
+    }
+    if (total == 0) {
+        return out;
+    }
+    uint8_t* buf = (uint8_t*)malloc(total);
+    if (!buf) {
+        return out;
+    }
+    size_t off = 0;
+    for (int i = 0; i < gaut_argc; i++) {
+        const char* s = gaut_argv[i] ? gaut_argv[i] : "";
+        const size_t len = strlen(s);
+        if (len > 0) {
+            memcpy(buf + off, s, len);
+            off += len;
+        }
+        if (i + 1 < gaut_argc) {
+            buf[off++] = (uint8_t)'\n';
+        }
+    }
+    out.ptr = buf;
+    out.len = off;
+    return out;
+}
+
+char* gaut_bytes_to_str(gaut_bytes b) {
+    // Best-effort conversion: assume UTF-8 and ensure NUL termination.
+    size_t len = b.len;
+    char* out = (char*)malloc(len + 1);
+    if (!out) {
+        return NULL;
+    }
+    if (len > 0 && b.ptr) {
+        memcpy(out, b.ptr, len);
+    }
+    out[len] = '\0';
     return out;
 }

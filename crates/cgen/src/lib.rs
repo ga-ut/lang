@@ -42,6 +42,19 @@ impl TypeCtx {
         for name in ["i32", "i64", "u8", "bool", "Str", "Bytes", "Unit"] {
             types.insert(name.to_string(), Type::Named(Ident(name.to_string())));
         }
+        types.insert(
+            "ReadFileResult".into(),
+            Type::Record(vec![
+                FieldType {
+                    name: Ident("ok".into()),
+                    ty: Type::Named(Ident("bool".into())),
+                },
+                FieldType {
+                    name: Ident("data".into()),
+                    ty: Type::Named(Ident("Str".into())),
+                },
+            ]),
+        );
 
         let mut funcs = HashMap::new();
         for decl in &program.decls {
@@ -67,6 +80,15 @@ impl TypeCtx {
         });
         funcs.entry("args".into()).or_insert(FuncSig {
             ret: Some(Type::Named(Ident("Bytes".into()))),
+        });
+        funcs.entry("bytes_to_str".into()).or_insert(FuncSig {
+            ret: Some(Type::Named(Ident("Str".into()))),
+        });
+        funcs.entry("try_read_file".into()).or_insert(FuncSig {
+            ret: Some(Type::Named(Ident("ReadFileResult".into()))),
+        });
+        funcs.entry("try_write_file".into()).or_insert(FuncSig {
+            ret: Some(Type::Named(Ident("bool".into()))),
         });
 
         let mut ctx = Self {
@@ -265,12 +287,16 @@ pub fn generate_c(program: &Program) -> Result<String, CgenError> {
     writeln!(out, "#include \"runtime.h\"\n").map_err(|e| CgenError::Fmt(e.to_string()))?;
 
     let mut func_names = HashSet::new();
+    let mut type_names = HashSet::new();
     for decl in &program.decls {
         if let Decl::Func(f) = decl {
             func_names.insert(f.name.0.clone());
         }
+        if let Decl::Type(t) = decl {
+            type_names.insert(t.name.0.clone());
+        }
     }
-    emit_builtin_shims(&mut out, &func_names)?;
+    emit_builtin_shims(&mut out, &func_names, &type_names)?;
 
     // forward declare type aliases
     for decl in &program.decls {
@@ -296,7 +322,18 @@ pub fn generate_c(program: &Program) -> Result<String, CgenError> {
     Ok(out)
 }
 
-fn emit_builtin_shims(out: &mut String, func_names: &HashSet<String>) -> Result<(), CgenError> {
+fn emit_builtin_shims(
+    out: &mut String,
+    func_names: &HashSet<String>,
+    type_names: &HashSet<String>,
+) -> Result<(), CgenError> {
+    if !type_names.contains("ReadFileResult") {
+        writeln!(
+            out,
+            "typedef struct {{ bool ok; char* data; }} ReadFileResult;"
+        )
+        .map_err(|e| CgenError::Fmt(e.to_string()))?;
+    }
     if !func_names.contains("print") {
         writeln!(
             out,
@@ -328,6 +365,33 @@ fn emit_builtin_shims(out: &mut String, func_names: &HashSet<String>) -> Result<
     if !func_names.contains("args") {
         writeln!(out, "gaut_bytes args() {{ return gaut_args(); }}")
             .map_err(|e| CgenError::Fmt(e.to_string()))?;
+    }
+    if !func_names.contains("bytes_to_str") {
+        writeln!(
+            out,
+            "char* bytes_to_str(gaut_bytes buf) {{ return gaut_bytes_to_str(buf); }}"
+        )
+        .map_err(|e| CgenError::Fmt(e.to_string()))?;
+    }
+    if !func_names.contains("try_read_file") {
+        writeln!(out, "ReadFileResult try_read_file(char* path) {{")
+            .map_err(|e| CgenError::Fmt(e.to_string()))?;
+        writeln!(out, "  char* data = gaut_read_file(path);")
+            .map_err(|e| CgenError::Fmt(e.to_string()))?;
+        writeln!(
+            out,
+            "  ReadFileResult out = {{ .ok = (data != NULL), .data = data ? data : (char*)\"\" }};"
+        )
+        .map_err(|e| CgenError::Fmt(e.to_string()))?;
+        writeln!(out, "  return out;").map_err(|e| CgenError::Fmt(e.to_string()))?;
+        writeln!(out, "}}").map_err(|e| CgenError::Fmt(e.to_string()))?;
+    }
+    if !func_names.contains("try_write_file") {
+        writeln!(
+            out,
+            "bool try_write_file(char* path, char* data) {{ return gaut_write_file(path, data) == 0; }}"
+        )
+        .map_err(|e| CgenError::Fmt(e.to_string()))?;
     }
     writeln!(out).map_err(|e| CgenError::Fmt(e.to_string()))
 }
@@ -365,7 +429,13 @@ fn emit_function(func: &FuncDecl, out: &mut String, ctx: &mut TypeCtx) -> Result
         emit_builtin_print(func, out, ctx)?;
         return Ok(());
     }
-    if func.name.0 == "read_file" || func.name.0 == "write_file" || func.name.0 == "args" {
+    if func.name.0 == "read_file"
+        || func.name.0 == "write_file"
+        || func.name.0 == "args"
+        || func.name.0 == "bytes_to_str"
+        || func.name.0 == "try_read_file"
+        || func.name.0 == "try_write_file"
+    {
         emit_builtin_io(func, out, ctx)?;
         return Ok(());
     }
@@ -388,15 +458,22 @@ fn emit_function(func: &FuncDecl, out: &mut String, ctx: &mut TypeCtx) -> Result
         map_type(&ret_ty, ctx)?
     };
 
-    write!(out, "{} {}(", ret_cty, func.name.0).map_err(|e| CgenError::Fmt(e.to_string()))?;
-    for (i, p) in func.params.iter().enumerate() {
-        if i > 0 {
-            write!(out, ", ").map_err(|e| CgenError::Fmt(e.to_string()))?;
+    if func.name.0 == "main" {
+        writeln!(out, "int main(int argc, char** argv) {{")
+            .map_err(|e| CgenError::Fmt(e.to_string()))?;
+        writeln!(out, "  gaut_args_init(argc, argv);")
+            .map_err(|e| CgenError::Fmt(e.to_string()))?;
+    } else {
+        write!(out, "{} {}(", ret_cty, func.name.0).map_err(|e| CgenError::Fmt(e.to_string()))?;
+        for (i, p) in func.params.iter().enumerate() {
+            if i > 0 {
+                write!(out, ", ").map_err(|e| CgenError::Fmt(e.to_string()))?;
+            }
+            let cty = map_value_type(&p.ty, ctx)?;
+            write!(out, "{} {}", cty, p.name.0).map_err(|e| CgenError::Fmt(e.to_string()))?;
         }
-        let cty = map_value_type(&p.ty, ctx)?;
-        write!(out, "{} {}", cty, p.name.0).map_err(|e| CgenError::Fmt(e.to_string()))?;
+        writeln!(out, ") {{").map_err(|e| CgenError::Fmt(e.to_string()))?;
     }
-    writeln!(out, ") {{").map_err(|e| CgenError::Fmt(e.to_string()))?;
 
     ctx.push_scope();
     for p in &func.params {
@@ -474,6 +551,35 @@ fn emit_builtin_io(func: &FuncDecl, out: &mut String, ctx: &TypeCtx) -> Result<(
             writeln!(out, "{} args() {{", ret_cty).map_err(|e| CgenError::Fmt(e.to_string()))?;
             writeln!(out, "  return gaut_args();").map_err(|e| CgenError::Fmt(e.to_string()))?;
             writeln!(out, "}}\n").map_err(|e| CgenError::Fmt(e.to_string()))
+        }
+        "bytes_to_str" => {
+            let ret_cty = map_type(&Type::Named(Ident("Str".into())), ctx)?;
+            let buf_cty = map_type(&Type::Named(Ident("Bytes".into())), ctx)?;
+            writeln!(out, "{} bytes_to_str({} buf) {{", ret_cty, buf_cty)
+                .map_err(|e| CgenError::Fmt(e.to_string()))?;
+            writeln!(out, "  return gaut_bytes_to_str(buf);")
+                .map_err(|e| CgenError::Fmt(e.to_string()))?;
+            writeln!(out, "}}\n").map_err(|e| CgenError::Fmt(e.to_string()))
+        }
+        "try_read_file" => {
+            writeln!(out, "ReadFileResult try_read_file(char* path) {{")
+                .map_err(|e| CgenError::Fmt(e.to_string()))?;
+            writeln!(out, "  char* data = gaut_read_file(path);")
+                .map_err(|e| CgenError::Fmt(e.to_string()))?;
+            writeln!(
+                out,
+                "  ReadFileResult out = {{ .ok = (data != NULL), .data = data ? data : (char*)\"\" }};"
+            )
+            .map_err(|e| CgenError::Fmt(e.to_string()))?;
+            writeln!(out, "  return out;").map_err(|e| CgenError::Fmt(e.to_string()))?;
+            writeln!(out, "}}\n").map_err(|e| CgenError::Fmt(e.to_string()))
+        }
+        "try_write_file" => {
+            writeln!(
+                out,
+                "bool try_write_file(char* path, char* data) {{ return gaut_write_file(path, data) == 0; }}\n"
+            )
+            .map_err(|e| CgenError::Fmt(e.to_string()))
         }
         _ => Ok(()),
     }
@@ -914,7 +1020,7 @@ mod tests {
         "#;
         let c = generate_c_from_source(src).unwrap();
         assert!(c.contains("int32_t add"));
-        assert!(c.contains("main()"));
+        assert!(c.contains("int main(int argc, char** argv)"));
         assert!(c.contains("gaut_arena __arena"));
         assert!(c.contains("add(x, y)"));
     }
@@ -959,5 +1065,44 @@ mod tests {
         "#;
         let c = generate_c_from_source(src).unwrap();
         assert!(c.contains("gaut_read_file"));
+    }
+
+    #[test]
+    fn main_inits_argv() {
+        let src = r#"
+        main() = {
+          x: i32 = 0
+          x
+        }
+        "#;
+        let c = generate_c_from_source(src).unwrap();
+        assert!(c.contains("int main(int argc, char** argv)"));
+        assert!(c.contains("gaut_args_init(argc, argv);"));
+    }
+
+    #[test]
+    fn bytes_to_str_uses_runtime() {
+        let src = r#"
+        main() = {
+          s: Str = bytes_to_str(args())
+          s
+        }
+        "#;
+        let c = generate_c_from_source(src).unwrap();
+        assert!(c.contains("gaut_args()"));
+        assert!(c.contains("gaut_bytes_to_str"));
+    }
+
+    #[test]
+    fn try_read_file_uses_result_type() {
+        let src = r#"
+        main() = {
+          r: ReadFileResult = try_read_file("missing.txt")
+          r.data
+        }
+        "#;
+        let c = generate_c_from_source(src).unwrap();
+        assert!(c.contains("typedef struct { bool ok; char* data; } ReadFileResult;"));
+        assert!(c.contains("ReadFileResult try_read_file"));
     }
 }

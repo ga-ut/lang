@@ -37,6 +37,8 @@ void gaut_print(const char* s);
 void gaut_println(const char* s);
 char* gaut_read_file(const char* path);
 int gaut_write_file(const char* path, const char* data);
+void gaut_args_init(int argc, char** argv);
 gaut_bytes gaut_args(void);
+char* gaut_bytes_to_str(gaut_bytes b);
 
 #endif // GAUT_RUNTIME_H
