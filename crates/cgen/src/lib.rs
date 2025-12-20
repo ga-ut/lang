@@ -90,6 +90,15 @@ impl TypeCtx {
         funcs.entry("try_write_file".into()).or_insert(FuncSig {
             ret: Some(Type::Named(Ident("bool".into()))),
         });
+        funcs.entry("str_len".into()).or_insert(FuncSig {
+            ret: Some(Type::Named(Ident("i32".into()))),
+        });
+        funcs.entry("str_byte_at".into()).or_insert(FuncSig {
+            ret: Some(Type::Named(Ident("i32".into()))),
+        });
+        funcs.entry("str_slice".into()).or_insert(FuncSig {
+            ret: Some(Type::Named(Ident("Str".into()))),
+        });
 
         let mut ctx = Self {
             types,
@@ -284,6 +293,7 @@ pub fn generate_c(program: &Program) -> Result<String, CgenError> {
     writeln!(out, "#include <stdint.h>").map_err(|e| CgenError::Fmt(e.to_string()))?;
     writeln!(out, "#include <stdbool.h>").map_err(|e| CgenError::Fmt(e.to_string()))?;
     writeln!(out, "#include <stddef.h>").map_err(|e| CgenError::Fmt(e.to_string()))?;
+    writeln!(out, "#include <string.h>").map_err(|e| CgenError::Fmt(e.to_string()))?;
     writeln!(out, "#include \"runtime.h\"\n").map_err(|e| CgenError::Fmt(e.to_string()))?;
 
     let mut func_names = HashSet::new();
@@ -312,6 +322,8 @@ pub fn generate_c(program: &Program) -> Result<String, CgenError> {
         }
     }
 
+    emit_function_prototypes(program, &mut out, &mut ctx)?;
+
     // functions
     for decl in &program.decls {
         if let Decl::Func(f) = decl {
@@ -320,6 +332,58 @@ pub fn generate_c(program: &Program) -> Result<String, CgenError> {
     }
 
     Ok(out)
+}
+
+fn emit_function_prototypes(
+    program: &Program,
+    out: &mut String,
+    ctx: &mut TypeCtx,
+) -> Result<(), CgenError> {
+    for decl in &program.decls {
+        let Decl::Func(func) = decl else { continue };
+        if func.name.0 == "main" {
+            writeln!(out, "int main(int argc, char** argv);")
+                .map_err(|e| CgenError::Fmt(e.to_string()))?;
+            continue;
+        }
+
+        if func.name.0 == "print"
+            || func.name.0 == "println"
+            || func.name.0 == "read_file"
+            || func.name.0 == "write_file"
+            || func.name.0 == "args"
+            || func.name.0 == "bytes_to_str"
+            || func.name.0 == "try_read_file"
+            || func.name.0 == "try_write_file"
+            || func.name.0 == "str_len"
+            || func.name.0 == "str_byte_at"
+            || func.name.0 == "str_slice"
+        {
+            continue;
+        }
+
+        let mut infer_ctx = ctx.clone();
+        infer_ctx.push_scope();
+        for p in &func.params {
+            infer_ctx.insert_var(p.name.0.clone(), p.ty.clone());
+        }
+        let inferred_ret = infer_ctx
+            .infer_expr_type(&func.body)
+            .unwrap_or(Type::Named(Ident("Unit".into())));
+        let ret_ty = func.ret.clone().unwrap_or(inferred_ret);
+        let ret_cty = map_type(&ret_ty, ctx)?;
+
+        write!(out, "{} {}(", ret_cty, func.name.0).map_err(|e| CgenError::Fmt(e.to_string()))?;
+        for (i, p) in func.params.iter().enumerate() {
+            if i > 0 {
+                write!(out, ", ").map_err(|e| CgenError::Fmt(e.to_string()))?;
+            }
+            let cty = map_value_type(&p.ty, ctx)?;
+            write!(out, "{} {}", cty, p.name.0).map_err(|e| CgenError::Fmt(e.to_string()))?;
+        }
+        writeln!(out, ");").map_err(|e| CgenError::Fmt(e.to_string()))?;
+    }
+    writeln!(out).map_err(|e| CgenError::Fmt(e.to_string()))
 }
 
 fn emit_builtin_shims(
@@ -393,6 +457,24 @@ fn emit_builtin_shims(
         )
         .map_err(|e| CgenError::Fmt(e.to_string()))?;
     }
+    if !func_names.contains("str_len") {
+        writeln!(out, "int32_t str_len(char* s) {{ return gaut_str_len(s); }}")
+            .map_err(|e| CgenError::Fmt(e.to_string()))?;
+    }
+    if !func_names.contains("str_byte_at") {
+        writeln!(
+            out,
+            "int32_t str_byte_at(char* s, int32_t i) {{ return gaut_str_byte_at(s, i); }}"
+        )
+        .map_err(|e| CgenError::Fmt(e.to_string()))?;
+    }
+    if !func_names.contains("str_slice") {
+        writeln!(
+            out,
+            "char* str_slice(char* s, int32_t start, int32_t len) {{ return gaut_str_slice(s, start, len); }}"
+        )
+        .map_err(|e| CgenError::Fmt(e.to_string()))?;
+    }
     writeln!(out).map_err(|e| CgenError::Fmt(e.to_string()))
 }
 
@@ -435,6 +517,9 @@ fn emit_function(func: &FuncDecl, out: &mut String, ctx: &mut TypeCtx) -> Result
         || func.name.0 == "bytes_to_str"
         || func.name.0 == "try_read_file"
         || func.name.0 == "try_write_file"
+        || func.name.0 == "str_len"
+        || func.name.0 == "str_byte_at"
+        || func.name.0 == "str_slice"
     {
         emit_builtin_io(func, out, ctx)?;
         return Ok(());
@@ -581,6 +666,24 @@ fn emit_builtin_io(func: &FuncDecl, out: &mut String, ctx: &TypeCtx) -> Result<(
             )
             .map_err(|e| CgenError::Fmt(e.to_string()))
         }
+        "str_len" => {
+            writeln!(out, "int32_t str_len(char* s) {{ return gaut_str_len(s); }}\n")
+                .map_err(|e| CgenError::Fmt(e.to_string()))
+        }
+        "str_byte_at" => {
+            writeln!(
+                out,
+                "int32_t str_byte_at(char* s, int32_t i) {{ return gaut_str_byte_at(s, i); }}\n"
+            )
+            .map_err(|e| CgenError::Fmt(e.to_string()))
+        }
+        "str_slice" => {
+            writeln!(
+                out,
+                "char* str_slice(char* s, int32_t start, int32_t len) {{ return gaut_str_slice(s, start, len); }}\n"
+            )
+            .map_err(|e| CgenError::Fmt(e.to_string()))
+        }
         _ => Ok(()),
     }
 }
@@ -706,7 +809,8 @@ fn emit_expr(
             Literal::Bool(b) => write!(out, "{}", if *b { "true" } else { "false" })
                 .map_err(|e| CgenError::Fmt(e.to_string()))?,
             Literal::Str(s) => {
-                write!(out, "\"{}\"", s).map_err(|e| CgenError::Fmt(e.to_string()))?
+                write!(out, "\"{}\"", escape_c_string(s))
+                    .map_err(|e| CgenError::Fmt(e.to_string()))?
             }
             Literal::Unit => write!(out, "0").map_err(|e| CgenError::Fmt(e.to_string()))?,
         },
@@ -765,7 +869,14 @@ fn emit_expr(
                 UnaryOp::Not => "!",
             };
             write!(out, "{}", op).map_err(|e| CgenError::Fmt(e.to_string()))?;
+            let needs_parens = matches!(*u.expr, Expr::Binary(_) | Expr::If(_) | Expr::Block(_));
+            if needs_parens {
+                write!(out, "(").map_err(|e| CgenError::Fmt(e.to_string()))?;
+            }
             emit_expr(&u.expr, out, ctx, arena, ctrs)?;
+            if needs_parens {
+                write!(out, ")").map_err(|e| CgenError::Fmt(e.to_string()))?;
+            }
         }
         Expr::Binary(b) => {
             let ty = ctx.infer_expr_type(expr);
@@ -803,19 +914,32 @@ fn emit_expr(
                 emit_expr(&b.right, out, ctx, arena, ctrs)?;
                 write!(out, ")").map_err(|e| CgenError::Fmt(e.to_string()))?;
             } else {
-                emit_expr(&b.left, out, ctx, arena, ctrs)?;
-                let op = match b.op {
-                    BinaryOp::Add => "+",
-                    BinaryOp::Sub => "-",
-                    BinaryOp::Mul => "*",
-                    BinaryOp::Div => "/",
-                    BinaryOp::Lt => "<",
-                    BinaryOp::Eq => "==",
-                    BinaryOp::And => "&&",
-                    BinaryOp::Or => "||",
-                };
-                write!(out, " {} ", op).map_err(|e| CgenError::Fmt(e.to_string()))?;
-                emit_expr(&b.right, out, ctx, arena, ctrs)?;
+                let str_eq = matches!(b.op, BinaryOp::Eq)
+                    && ctx
+                        .infer_expr_type(&b.left)
+                        .as_ref()
+                        .is_some_and(|t| ctx.is_str(t));
+                if str_eq {
+                    write!(out, "(strcmp(").map_err(|e| CgenError::Fmt(e.to_string()))?;
+                    emit_expr(&b.left, out, ctx, arena, ctrs)?;
+                    write!(out, ", ").map_err(|e| CgenError::Fmt(e.to_string()))?;
+                    emit_expr(&b.right, out, ctx, arena, ctrs)?;
+                    write!(out, ") == 0)").map_err(|e| CgenError::Fmt(e.to_string()))?;
+                } else {
+                    emit_expr(&b.left, out, ctx, arena, ctrs)?;
+                    let op = match b.op {
+                        BinaryOp::Add => "+",
+                        BinaryOp::Sub => "-",
+                        BinaryOp::Mul => "*",
+                        BinaryOp::Div => "/",
+                        BinaryOp::Lt => "<",
+                        BinaryOp::Eq => "==",
+                        BinaryOp::And => "&&",
+                        BinaryOp::Or => "||",
+                    };
+                    write!(out, " {} ", op).map_err(|e| CgenError::Fmt(e.to_string()))?;
+                    emit_expr(&b.right, out, ctx, arena, ctrs)?;
+                }
             }
         }
     }
@@ -823,6 +947,31 @@ fn emit_expr(
     Ok(ctx
         .infer_expr_type(expr)
         .unwrap_or(Type::Named(Ident("Unit".into()))))
+}
+
+fn escape_c_string(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for ch in s.chars() {
+        match ch {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if c.is_control() => {
+                // Best-effort: encode as a byte escape when it fits in u8.
+                let mut buf = [0u8; 4];
+                let encoded = c.encode_utf8(&mut buf);
+                if encoded.len() == 1 {
+                    out.push_str(&format!("\\x{:02x}", buf[0]));
+                } else {
+                    out.push(c);
+                }
+            }
+            other => out.push(other),
+        }
+    }
+    out
 }
 
 fn emit_block_expr(

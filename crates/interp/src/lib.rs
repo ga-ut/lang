@@ -405,6 +405,66 @@ fn eval_builtin(
             let _ = fs::write(path, data);
             Ok(Some(Value::Unit))
         }
+        "str_len" => {
+            if args.len() != 1 {
+                return Err(RuntimeError::Type("str_len expects one argument".into()));
+            }
+            let val = interp.eval_expr(&args[0], env, EvalMode::Move)?;
+            let Value::Str(s) = val else {
+                return Err(RuntimeError::Type("str_len expects Str".into()));
+            };
+            Ok(Some(Value::Int(s.as_bytes().len() as i64)))
+        }
+        "str_byte_at" => {
+            if args.len() != 2 {
+                return Err(RuntimeError::Type(
+                    "str_byte_at expects two arguments".into(),
+                ));
+            }
+            let s = interp.eval_expr(&args[0], env, EvalMode::Move)?;
+            let i = interp.eval_expr(&args[1], env, EvalMode::Move)?;
+            let Value::Str(s) = s else {
+                return Err(RuntimeError::Type("str_byte_at expects Str".into()));
+            };
+            let Value::Int(i) = i else {
+                return Err(RuntimeError::Type("str_byte_at expects i32 index".into()));
+            };
+            if i < 0 {
+                return Ok(Some(Value::Int(0)));
+            }
+            let idx = i as usize;
+            let b = s.as_bytes().get(idx).copied().unwrap_or(0);
+            Ok(Some(Value::Int(b as i64)))
+        }
+        "str_slice" => {
+            if args.len() != 3 {
+                return Err(RuntimeError::Type(
+                    "str_slice expects three arguments".into(),
+                ));
+            }
+            let s = interp.eval_expr(&args[0], env, EvalMode::Move)?;
+            let start = interp.eval_expr(&args[1], env, EvalMode::Move)?;
+            let len = interp.eval_expr(&args[2], env, EvalMode::Move)?;
+            let Value::Str(s) = s else {
+                return Err(RuntimeError::Type("str_slice expects Str".into()));
+            };
+            let Value::Int(start) = start else {
+                return Err(RuntimeError::Type("str_slice expects i32 start".into()));
+            };
+            let Value::Int(len) = len else {
+                return Err(RuntimeError::Type("str_slice expects i32 len".into()));
+            };
+            if start < 0 || len < 0 {
+                return Ok(Some(Value::Str(String::new())));
+            }
+            let st = start as usize;
+            let ln = len as usize;
+            let bytes = s.as_bytes();
+            let st = st.min(bytes.len());
+            let end = (st + ln).min(bytes.len());
+            let out = String::from_utf8_lossy(&bytes[st..end]).to_string();
+            Ok(Some(Value::Str(out)))
+        }
         _ => Ok(None),
     }
 }
@@ -659,5 +719,18 @@ mod tests {
         let v = run(&src);
         assert_eq!(v, Value::Str("hello".into()));
         let _ = std::fs::remove_file(path_buf);
+    }
+
+    #[test]
+    fn builtin_str_slice() {
+        let src = r#"
+        main() = {
+          s: Str = "hello"
+          x: Str = str_slice(s, 1, 3)
+          x
+        }
+        "#;
+        let v = run(src);
+        assert_eq!(v, Value::Str("ell".into()));
     }
 }

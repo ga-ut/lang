@@ -40,5 +40,8 @@ int gaut_write_file(const char* path, const char* data);
 void gaut_args_init(int argc, char** argv);
 gaut_bytes gaut_args(void);
 char* gaut_bytes_to_str(gaut_bytes b);
+int32_t gaut_str_len(const char* s);
+int32_t gaut_str_byte_at(const char* s, int32_t i);
+char* gaut_str_slice(const char* s, int32_t start, int32_t len);
 
 #endif // GAUT_RUNTIME_H

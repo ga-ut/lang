@@ -4,4 +4,10 @@ global empty: Str = ""
 
 concat(a: Str, b: Str) -> Str = a + b
 
+len(s: Str) -> i32 = str_len(s)
+
+byte_at(s: Str, i: i32) -> i32 = str_byte_at(s, i)
+
+slice(s: Str, start: i32, len: i32) -> Str = str_slice(s, start, len)
+
 // prefix/suffix checks 등은 런타임 지원 전까지 후속 과제로 둔다.

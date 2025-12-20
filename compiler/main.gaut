@@ -3,11 +3,84 @@ import parser
 import typecheck
 import cgen
 
+type LineRes = { ok: bool, line: Str, next: i32 }
+
+scan_newline(s: Str, i: i32, n: i32) -> i32 =
+  if !(copy i < copy n) then copy n else
+  if str_byte_at(copy s, copy i) == 10 then copy i else
+  scan_newline(copy s, copy i + 1, copy n)
+
+read_line_at(s: Str, i: i32, n: i32) -> LineRes = {
+  j: i32 = scan_newline(copy s, copy i, copy n)
+  line: Str = str_slice(copy s, copy i, copy j - copy i)
+  next: i32 = if copy j < copy n then copy j + 1 else copy n
+  { ok: true, line: line, next: next }
+}
+
+read_line(s: Str, i: i32) -> LineRes = {
+  n: i32 = str_len(copy s)
+  if !(copy i < copy n) then { ok: false, line: "", next: copy i }
+  else read_line_at(copy s, copy i, copy n)
+}
+
+type ArgParse = { emit_c: Str, input: Str }
+
+parse_args_emit_c(s: Str, i: i32, emit_c: Str, input: Str) -> ArgParse = {
+  p: LineRes = read_line(copy s, copy i)
+  ok: bool = copy p.ok
+  next_p: i32 = copy p.next
+  out: Str = if copy ok then p.line else emit_c
+  next_i: i32 = if copy ok then next_p else copy i
+  parse_args_loop(copy s, next_i, out, input)
+}
+
+parse_args_build(s: Str, i: i32, emit_c: Str, input: Str) -> ArgParse = {
+  p: LineRes = read_line(copy s, copy i)
+  ok: bool = copy p.ok
+  next_p: i32 = copy p.next
+  next_i: i32 = if copy ok then next_p else copy i
+  parse_args_loop(copy s, next_i, emit_c, input)
+}
+
+parse_args_positional(
+  s: Str, a: Str, next_i: i32, emit_c: Str, input: Str
+) -> ArgParse = {
+  is_flag: bool = 0 < str_len(copy a) && str_byte_at(copy a, 0) == 45
+  new_input: Str = if copy input == "" && !is_flag then a else copy input
+  parse_args_loop(copy s, copy next_i, emit_c, new_input)
+}
+
+parse_args_dispatch(s: Str, r: LineRes, emit_c: Str, input: Str) -> ArgParse = {
+  next_i: i32 = copy r.next
+  a: Str = r.line
+  if copy a == "--emit-c" then parse_args_emit_c(copy s, copy next_i, copy emit_c, copy input)
+  else if copy a == "--build" then parse_args_build(copy s, copy next_i, copy emit_c, copy input)
+  else parse_args_positional(copy s, a, copy next_i, copy emit_c, copy input)
+}
+
+parse_args_loop(s: Str, i: i32, emit_c: Str, input: Str) -> ArgParse = {
+  r: LineRes = read_line(copy s, i)
+  ok: bool = copy r.ok
+  if !ok then { emit_c: copy emit_c, input: copy input }
+  else parse_args_dispatch(copy s, r, emit_c, input)
+}
+
+parse_args() -> ArgParse = {
+  argv: Str = bytes_to_str(args())
+  // argv[0] skip
+  first: LineRes = read_line(copy argv, 0)
+  ok: bool = copy first.ok
+  next_i: i32 = copy first.next
+  start: i32 = if ok then next_i else 0
+  parse_args_loop(copy argv, start, "", "")
+}
+
 main() -> Unit = {
-  src: Str = ""
-  prog: Program = parse(src)
-  checked: Program = check(prog)
-  c: Str = emit(checked)
-  // 임시: self_host 스크립트가 기대하는 경로로 C를 기록하는 스텁.
-  write_file("target/self_host/gautc2.stage1.c", c)
+  a: ArgParse = parse_args()
+  emit_c: Str = copy a.emit_c
+  out: Str = if copy emit_c == "" then "target/self_host/gautc2.stage1.c" else emit_c
+
+  // TODO: 실제 구현에서는 input을 read_file로 읽고 parse/typecheck/cgen 수행.
+  c: Str = emit_stub()
+  write_file(out, c)
 }

@@ -179,6 +179,58 @@ impl TypeChecker {
                 ret: Some(Type::Named(Ident("bool".into()))),
             },
         );
+        funcs.insert(
+            "str_len".into(),
+            FuncSig {
+                params: vec![Param {
+                    mutable: false,
+                    name: Ident("s".into()),
+                    ty: Type::Named(Ident("Str".into())),
+                }],
+                ret: Some(Type::Named(Ident("i32".into()))),
+            },
+        );
+        funcs.insert(
+            "str_byte_at".into(),
+            FuncSig {
+                params: vec![
+                    Param {
+                        mutable: false,
+                        name: Ident("s".into()),
+                        ty: Type::Named(Ident("Str".into())),
+                    },
+                    Param {
+                        mutable: false,
+                        name: Ident("i".into()),
+                        ty: Type::Named(Ident("i32".into())),
+                    },
+                ],
+                ret: Some(Type::Named(Ident("i32".into()))),
+            },
+        );
+        funcs.insert(
+            "str_slice".into(),
+            FuncSig {
+                params: vec![
+                    Param {
+                        mutable: false,
+                        name: Ident("s".into()),
+                        ty: Type::Named(Ident("Str".into())),
+                    },
+                    Param {
+                        mutable: false,
+                        name: Ident("start".into()),
+                        ty: Type::Named(Ident("i32".into())),
+                    },
+                    Param {
+                        mutable: false,
+                        name: Ident("len".into()),
+                        ty: Type::Named(Ident("i32".into())),
+                    },
+                ],
+                ret: Some(Type::Named(Ident("Str".into()))),
+            },
+        );
 
         Self {
             types,

@@ -1,4 +1,37 @@
 import ast
 import parser
 
-emit(prog: Program) -> Str = "/* cgen stub */"
+emit_stub() -> Str =
+  // A minimal C "compiler" stub: accepts `--emit-c out.c` and writes a tiny C program.
+  "#include <stdio.h>\n"
+  + "#include <string.h>\n"
+  + "\n"
+  + "static void emit_target(FILE* f) {\n"
+  + "  fputs(\"#include <stdint.h>\\\\n\", f);\n"
+  + "  fputs(\"#include <stdbool.h>\\\\n\", f);\n"
+  + "  fputs(\"#include <stddef.h>\\\\n\", f);\n"
+  + "  fputs(\"#include \\\\\\\"runtime.h\\\\\\\"\\\\n\", f);\n"
+  + "  fputs(\"\\\\n\", f);\n"
+  + "  fputs(\"int main(int argc, char** argv) {\\\\n\", f);\n"
+  + "  fputs(\"  (void)argc; (void)argv;\\\\n\", f);\n"
+  + "  fputs(\"  return 0;\\\\n\", f);\n"
+  + "  fputs(\"}\\\\n\", f);\n"
+  + "}\n"
+  + "\n"
+  + "int main(int argc, char** argv) {\n"
+  + "  const char* out_path = NULL;\n"
+  + "  for (int i = 1; i + 1 < argc; i++) {\n"
+  + "    if (strcmp(argv[i], \"--emit-c\") == 0) {\n"
+  + "      out_path = argv[i + 1];\n"
+  + "      break;\n"
+  + "    }\n"
+  + "  }\n"
+  + "  if (!out_path) { return 0; }\n"
+  + "  FILE* f = fopen(out_path, \"wb\");\n"
+  + "  if (!f) { return 1; }\n"
+  + "  emit_target(f);\n"
+  + "  fclose(f);\n"
+  + "  return 0;\n"
+  + "}\n"
+
+emit(prog: Program) -> Str = emit_stub()

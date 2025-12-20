@@ -1,5 +1,6 @@
 // Minimal C runtime for Gaut-generated programs.
 #include "runtime.h"
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -229,5 +230,55 @@ char* gaut_bytes_to_str(gaut_bytes b) {
         memcpy(out, b.ptr, len);
     }
     out[len] = '\0';
+    return out;
+}
+
+int32_t gaut_str_len(const char* s) {
+    if (!s) {
+        return 0;
+    }
+    const size_t n = strlen(s);
+    if (n > (size_t)INT32_MAX) {
+        return INT32_MAX;
+    }
+    return (int32_t)n;
+}
+
+int32_t gaut_str_byte_at(const char* s, int32_t i) {
+    if (!s || i < 0) {
+        return 0;
+    }
+    const size_t n = strlen(s);
+    if ((size_t)i >= n) {
+        return 0;
+    }
+    return (int32_t)(unsigned char)s[i];
+}
+
+char* gaut_str_slice(const char* s, int32_t start, int32_t len) {
+    if (!s || start < 0 || len < 0) {
+        char* out = (char*)malloc(1);
+        if (out) {
+            out[0] = '\0';
+        }
+        return out;
+    }
+    const size_t n = strlen(s);
+    size_t st = (size_t)start;
+    if (st > n) {
+        st = n;
+    }
+    size_t ln = (size_t)len;
+    if (st + ln > n) {
+        ln = n - st;
+    }
+    char* out = (char*)malloc(ln + 1);
+    if (!out) {
+        return NULL;
+    }
+    if (ln > 0) {
+        memcpy(out, s + st, ln);
+    }
+    out[ln] = '\0';
     return out;
 }

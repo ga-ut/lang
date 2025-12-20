@@ -719,12 +719,30 @@ fn lex(src: &str) -> Result<Vec<Token>, ParserError> {
             '"' => {
                 chars.next();
                 let mut s = String::new();
-                while let Some(&c) = chars.peek() {
-                    chars.next();
+                let mut closed = false;
+                while let Some(c) = chars.next() {
                     if c == '"' {
+                        closed = true;
                         break;
                     }
+                    if c == '\\' {
+                        let Some(esc) = chars.next() else {
+                            return Err(ParserError::Lexer("unterminated string escape".into()));
+                        };
+                        match esc {
+                            'n' => s.push('\n'),
+                            't' => s.push('\t'),
+                            'r' => s.push('\r'),
+                            '"' => s.push('"'),
+                            '\\' => s.push('\\'),
+                            other => s.push(other),
+                        }
+                        continue;
+                    }
                     s.push(c);
+                }
+                if !closed {
+                    return Err(ParserError::Lexer("unterminated string literal".into()));
                 }
                 tokens.push(Token::Str(s));
             }
