@@ -1,6 +1,131 @@
 import ast
 
-parse(src: Str) -> Program = {
-  decls: i32 = 0
-  { decls: decls }
+type Token = { tag: Str, text: Str, int_val: i64, start: i32, end: i32 }
+
+type ScanState = { src: Str, i: i32, n: i32 }
+
+type TokenRes = { tok: Token, state: ScanState }
+
+token_make(tag: Str, text: Str, int_val: i64, start: i32, end: i32) -> Token =
+  { tag: tag, text: text, int_val: int_val, start: start, end: end }
+
+scan_init(src: Str) -> ScanState =
+  { src: src, i: 0, n: str_len(copy src) }
+
+is_space(b: i32) -> bool =
+  b == 32 || b == 9 || b == 10 || b == 13
+
+is_alpha(b: i32) -> bool =
+  (b >= 65 && b <= 90) || (b >= 97 && b <= 122) || b == 95
+
+is_digit(b: i32) -> bool =
+  b >= 48 && b <= 57
+
+is_ident_continue(b: i32) -> bool =
+  is_alpha(copy b) || is_digit(copy b)
+
+skip_line_comment(s: Str, i: i32, n: i32) -> i32 =
+  if !(copy i < copy n) then copy n else
+  if str_byte_at(copy s, copy i) == 10 then copy i
+  else skip_line_comment(copy s, copy i + 1, copy n)
+
+skip_space(s: Str, i: i32, n: i32) -> i32 =
+  if !(copy i < copy n) then copy n else
+  if is_space(str_byte_at(copy s, copy i)) then skip_space(copy s, copy i + 1, copy n)
+  else
+    if str_byte_at(copy s, copy i) == 47 && str_byte_at(copy s, copy i + 1) == 47 then
+      skip_space(copy s, skip_line_comment(copy s, copy i + 2, copy n), copy n)
+    else copy i
+
+scan_ident_end(s: Str, i: i32, n: i32) -> i32 =
+  if !(copy i < copy n) then copy i else
+  if is_ident_continue(str_byte_at(copy s, copy i)) then scan_ident_end(copy s, copy i + 1, copy n)
+  else copy i
+
+scan_number_end(s: Str, i: i32, n: i32) -> i32 =
+  if !(copy i < copy n) then copy i else
+  if is_digit(str_byte_at(copy s, copy i)) then scan_number_end(copy s, copy i + 1, copy n)
+  else copy i
+
+scan_string_end(s: Str, i: i32, n: i32) -> i32 =
+  if !(copy i < copy n) then copy n else
+  if str_byte_at(copy s, copy i) == 34 then copy i else
+  if str_byte_at(copy s, copy i) == 92 && copy i + 1 < copy n then
+    scan_string_end(copy s, copy i + 2, copy n)
+  else scan_string_end(copy s, copy i + 1, copy n)
+
+parse_int_loop(s: Str, i: i32, end: i32, acc: i64) -> i64 =
+  if !(copy i < copy end) then copy acc else
+  b: i32 = str_byte_at(copy s, copy i)
+  digit: i64 = copy b - 48
+  next_acc: i64 = copy acc * 10 + copy digit
+  parse_int_loop(copy s, copy i + 1, copy end, next_acc)
+
+parse_int(s: Str, start: i32, end: i32) -> i64 =
+  parse_int_loop(copy s, copy start, copy end, 0)
+
+is_keyword(s: Str) -> bool =
+  s == "import" || s == "type" || s == "global" || s == "let" || s == "mut"
+  || s == "if" || s == "then" || s == "else" || s == "true" || s == "false"
+  || s == "copy"
+
+scan_symbol(s: Str, i: i32) -> TokenRes = {
+  b0: i32 = str_byte_at(copy s, copy i)
+  b1: i32 = str_byte_at(copy s, copy i + 1)
+  if b0 == 45 && b1 == 62 then {
+    tok: Token = token_make("Symbol", "->", 0, copy i, copy i + 2)
+    { tok: tok, state: { src: copy s, i: copy i + 2, n: str_len(copy s) } }
+  } else if b0 == 61 && b1 == 61 then {
+    tok: Token = token_make("Symbol", "==", 0, copy i, copy i + 2)
+    { tok: tok, state: { src: copy s, i: copy i + 2, n: str_len(copy s) } }
+  } else if b0 == 38 && b1 == 38 then {
+    tok: Token = token_make("Symbol", "&&", 0, copy i, copy i + 2)
+    { tok: tok, state: { src: copy s, i: copy i + 2, n: str_len(copy s) } }
+  } else if b0 == 124 && b1 == 124 then {
+    tok: Token = token_make("Symbol", "||", 0, copy i, copy i + 2)
+    { tok: tok, state: { src: copy s, i: copy i + 2, n: str_len(copy s) } }
+  } else {
+    text: Str = str_slice(copy s, copy i, 1)
+    tok: Token = token_make("Symbol", text, 0, copy i, copy i + 1)
+    { tok: tok, state: { src: copy s, i: copy i + 1, n: str_len(copy s) } }
+  }
 }
+
+next_token(state: ScanState) -> TokenRes = {
+  s: Str = state.src
+  n: i32 = state.n
+  i0: i32 = skip_space(copy s, state.i, copy n)
+  if !(copy i0 < copy n) then {
+    tok: Token = token_make("Eof", "", 0, copy i0, copy i0)
+    { tok: tok, state: { src: copy s, i: copy i0, n: copy n } }
+  } else {
+    b: i32 = str_byte_at(copy s, copy i0)
+    if is_alpha(copy b) then {
+      end: i32 = scan_ident_end(copy s, copy i0 + 1, copy n)
+      text: Str = str_slice(copy s, copy i0, copy end - copy i0)
+      tag: Str = if is_keyword(copy text) then "Keyword" else "Ident"
+      tok: Token = token_make(tag, text, 0, copy i0, copy end)
+      { tok: tok, state: { src: copy s, i: copy end, n: copy n } }
+    } else if is_digit(copy b) then {
+      end: i32 = scan_number_end(copy s, copy i0 + 1, copy n)
+      text: Str = str_slice(copy s, copy i0, copy end - copy i0)
+      val: i64 = parse_int(copy s, copy i0, copy end)
+      tok: Token = token_make("Int", text, val, copy i0, copy end)
+      { tok: tok, state: { src: copy s, i: copy end, n: copy n } }
+    } else if b == 34 then {
+      end_q: i32 = scan_string_end(copy s, copy i0 + 1, copy n)
+      if !(copy end_q < copy n) then {
+        tok: Token = token_make("Error", "unterminated string", 0, copy i0, copy n)
+        { tok: tok, state: { src: copy s, i: copy n, n: copy n } }
+      } else {
+        text: Str = str_slice(copy s, copy i0 + 1, copy end_q - copy i0 - 1)
+        tok: Token = token_make("Str", text, 0, copy i0, copy end_q + 1)
+        { tok: tok, state: { src: copy s, i: copy end_q + 1, n: copy n } }
+      }
+    } else scan_symbol(copy s, copy i0)
+  }
+}
+
+// TODO: implement parser to build AST from tokens.
+parse(src: Str) -> Program =
+  parse(copy src)
