@@ -43,6 +43,7 @@ char* gaut_bytes_to_str(gaut_bytes b);
 int32_t gaut_bytes_len(gaut_bytes b);
 gaut_bytes gaut_bytes_push(gaut_bytes b, int32_t x);
 gaut_bytes gaut_bytes_slice(gaut_bytes b, int32_t start, int32_t len);
+int32_t gaut_bytes_at(gaut_bytes b, int32_t i);
 int32_t gaut_str_len(const char* s);
 int32_t gaut_str_byte_at(const char* s, int32_t i);
 char* gaut_str_slice(const char* s, int32_t start, int32_t len);

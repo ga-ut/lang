@@ -10,6 +10,8 @@ args_str() -> Str = bytes_to_str(args())
 
 len(buf: Bytes) -> i32 = bytes_len(buf)
 
+at(buf: Bytes, i: i32) -> i32 = bytes_at(buf, i)
+
 push(buf: Bytes, x: i32) -> Bytes = bytes_push(buf, x)
 
 slice(buf: Bytes, start: i32, len: i32) -> Bytes = bytes_slice(buf, start, len)

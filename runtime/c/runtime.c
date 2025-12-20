@@ -294,6 +294,17 @@ gaut_bytes gaut_bytes_slice(gaut_bytes b, int32_t start, int32_t len) {
     return out;
 }
 
+int32_t gaut_bytes_at(gaut_bytes b, int32_t i) {
+    if (i < 0) {
+        return 0;
+    }
+    size_t idx = (size_t)i;
+    if (idx >= b.len || !b.ptr) {
+        return 0;
+    }
+    return (int32_t)b.ptr[idx];
+}
+
 int32_t gaut_str_len(const char* s) {
     if (!s) {
         return 0;

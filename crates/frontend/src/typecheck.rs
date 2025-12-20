@@ -162,6 +162,24 @@ impl TypeChecker {
             },
         );
         funcs.insert(
+            "bytes_at".into(),
+            FuncSig {
+                params: vec![
+                    Param {
+                        mutable: false,
+                        name: Ident("buf".into()),
+                        ty: Type::Named(Ident("Bytes".into())),
+                    },
+                    Param {
+                        mutable: false,
+                        name: Ident("i".into()),
+                        ty: Type::Named(Ident("i32".into())),
+                    },
+                ],
+                ret: Some(Type::Named(Ident("i32".into()))),
+            },
+        );
+        funcs.insert(
             "bytes_push".into(),
             FuncSig {
                 params: vec![

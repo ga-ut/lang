@@ -87,6 +87,9 @@ impl TypeCtx {
         funcs.entry("bytes_len".into()).or_insert(FuncSig {
             ret: Some(Type::Named(Ident("i32".into()))),
         });
+        funcs.entry("bytes_at".into()).or_insert(FuncSig {
+            ret: Some(Type::Named(Ident("i32".into()))),
+        });
         funcs.entry("bytes_push".into()).or_insert(FuncSig {
             ret: Some(Type::Named(Ident("Bytes".into()))),
         });
@@ -363,6 +366,7 @@ fn emit_function_prototypes(
             || func.name.0 == "args"
             || func.name.0 == "bytes_to_str"
             || func.name.0 == "bytes_len"
+            || func.name.0 == "bytes_at"
             || func.name.0 == "bytes_push"
             || func.name.0 == "bytes_slice"
             || func.name.0 == "try_read_file"
@@ -453,6 +457,13 @@ fn emit_builtin_shims(
         writeln!(
             out,
             "int32_t bytes_len(gaut_bytes buf) {{ return gaut_bytes_len(buf); }}"
+        )
+        .map_err(|e| CgenError::Fmt(e.to_string()))?;
+    }
+    if !func_names.contains("bytes_at") {
+        writeln!(
+            out,
+            "int32_t bytes_at(gaut_bytes buf, int32_t i) {{ return gaut_bytes_at(buf, i); }}"
         )
         .map_err(|e| CgenError::Fmt(e.to_string()))?;
     }
@@ -549,6 +560,7 @@ fn emit_function(func: &FuncDecl, out: &mut String, ctx: &mut TypeCtx) -> Result
         || func.name.0 == "args"
         || func.name.0 == "bytes_to_str"
         || func.name.0 == "bytes_len"
+        || func.name.0 == "bytes_at"
         || func.name.0 == "bytes_push"
         || func.name.0 == "bytes_slice"
         || func.name.0 == "try_read_file"
@@ -688,6 +700,15 @@ fn emit_builtin_io(func: &FuncDecl, out: &mut String, ctx: &TypeCtx) -> Result<(
             writeln!(out, "{} bytes_len({} buf) {{", ret_cty, buf_cty)
                 .map_err(|e| CgenError::Fmt(e.to_string()))?;
             writeln!(out, "  return gaut_bytes_len(buf);")
+                .map_err(|e| CgenError::Fmt(e.to_string()))?;
+            writeln!(out, "}}\n").map_err(|e| CgenError::Fmt(e.to_string()))
+        }
+        "bytes_at" => {
+            let ret_cty = map_type(&Type::Named(Ident("i32".into())), ctx)?;
+            let buf_cty = map_type(&Type::Named(Ident("Bytes".into())), ctx)?;
+            writeln!(out, "{} bytes_at({} buf, int32_t i) {{", ret_cty, buf_cty)
+                .map_err(|e| CgenError::Fmt(e.to_string()))?;
+            writeln!(out, "  return gaut_bytes_at(buf, i);")
                 .map_err(|e| CgenError::Fmt(e.to_string()))?;
             writeln!(out, "}}\n").map_err(|e| CgenError::Fmt(e.to_string()))
         }
@@ -1320,6 +1341,18 @@ mod tests {
         "#;
         let c = generate_c_from_source(src).unwrap();
         assert!(c.contains("gaut_bytes_len"));
+    }
+
+    #[test]
+    fn bytes_at_uses_runtime() {
+        let src = r#"
+        main() = {
+          n: i32 = bytes_at(args(), 0)
+          n
+        }
+        "#;
+        let c = generate_c_from_source(src).unwrap();
+        assert!(c.contains("gaut_bytes_at"));
     }
 
     #[test]

@@ -347,6 +347,25 @@ fn eval_builtin(
             };
             Ok(Some(Value::Int(bytes.len() as i64)))
         }
+        "bytes_at" => {
+            if args.len() != 2 {
+                return Err(RuntimeError::Type("bytes_at expects two arguments".into()));
+            }
+            let buf = interp.eval_expr(&args[0], env, EvalMode::Move)?;
+            let idx = interp.eval_expr(&args[1], env, EvalMode::Move)?;
+            let Value::Bytes(bytes) = buf else {
+                return Err(RuntimeError::Type("bytes_at expects Bytes".into()));
+            };
+            let Value::Int(i) = idx else {
+                return Err(RuntimeError::Type("bytes_at expects i32".into()));
+            };
+            if i < 0 {
+                return Ok(Some(Value::Int(0)));
+            }
+            let idx = i as usize;
+            let v = bytes.get(idx).copied().unwrap_or(0);
+            Ok(Some(Value::Int(v as i64)))
+        }
         "bytes_push" => {
             if args.len() != 2 {
                 return Err(RuntimeError::Type("bytes_push expects two arguments".into()));
@@ -794,9 +813,10 @@ mod tests {
         let src = r#"
         main() = {
           b: Bytes = args()
+          b0: i32 = bytes_at(b, 0)
           b1: Bytes = bytes_slice(b, 0, 1)
           b2: Bytes = bytes_push(b1, 10)
-          n: i32 = bytes_len(b2)
+          n: i32 = bytes_len(b2) + b0
           n
         }
         "#;
