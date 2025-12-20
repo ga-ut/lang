@@ -151,6 +151,58 @@ impl TypeChecker {
             },
         );
         funcs.insert(
+            "bytes_len".into(),
+            FuncSig {
+                params: vec![Param {
+                    mutable: false,
+                    name: Ident("buf".into()),
+                    ty: Type::Named(Ident("Bytes".into())),
+                }],
+                ret: Some(Type::Named(Ident("i32".into()))),
+            },
+        );
+        funcs.insert(
+            "bytes_push".into(),
+            FuncSig {
+                params: vec![
+                    Param {
+                        mutable: false,
+                        name: Ident("buf".into()),
+                        ty: Type::Named(Ident("Bytes".into())),
+                    },
+                    Param {
+                        mutable: false,
+                        name: Ident("x".into()),
+                        ty: Type::Named(Ident("i32".into())),
+                    },
+                ],
+                ret: Some(Type::Named(Ident("Bytes".into()))),
+            },
+        );
+        funcs.insert(
+            "bytes_slice".into(),
+            FuncSig {
+                params: vec![
+                    Param {
+                        mutable: false,
+                        name: Ident("buf".into()),
+                        ty: Type::Named(Ident("Bytes".into())),
+                    },
+                    Param {
+                        mutable: false,
+                        name: Ident("start".into()),
+                        ty: Type::Named(Ident("i32".into())),
+                    },
+                    Param {
+                        mutable: false,
+                        name: Ident("len".into()),
+                        ty: Type::Named(Ident("i32".into())),
+                    },
+                ],
+                ret: Some(Type::Named(Ident("Bytes".into()))),
+            },
+        );
+        funcs.insert(
             "try_read_file".into(),
             FuncSig {
                 params: vec![Param {

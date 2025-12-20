@@ -1,2 +1,93 @@
-// Core AST placeholder; keep names simple (no module-qualified types).
-type Program = { decls: i32 }
+// Core AST for the Gaut compiler (tagged records for sum types, linked lists for sequences).
+type Program = { decls: DeclList }
+
+type Decl = {
+  tag: Str,
+  import_decl: ImportDecl,
+  binding: Binding,
+  type_decl: TypeDecl,
+  func_decl: FuncDecl
+}
+
+type ImportDecl = { module: Ident }
+
+type Ident = { name: Str }
+
+type Binding = {
+  mutable: bool,
+  name: Ident,
+  ty: Type,
+  value: Expr
+}
+
+type TypeDecl = { name: Ident, ty: Type }
+
+type FuncDecl = {
+  name: Ident,
+  params: ParamList,
+  ret: TypeOpt,
+  body: Expr
+}
+
+type Param = { mutable: bool, name: Ident, ty: Type }
+
+type Stmt = { tag: Str, binding: Binding, assign: Assign, expr: Expr }
+
+type Assign = { target: Path, value: Expr }
+
+type Block = { stmts: StmtList, tail: ExprOpt }
+
+type Expr = {
+  tag: Str,
+  literal: Literal,
+  path: Path,
+  inner: Expr,
+  call: FuncCall,
+  if_expr: IfExpr,
+  block: Block,
+  record_lit: RecordLit,
+  unary: UnaryExpr,
+  binary: BinaryExpr
+}
+
+type FuncCall = { callee: Path, args: ExprList }
+
+type IfExpr = { cond: Expr, then_branch: Expr, else_branch: Expr }
+
+type RecordLit = { fields: FieldInitList }
+
+type FieldInit = { name: Ident, value: Expr }
+
+type UnaryExpr = { op: UnaryOp, expr: Expr }
+
+type BinaryExpr = { left: Expr, op: BinaryOp, right: Expr }
+
+type UnaryOp = { tag: Str }
+
+type BinaryOp = { tag: Str }
+
+type Literal = { tag: Str, int_val: i64, bool_val: bool, str_val: Str }
+
+type Type = { tag: Str, name: Ident, inner: Type, fields: FieldTypeList }
+
+type FieldType = { name: Ident, ty: Type }
+
+type Path = { idents: IdentList }
+
+type TypeOpt = { ok: bool, value: Type }
+
+type ExprOpt = { ok: bool, value: Expr }
+
+type DeclList = { ok: bool, head: Decl, tail: DeclList }
+
+type ParamList = { ok: bool, head: Param, tail: ParamList }
+
+type StmtList = { ok: bool, head: Stmt, tail: StmtList }
+
+type ExprList = { ok: bool, head: Expr, tail: ExprList }
+
+type FieldInitList = { ok: bool, head: FieldInit, tail: FieldInitList }
+
+type FieldTypeList = { ok: bool, head: FieldType, tail: FieldTypeList }
+
+type IdentList = { ok: bool, head: Ident, tail: IdentList }

@@ -337,6 +337,61 @@ fn eval_builtin(
             let s = String::from_utf8_lossy(&bytes).to_string();
             Ok(Some(Value::Str(s)))
         }
+        "bytes_len" => {
+            if args.len() != 1 {
+                return Err(RuntimeError::Type("bytes_len expects one argument".into()));
+            }
+            let val = interp.eval_expr(&args[0], env, EvalMode::Move)?;
+            let Value::Bytes(bytes) = val else {
+                return Err(RuntimeError::Type("bytes_len expects Bytes".into()));
+            };
+            Ok(Some(Value::Int(bytes.len() as i64)))
+        }
+        "bytes_push" => {
+            if args.len() != 2 {
+                return Err(RuntimeError::Type("bytes_push expects two arguments".into()));
+            }
+            let buf = interp.eval_expr(&args[0], env, EvalMode::Move)?;
+            let byte = interp.eval_expr(&args[1], env, EvalMode::Move)?;
+            let Value::Bytes(mut bytes) = buf else {
+                return Err(RuntimeError::Type("bytes_push expects Bytes".into()));
+            };
+            let Value::Int(x) = byte else {
+                return Err(RuntimeError::Type("bytes_push expects i32".into()));
+            };
+            if !(0..=255).contains(&x) {
+                return Err(RuntimeError::Type("bytes_push expects i32 0..255".into()));
+            }
+            bytes.push(x as u8);
+            Ok(Some(Value::Bytes(bytes)))
+        }
+        "bytes_slice" => {
+            if args.len() != 3 {
+                return Err(RuntimeError::Type(
+                    "bytes_slice expects three arguments".into(),
+                ));
+            }
+            let buf = interp.eval_expr(&args[0], env, EvalMode::Move)?;
+            let start = interp.eval_expr(&args[1], env, EvalMode::Move)?;
+            let len = interp.eval_expr(&args[2], env, EvalMode::Move)?;
+            let Value::Bytes(bytes) = buf else {
+                return Err(RuntimeError::Type("bytes_slice expects Bytes".into()));
+            };
+            let Value::Int(start) = start else {
+                return Err(RuntimeError::Type("bytes_slice expects i32 start".into()));
+            };
+            let Value::Int(len) = len else {
+                return Err(RuntimeError::Type("bytes_slice expects i32 len".into()));
+            };
+            if start < 0 || len < 0 {
+                return Ok(Some(Value::Bytes(Vec::new())));
+            }
+            let st = start as usize;
+            let ln = len as usize;
+            let st = st.min(bytes.len());
+            let end = (st + ln).min(bytes.len());
+            Ok(Some(Value::Bytes(bytes[st..end].to_vec())))
+        }
         "try_read_file" => {
             if args.len() != 1 {
                 return Err(RuntimeError::Type(
@@ -732,5 +787,20 @@ mod tests {
         "#;
         let v = run(src);
         assert_eq!(v, Value::Str("ell".into()));
+    }
+
+    #[test]
+    fn builtin_bytes_ops() {
+        let src = r#"
+        main() = {
+          b: Bytes = args()
+          b1: Bytes = bytes_slice(b, 0, 1)
+          b2: Bytes = bytes_push(b1, 10)
+          n: i32 = bytes_len(b2)
+          n
+        }
+        "#;
+        let v = run(src);
+        assert_eq!(v, Value::Int(2));
     }
 }

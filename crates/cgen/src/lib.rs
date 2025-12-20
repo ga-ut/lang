@@ -84,6 +84,15 @@ impl TypeCtx {
         funcs.entry("bytes_to_str".into()).or_insert(FuncSig {
             ret: Some(Type::Named(Ident("Str".into()))),
         });
+        funcs.entry("bytes_len".into()).or_insert(FuncSig {
+            ret: Some(Type::Named(Ident("i32".into()))),
+        });
+        funcs.entry("bytes_push".into()).or_insert(FuncSig {
+            ret: Some(Type::Named(Ident("Bytes".into()))),
+        });
+        funcs.entry("bytes_slice".into()).or_insert(FuncSig {
+            ret: Some(Type::Named(Ident("Bytes".into()))),
+        });
         funcs.entry("try_read_file".into()).or_insert(FuncSig {
             ret: Some(Type::Named(Ident("ReadFileResult".into()))),
         });
@@ -353,6 +362,9 @@ fn emit_function_prototypes(
             || func.name.0 == "write_file"
             || func.name.0 == "args"
             || func.name.0 == "bytes_to_str"
+            || func.name.0 == "bytes_len"
+            || func.name.0 == "bytes_push"
+            || func.name.0 == "bytes_slice"
             || func.name.0 == "try_read_file"
             || func.name.0 == "try_write_file"
             || func.name.0 == "str_len"
@@ -437,6 +449,27 @@ fn emit_builtin_shims(
         )
         .map_err(|e| CgenError::Fmt(e.to_string()))?;
     }
+    if !func_names.contains("bytes_len") {
+        writeln!(
+            out,
+            "int32_t bytes_len(gaut_bytes buf) {{ return gaut_bytes_len(buf); }}"
+        )
+        .map_err(|e| CgenError::Fmt(e.to_string()))?;
+    }
+    if !func_names.contains("bytes_push") {
+        writeln!(
+            out,
+            "gaut_bytes bytes_push(gaut_bytes buf, int32_t x) {{ return gaut_bytes_push(buf, x); }}"
+        )
+        .map_err(|e| CgenError::Fmt(e.to_string()))?;
+    }
+    if !func_names.contains("bytes_slice") {
+        writeln!(
+            out,
+            "gaut_bytes bytes_slice(gaut_bytes buf, int32_t start, int32_t len) {{ return gaut_bytes_slice(buf, start, len); }}"
+        )
+        .map_err(|e| CgenError::Fmt(e.to_string()))?;
+    }
     if !func_names.contains("try_read_file") {
         writeln!(out, "ReadFileResult try_read_file(char* path) {{")
             .map_err(|e| CgenError::Fmt(e.to_string()))?;
@@ -515,6 +548,9 @@ fn emit_function(func: &FuncDecl, out: &mut String, ctx: &mut TypeCtx) -> Result
         || func.name.0 == "write_file"
         || func.name.0 == "args"
         || func.name.0 == "bytes_to_str"
+        || func.name.0 == "bytes_len"
+        || func.name.0 == "bytes_push"
+        || func.name.0 == "bytes_slice"
         || func.name.0 == "try_read_file"
         || func.name.0 == "try_write_file"
         || func.name.0 == "str_len"
@@ -643,6 +679,38 @@ fn emit_builtin_io(func: &FuncDecl, out: &mut String, ctx: &TypeCtx) -> Result<(
             writeln!(out, "{} bytes_to_str({} buf) {{", ret_cty, buf_cty)
                 .map_err(|e| CgenError::Fmt(e.to_string()))?;
             writeln!(out, "  return gaut_bytes_to_str(buf);")
+                .map_err(|e| CgenError::Fmt(e.to_string()))?;
+            writeln!(out, "}}\n").map_err(|e| CgenError::Fmt(e.to_string()))
+        }
+        "bytes_len" => {
+            let ret_cty = map_type(&Type::Named(Ident("i32".into())), ctx)?;
+            let buf_cty = map_type(&Type::Named(Ident("Bytes".into())), ctx)?;
+            writeln!(out, "{} bytes_len({} buf) {{", ret_cty, buf_cty)
+                .map_err(|e| CgenError::Fmt(e.to_string()))?;
+            writeln!(out, "  return gaut_bytes_len(buf);")
+                .map_err(|e| CgenError::Fmt(e.to_string()))?;
+            writeln!(out, "}}\n").map_err(|e| CgenError::Fmt(e.to_string()))
+        }
+        "bytes_push" => {
+            let ret_cty = map_type(&Type::Named(Ident("Bytes".into())), ctx)?;
+            let buf_cty = map_type(&Type::Named(Ident("Bytes".into())), ctx)?;
+            let byte_cty = map_type(&Type::Named(Ident("i32".into())), ctx)?;
+            writeln!(out, "{} bytes_push({} buf, {} x) {{", ret_cty, buf_cty, byte_cty)
+                .map_err(|e| CgenError::Fmt(e.to_string()))?;
+            writeln!(out, "  return gaut_bytes_push(buf, x);")
+                .map_err(|e| CgenError::Fmt(e.to_string()))?;
+            writeln!(out, "}}\n").map_err(|e| CgenError::Fmt(e.to_string()))
+        }
+        "bytes_slice" => {
+            let ret_cty = map_type(&Type::Named(Ident("Bytes".into())), ctx)?;
+            let buf_cty = map_type(&Type::Named(Ident("Bytes".into())), ctx)?;
+            writeln!(
+                out,
+                "{} bytes_slice({} buf, int32_t start, int32_t len) {{",
+                ret_cty, buf_cty
+            )
+            .map_err(|e| CgenError::Fmt(e.to_string()))?;
+            writeln!(out, "  return gaut_bytes_slice(buf, start, len);")
                 .map_err(|e| CgenError::Fmt(e.to_string()))?;
             writeln!(out, "}}\n").map_err(|e| CgenError::Fmt(e.to_string()))
         }
@@ -1240,6 +1308,30 @@ mod tests {
         let c = generate_c_from_source(src).unwrap();
         assert!(c.contains("gaut_args()"));
         assert!(c.contains("gaut_bytes_to_str"));
+    }
+
+    #[test]
+    fn bytes_len_uses_runtime() {
+        let src = r#"
+        main() = {
+          n: i32 = bytes_len(args())
+          n
+        }
+        "#;
+        let c = generate_c_from_source(src).unwrap();
+        assert!(c.contains("gaut_bytes_len"));
+    }
+
+    #[test]
+    fn bytes_push_uses_runtime() {
+        let src = r#"
+        main() = {
+          b: Bytes = bytes_push(args(), 10)
+          b
+        }
+        "#;
+        let c = generate_c_from_source(src).unwrap();
+        assert!(c.contains("gaut_bytes_push"));
     }
 
     #[test]

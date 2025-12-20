@@ -1,4 +1,4 @@
-// Placeholder for bytes helpers; currently only passthrough and aliasing.
+// Bytes helpers built on runtime-provided primitives.
 
 alias BytesAlias = Bytes
 
@@ -8,4 +8,8 @@ to_str(buf: Bytes) -> Str = bytes_to_str(buf)
 
 args_str() -> Str = bytes_to_str(args())
 
-// 실제 길이/슬라이스/IO 관련 기능은 런타임 제공 시 확장 예정.
+len(buf: Bytes) -> i32 = bytes_len(buf)
+
+push(buf: Bytes, x: i32) -> Bytes = bytes_push(buf, x)
+
+slice(buf: Bytes, start: i32, len: i32) -> Bytes = bytes_slice(buf, start, len)

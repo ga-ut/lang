@@ -233,6 +233,67 @@ char* gaut_bytes_to_str(gaut_bytes b) {
     return out;
 }
 
+int32_t gaut_bytes_len(gaut_bytes b) {
+    if (b.len > (size_t)INT32_MAX) {
+        return INT32_MAX;
+    }
+    return (int32_t)b.len;
+}
+
+gaut_bytes gaut_bytes_push(gaut_bytes b, int32_t x) {
+    gaut_bytes out = {.ptr = NULL, .len = 0};
+    if (b.len == SIZE_MAX) {
+        return out;
+    }
+    out.len = b.len + 1;
+    if (out.len == 0) {
+        return out;
+    }
+    out.ptr = (uint8_t*)malloc(out.len);
+    if (!out.ptr) {
+        out.len = 0;
+        return out;
+    }
+    if (b.len > 0 && b.ptr) {
+        memcpy(out.ptr, b.ptr, b.len);
+    }
+    if (x < 0) {
+        out.ptr[b.len] = 0;
+    } else if (x > 255) {
+        out.ptr[b.len] = 255;
+    } else {
+        out.ptr[b.len] = (uint8_t)x;
+    }
+    return out;
+}
+
+gaut_bytes gaut_bytes_slice(gaut_bytes b, int32_t start, int32_t len) {
+    gaut_bytes out = {.ptr = NULL, .len = 0};
+    if (start < 0 || len < 0) {
+        return out;
+    }
+    size_t st = (size_t)start;
+    if (st > b.len) {
+        st = b.len;
+    }
+    size_t ln = (size_t)len;
+    if (st + ln > b.len) {
+        ln = b.len - st;
+    }
+    if (ln == 0) {
+        return out;
+    }
+    out.ptr = (uint8_t*)malloc(ln);
+    if (!out.ptr) {
+        return out;
+    }
+    out.len = ln;
+    if (b.ptr) {
+        memcpy(out.ptr, b.ptr + st, ln);
+    }
+    return out;
+}
+
 int32_t gaut_str_len(const char* s) {
     if (!s) {
         return 0;
