@@ -10,6 +10,20 @@ type TokenRes = { tok: Token, state: ScanState }
 
 type Parser = { src: Str, toks: TokTable, idx: i32 }
 
+type TableRes = { table: Table, idx: i32 }
+type ParseRes = { p: Parser, ast: Ast, idx: i32, start: i32, end: i32 }
+type ParseListRes = { p: Parser, ast: Ast, list: i32 }
+type ListRes = { ast: Ast, list: i32 }
+type AstIdx = { ast: Ast, idx: i32 }
+type RetInfo = { ret_idx: i32, p: Parser, ast: Ast, end_ret: i32 }
+
+type Pair = { a: i32, b: i32 }
+type Triple = { a: i32, b: i32, c: i32 }
+type Quad = { a: i32, b: i32, c: i32, d: i32 }
+type Quint = { a: i32, b: i32, c: i32, d: i32, e: i32 }
+type Sext = { a: i32, b: i32, c: i32, d: i32, e: i32, f: i32 }
+type Sept = { a: i32, b: i32, c: i32, d: i32, e: i32, f: i32, g: i32 }
+
 empty_bytes() -> Bytes = bytes_slice(args(), 0, 0)
 
 empty_table() -> Table = { buf: empty_bytes(), count: 0 }
@@ -45,6 +59,65 @@ empty_ast() -> Ast = {
   ident_lists: empty_table()
 }
 
+ast_set_decls(a: Ast, t: Table) -> Ast = {
+  decls: t,
+  imports: copy a.imports,
+  bindings: copy a.bindings,
+  type_decls: copy a.type_decls,
+  funcs: copy a.funcs,
+  params: copy a.params,
+  stmts: copy a.stmts,
+  assigns: copy a.assigns,
+  blocks: copy a.blocks,
+  exprs: copy a.exprs,
+  calls: copy a.calls,
+  ifs: copy a.ifs,
+  record_lits: copy a.record_lits,
+  field_inits: copy a.field_inits,
+  unaries: copy a.unaries,
+  binaries: copy a.binaries,
+  literals: copy a.literals,
+  types: copy a.types,
+  field_types: copy a.field_types,
+  paths: copy a.paths,
+  idents: copy a.idents,
+  decl_lists: copy a.decl_lists,
+  param_lists: copy a.param_lists,
+  stmt_lists: copy a.stmt_lists,
+  expr_lists: copy a.expr_lists,
+  field_init_lists: copy a.field_init_lists,
+  field_type_lists: copy a.field_type_lists,
+  ident_lists: copy a.ident_lists
+}
+
+ast_set_imports(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: t, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_bindings(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: t, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_type_decls(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: t, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_funcs(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: t, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_params(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: t, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_stmts(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: t, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_assigns(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: t, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_blocks(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: t, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_exprs(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: t, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_calls(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: t, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_ifs(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: t, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_record_lits(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: t, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_field_inits(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: t, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_unaries(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: t, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_binaries(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: t, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_literals(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: t, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_types(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: t, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_field_types(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: t, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_paths(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: t, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_idents(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: t, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_decl_lists(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: t, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_param_lists(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: t, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_stmt_lists(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: t, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_expr_lists(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: t, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_field_init_lists(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: t, field_type_lists: copy a.field_type_lists, ident_lists: copy a.ident_lists }
+ast_set_field_type_lists(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: t, ident_lists: copy a.ident_lists }
+ast_set_ident_lists(a: Ast, t: Table) -> Ast = { decls: copy a.decls, imports: copy a.imports, bindings: copy a.bindings, type_decls: copy a.type_decls, funcs: copy a.funcs, params: copy a.params, stmts: copy a.stmts, assigns: copy a.assigns, blocks: copy a.blocks, exprs: copy a.exprs, calls: copy a.calls, ifs: copy a.ifs, record_lits: copy a.record_lits, field_inits: copy a.field_inits, unaries: copy a.unaries, binaries: copy a.binaries, literals: copy a.literals, types: copy a.types, field_types: copy a.field_types, paths: copy a.paths, idents: copy a.idents, decl_lists: copy a.decl_lists, param_lists: copy a.param_lists, stmt_lists: copy a.stmt_lists, expr_lists: copy a.expr_lists, field_init_lists: copy a.field_init_lists, field_type_lists: copy a.field_type_lists, ident_lists: t }
+
 tok_tag_eof() -> i32 = 1
 
 tok_tag_ident() -> i32 = 2
@@ -60,19 +133,21 @@ tok_tag_symbol() -> i32 = 6
 tok_tag_error() -> i32 = 7
 
 token_make(tag: i32, start: i32, end: i32, int_val: i32) -> Token =
-  { tag: tag, start: start, end: end, int_val: int_val }
+  { tag: tag, start: copy start, end: copy end, int_val: int_val }
 
-scan_init(src: Str) -> ScanState =
-  { src: src, i: 0, n: str_len(copy src) }
+scan_init(src: Str) -> ScanState = {
+  n: i32 = str_len(copy src)
+  { src: src, i: 0, n: n }
+}
 
 is_space(b: i32) -> bool =
-  b == 32 || b == 9 || b == 10 || b == 13
+  copy b == 32 || copy b == 9 || copy b == 10 || copy b == 13
 
 is_alpha(b: i32) -> bool =
-  (b >= 65 && b <= 90) || (b >= 97 && b <= 122) || b == 95
+  (!(copy b < 65) && !(90 < copy b)) || (!(copy b < 97) && !(122 < copy b)) || copy b == 95
 
 is_digit(b: i32) -> bool =
-  b >= 48 && b <= 57
+  !(copy b < 48) && !(57 < copy b)
 
 is_ident_continue(b: i32) -> bool =
   is_alpha(copy b) || is_digit(copy b)
@@ -109,71 +184,102 @@ scan_string_end(s: Str, i: i32, n: i32) -> i32 =
 
 parse_int_loop(s: Str, i: i32, end: i32, acc: i32) -> i32 =
   if !(copy i < copy end) then copy acc else
-  b: i32 = str_byte_at(copy s, copy i)
-  digit: i32 = copy b - 48
-  next_acc: i32 = copy acc * 10 + copy digit
-  parse_int_loop(copy s, copy i + 1, copy end, next_acc)
+    parse_int_loop(
+      copy s,
+      copy i + 1,
+      copy end,
+      copy acc * 10 + (str_byte_at(copy s, copy i) - 48)
+    )
 
 parse_int(s: Str, start: i32, end: i32) -> i32 =
   parse_int_loop(copy s, copy start, copy end, 0)
 
 is_keyword(s: Str) -> bool =
-  s == "import" || s == "type" || s == "global" || s == "let" || s == "mut"
-  || s == "if" || s == "then" || s == "else" || s == "true" || s == "false"
-  || s == "copy"
+  copy s == "import" || copy s == "type" || copy s == "global" || copy s == "let"
+  || copy s == "mut" || copy s == "if" || copy s == "then" || copy s == "else"
+  || copy s == "true" || copy s == "false" || copy s == "copy"
 
 scan_symbol(s: Str, i: i32) -> TokenRes = {
   b0: i32 = str_byte_at(copy s, copy i)
   b1: i32 = str_byte_at(copy s, copy i + 1)
-  if b0 == 45 && b1 == 62 then {
-    tok: Token = token_make(tok_tag_symbol(), copy i, copy i + 2, 0)
-    { tok: tok, state: { src: copy s, i: copy i + 2, n: str_len(copy s) } }
-  } else if b0 == 61 && b1 == 61 then {
-    tok: Token = token_make(tok_tag_symbol(), copy i, copy i + 2, 0)
-    { tok: tok, state: { src: copy s, i: copy i + 2, n: str_len(copy s) } }
-  } else if b0 == 38 && b1 == 38 then {
-    tok: Token = token_make(tok_tag_symbol(), copy i, copy i + 2, 0)
-    { tok: tok, state: { src: copy s, i: copy i + 2, n: str_len(copy s) } }
-  } else if b0 == 124 && b1 == 124 then {
-    tok: Token = token_make(tok_tag_symbol(), copy i, copy i + 2, 0)
-    { tok: tok, state: { src: copy s, i: copy i + 2, n: str_len(copy s) } }
-  } else {
-    tok: Token = token_make(tok_tag_symbol(), copy i, copy i + 1, 0)
-    { tok: tok, state: { src: copy s, i: copy i + 1, n: str_len(copy s) } }
+  if copy b0 == 45 && copy b1 == 62 then
+    {
+      tok: token_make(tok_tag_symbol(), copy i, copy i + 2, 0),
+      state: { src: copy s, i: copy i + 2, n: str_len(copy s) }
+    }
+  else if copy b0 == 61 && copy b1 == 61 then
+    {
+      tok: token_make(tok_tag_symbol(), copy i, copy i + 2, 0),
+      state: { src: copy s, i: copy i + 2, n: str_len(copy s) }
+    }
+  else if copy b0 == 38 && copy b1 == 38 then
+    {
+      tok: token_make(tok_tag_symbol(), copy i, copy i + 2, 0),
+      state: { src: copy s, i: copy i + 2, n: str_len(copy s) }
+    }
+  else if copy b0 == 124 && copy b1 == 124 then
+    {
+      tok: token_make(tok_tag_symbol(), copy i, copy i + 2, 0),
+      state: { src: copy s, i: copy i + 2, n: str_len(copy s) }
+    }
+  else
+    {
+      tok: token_make(tok_tag_symbol(), copy i, copy i + 1, 0),
+      state: { src: copy s, i: copy i + 1, n: str_len(copy s) }
+    }
+}
+
+scan_ident_token(s: Str, i0: i32, n: i32) -> TokenRes = {
+  end: i32 = scan_ident_end(copy s, copy i0 + 1, copy n)
+  text: Str = str_slice(copy s, copy i0, copy end - copy i0)
+  tag: i32 = if is_keyword(copy text) then tok_tag_keyword() else tok_tag_ident()
+  {
+    tok: token_make(tag, copy i0, copy end, 0),
+    state: { src: copy s, i: copy end, n: copy n }
   }
 }
 
-next_token(state: ScanState) -> TokenRes = {
-  s: Str = state.src
-  n: i32 = state.n
-  i0: i32 = skip_space(copy s, state.i, copy n)
-  if !(copy i0 < copy n) then {
-    tok: Token = token_make(tok_tag_eof(), copy i0, copy i0, 0)
-    { tok: tok, state: { src: copy s, i: copy i0, n: copy n } }
-  } else {
-    b: i32 = str_byte_at(copy s, copy i0)
-    if is_alpha(copy b) then {
-      end: i32 = scan_ident_end(copy s, copy i0 + 1, copy n)
-      text: Str = str_slice(copy s, copy i0, copy end - copy i0)
-      tag: i32 = if is_keyword(copy text) then tok_tag_keyword() else tok_tag_ident()
-      tok: Token = token_make(tag, copy i0, copy end, 0)
-      { tok: tok, state: { src: copy s, i: copy end, n: copy n } }
-    } else if is_digit(copy b) then {
-      end: i32 = scan_number_end(copy s, copy i0 + 1, copy n)
-      val: i32 = parse_int(copy s, copy i0, copy end)
-      tok: Token = token_make(tok_tag_int(), copy i0, copy end, val)
-      { tok: tok, state: { src: copy s, i: copy end, n: copy n } }
-    } else if b == 34 then {
-      end_q: i32 = scan_string_end(copy s, copy i0 + 1, copy n)
-      if !(copy end_q < copy n) then {
-        tok: Token = token_make(tok_tag_error(), copy i0, copy n, 0)
-        { tok: tok, state: { src: copy s, i: copy n, n: copy n } }
-      } else {
-        tok: Token = token_make(tok_tag_str(), copy i0 + 1, copy end_q, 0)
-        { tok: tok, state: { src: copy s, i: copy end_q + 1, n: copy n } }
-      }
-    } else scan_symbol(copy s, copy i0)
+scan_number_token(s: Str, i0: i32, n: i32) -> TokenRes = {
+  end: i32 = scan_number_end(copy s, copy i0 + 1, copy n)
+  val: i32 = parse_int(copy s, copy i0, copy end)
+  {
+    tok: token_make(tok_tag_int(), copy i0, copy end, val),
+    state: { src: copy s, i: copy end, n: copy n }
   }
+}
+
+scan_string_token(s: Str, i0: i32, n: i32) -> TokenRes = {
+  end_q: i32 = scan_string_end(copy s, copy i0 + 1, copy n)
+  if !(copy end_q < copy n) then
+    {
+      tok: token_make(tok_tag_error(), copy i0, copy n, 0),
+      state: { src: copy s, i: copy n, n: copy n }
+    }
+  else
+    {
+      tok: token_make(tok_tag_str(), copy i0 + 1, copy end_q, 0),
+      state: { src: copy s, i: copy end_q + 1, n: copy n }
+    }
+}
+
+next_token_non_eof(s: Str, i0: i32, n: i32) -> TokenRes = {
+  b: i32 = str_byte_at(copy s, copy i0)
+  if is_alpha(copy b) then scan_ident_token(copy s, copy i0, copy n)
+  else if is_digit(copy b) then scan_number_token(copy s, copy i0, copy n)
+  else if copy b == 34 then scan_string_token(copy s, copy i0, copy n)
+  else scan_symbol(copy s, copy i0)
+}
+
+next_token(state: ScanState) -> TokenRes = {
+  s: Str = copy state.src
+  n: i32 = copy state.n
+  i0: i32 = skip_space(copy s, copy state.i, copy n)
+  if !(copy i0 < copy n) then
+    {
+      tok: token_make(tok_tag_eof(), copy i0, copy i0, 0),
+      state: { src: copy s, i: copy i0, n: copy n }
+    }
+  else next_token_non_eof(copy s, copy i0, copy n)
 }
 
 encode_i32_le(buf: Bytes, x: i32) -> Bytes = {
@@ -198,28 +304,193 @@ decode_i32_le(buf: Bytes, off: i32) -> i32 = {
   copy b0 + copy b1 * 256 + copy b2 * 65536 + copy b3 * 16777216
 }
 
+table_append2(tbl: Table, stride: i32, a: i32, b: i32) -> TableRes = {
+  buf1: Bytes = encode_i32_le(copy tbl.buf, copy a)
+  buf2: Bytes = encode_i32_le(buf1, b)
+  idx: i32 = copy tbl.count + 1
+  { table: { buf: buf2, count: copy idx }, idx: idx }
+}
+
+table_append3(tbl: Table, stride: i32, a: i32, b: i32, c: i32) -> TableRes = {
+  buf1: Bytes = encode_i32_le(copy tbl.buf, copy a)
+  buf2: Bytes = encode_i32_le(buf1, b)
+  buf3: Bytes = encode_i32_le(buf2, c)
+  idx: i32 = copy tbl.count + 1
+  { table: { buf: buf3, count: copy idx }, idx: idx }
+}
+
+table_append4(tbl: Table, stride: i32, a: i32, b: i32, c: i32, d: i32) -> TableRes = {
+  buf1: Bytes = encode_i32_le(copy tbl.buf, copy a)
+  buf2: Bytes = encode_i32_le(buf1, b)
+  buf3: Bytes = encode_i32_le(buf2, c)
+  buf4: Bytes = encode_i32_le(buf3, d)
+  idx: i32 = copy tbl.count + 1
+  { table: { buf: buf4, count: copy idx }, idx: idx }
+}
+
+table_append5(
+  tbl: Table, stride: i32, a: i32, b: i32, c: i32, d: i32, e: i32
+) -> TableRes = {
+  buf1: Bytes = encode_i32_le(copy tbl.buf, copy a)
+  buf2: Bytes = encode_i32_le(buf1, b)
+  buf3: Bytes = encode_i32_le(buf2, c)
+  buf4: Bytes = encode_i32_le(buf3, d)
+  buf5: Bytes = encode_i32_le(buf4, e)
+  idx: i32 = copy tbl.count + 1
+  { table: { buf: buf5, count: copy idx }, idx: idx }
+}
+
+table_append6(
+  tbl: Table, stride: i32, a: i32, b: i32, c: i32, d: i32, e: i32, f: i32
+) -> TableRes = {
+  buf1: Bytes = encode_i32_le(copy tbl.buf, copy a)
+  buf2: Bytes = encode_i32_le(buf1, b)
+  buf3: Bytes = encode_i32_le(buf2, c)
+  buf4: Bytes = encode_i32_le(buf3, d)
+  buf5: Bytes = encode_i32_le(buf4, e)
+  buf6: Bytes = encode_i32_le(buf5, f)
+  idx: i32 = copy tbl.count + 1
+  { table: { buf: buf6, count: copy idx }, idx: idx }
+}
+
+table_get2(tbl: Table, stride: i32, idx: i32) -> Pair = {
+  off: i32 = (copy idx - 1) * copy stride
+  a: i32 = decode_i32_le(copy tbl.buf, copy off)
+  b: i32 = decode_i32_le(copy tbl.buf, copy off + 4)
+  { a: a, b: b }
+}
+
+table_get3(tbl: Table, stride: i32, idx: i32) -> Triple = {
+  off: i32 = (copy idx - 1) * copy stride
+  a: i32 = decode_i32_le(copy tbl.buf, copy off)
+  b: i32 = decode_i32_le(copy tbl.buf, copy off + 4)
+  c: i32 = decode_i32_le(copy tbl.buf, copy off + 8)
+  { a: a, b: b, c: c }
+}
+
+table_get4(tbl: Table, stride: i32, idx: i32) -> Quad = {
+  off: i32 = (copy idx - 1) * copy stride
+  a: i32 = decode_i32_le(copy tbl.buf, copy off)
+  b: i32 = decode_i32_le(copy tbl.buf, copy off + 4)
+  c: i32 = decode_i32_le(copy tbl.buf, copy off + 8)
+  d: i32 = decode_i32_le(copy tbl.buf, copy off + 12)
+  { a: a, b: b, c: c, d: d }
+}
+
+table_get5(tbl: Table, stride: i32, idx: i32) -> Quint = {
+  off: i32 = (copy idx - 1) * copy stride
+  a: i32 = decode_i32_le(copy tbl.buf, copy off)
+  b: i32 = decode_i32_le(copy tbl.buf, copy off + 4)
+  c: i32 = decode_i32_le(copy tbl.buf, copy off + 8)
+  d: i32 = decode_i32_le(copy tbl.buf, copy off + 12)
+  e: i32 = decode_i32_le(copy tbl.buf, copy off + 16)
+  { a: a, b: b, c: c, d: d, e: e }
+}
+
+table_get6(tbl: Table, stride: i32, idx: i32) -> Sext = {
+  off: i32 = (copy idx - 1) * copy stride
+  a: i32 = decode_i32_le(copy tbl.buf, copy off)
+  b: i32 = decode_i32_le(copy tbl.buf, copy off + 4)
+  c: i32 = decode_i32_le(copy tbl.buf, copy off + 8)
+  d: i32 = decode_i32_le(copy tbl.buf, copy off + 12)
+  e: i32 = decode_i32_le(copy tbl.buf, copy off + 16)
+  f: i32 = decode_i32_le(copy tbl.buf, copy off + 20)
+  { a: a, b: b, c: c, d: d, e: e, f: f }
+}
+
+table_get7(tbl: Table, stride: i32, idx: i32) -> Sept = {
+  off: i32 = (copy idx - 1) * copy stride
+  a: i32 = decode_i32_le(copy tbl.buf, copy off)
+  b: i32 = decode_i32_le(copy tbl.buf, copy off + 4)
+  c: i32 = decode_i32_le(copy tbl.buf, copy off + 8)
+  d: i32 = decode_i32_le(copy tbl.buf, copy off + 12)
+  e: i32 = decode_i32_le(copy tbl.buf, copy off + 16)
+  f: i32 = decode_i32_le(copy tbl.buf, copy off + 20)
+  g: i32 = decode_i32_le(copy tbl.buf, copy off + 24)
+  { a: a, b: b, c: c, d: d, e: e, f: f, g: g }
+}
+
+list_cons(tbl: Table, head: i32, tail: i32) -> TableRes =
+  table_append2(copy tbl, list_stride(), head, tail)
+
+list_head(tbl: Table, idx: i32) -> i32 = {
+  pair: Pair = table_get2(tbl, list_stride(), idx)
+  pair.a
+}
+
+list_tail(tbl: Table, idx: i32) -> i32 = {
+  pair: Pair = table_get2(tbl, list_stride(), idx)
+  pair.b
+}
+
+list_append_nonempty(tbl: Table, list_idx: i32, item: i32) -> TableRes = {
+  head: i32 = list_head(copy tbl, copy list_idx)
+  tail: i32 = list_tail(copy tbl, copy list_idx)
+  res_tail: TableRes = list_append(copy tbl, tail, copy item)
+  list_cons(copy res_tail.table, head, copy res_tail.idx)
+}
+
+list_append(tbl: Table, list_idx: i32, item: i32) -> TableRes =
+  if copy list_idx == 0 then list_cons(copy tbl, copy item, 0)
+  else list_append_nonempty(copy tbl, list_idx, copy item)
+
+append_decl_list(a: Ast, list_idx: i32, item: i32) -> ListRes = {
+  res: TableRes = list_append(copy a.decl_lists, list_idx, item)
+  { ast: copy ast_set_decl_lists(copy a, copy res.table), list: copy res.idx }
+}
+
+append_param_list(a: Ast, list_idx: i32, item: i32) -> ListRes = {
+  res: TableRes = list_append(copy a.param_lists, list_idx, item)
+  { ast: copy ast_set_param_lists(copy a, copy res.table), list: copy res.idx }
+}
+
+append_stmt_list(a: Ast, list_idx: i32, item: i32) -> ListRes = {
+  res: TableRes = list_append(copy a.stmt_lists, list_idx, item)
+  { ast: copy ast_set_stmt_lists(copy a, copy res.table), list: copy res.idx }
+}
+
+append_expr_list(a: Ast, list_idx: i32, item: i32) -> ListRes = {
+  res: TableRes = list_append(copy a.expr_lists, list_idx, item)
+  { ast: copy ast_set_expr_lists(copy a, copy res.table), list: copy res.idx }
+}
+
+append_field_init_list(a: Ast, list_idx: i32, item: i32) -> ListRes = {
+  res: TableRes = list_append(copy a.field_init_lists, list_idx, item)
+  { ast: copy ast_set_field_init_lists(copy a, copy res.table), list: copy res.idx }
+}
+
+append_field_type_list(a: Ast, list_idx: i32, item: i32) -> ListRes = {
+  res: TableRes = list_append(copy a.field_type_lists, list_idx, item)
+  { ast: copy ast_set_field_type_lists(copy a, copy res.table), list: copy res.idx }
+}
+
+append_ident_list(a: Ast, list_idx: i32, item: i32) -> ListRes = {
+  res: TableRes = list_append(copy a.ident_lists, list_idx, item)
+  { ast: copy ast_set_ident_lists(copy a, copy res.table), list: copy res.idx }
+}
+
 TokTable_push(tbl: TokTable, tok: Token) -> TokTable = {
-  buf1: Bytes = encode_i32_le(tbl.buf, tok.tag)
-  buf2: Bytes = encode_i32_le(buf1, tok.start)
-  buf3: Bytes = encode_i32_le(buf2, tok.end)
-  buf4: Bytes = encode_i32_le(buf3, tok.int_val)
-  { buf: buf4, count: tbl.count + 1 }
+  buf1: Bytes = encode_i32_le(copy tbl.buf, copy tok.tag)
+  buf2: Bytes = encode_i32_le(buf1, copy tok.start)
+  buf3: Bytes = encode_i32_le(buf2, copy tok.end)
+  buf4: Bytes = encode_i32_le(buf3, copy tok.int_val)
+  { buf: buf4, count: copy tbl.count + 1 }
 }
 
 TokTable_get(tbl: TokTable, idx: i32) -> Token = {
   off: i32 = (copy idx - 1) * 16
-  tag: i32 = decode_i32_le(tbl.buf, copy off)
-  start: i32 = decode_i32_le(tbl.buf, copy off + 4)
-  end: i32 = decode_i32_le(tbl.buf, copy off + 8)
-  int_val: i32 = decode_i32_le(tbl.buf, copy off + 12)
-  { tag: tag, start: start, end: end, int_val: int_val }
+  tag: i32 = decode_i32_le(copy tbl.buf, copy off)
+  start: i32 = decode_i32_le(copy tbl.buf, copy off + 4)
+  end: i32 = decode_i32_le(copy tbl.buf, copy off + 8)
+  int_val: i32 = decode_i32_le(copy tbl.buf, copy off + 12)
+  { tag: tag, start: copy start, end: copy end, int_val: int_val }
 }
 
 tokenize_loop(state: ScanState, tbl: TokTable) -> TokTable = {
   res: TokenRes = next_token(copy state)
   tok: Token = copy res.tok
-  tbl2: TokTable = TokTable_push(tbl, tok)
-  if tok.tag == tok_tag_eof() || tok.tag == tok_tag_error() then tbl2
+  tbl2: TokTable = TokTable_push(tbl, copy tok)
+  if copy tok.tag == tok_tag_eof() || copy tok.tag == tok_tag_error() then copy tbl2
   else tokenize_loop(copy res.state, tbl2)
 }
 
@@ -233,12 +504,743 @@ parser_init(src: Str) -> Parser = {
   { src: src, toks: toks, idx: 1 }
 }
 
-peek(p: Parser) -> Token = TokTable_get(p.toks, p.idx)
+peek(p: Parser) -> Token = TokTable_get(copy p.toks, copy p.idx)
 
-advance(p: Parser) -> Parser = { src: p.src, toks: p.toks, idx: p.idx + 1 }
+advance(p: Parser) -> Parser = { src: copy p.src, toks: copy p.toks, idx: copy p.idx + 1 }
 
-// TODO: implement parsing to build AST tables.
+peek_n(p: Parser, n: i32) -> Token = TokTable_get(copy p.toks, copy p.idx + n)
+
+tok_text(p: Parser, tok: Token) -> Str =
+  str_slice(copy p.src, copy tok.start, copy tok.end - copy tok.start)
+
+tok_is_keyword(p: Parser, tok: Token, kw: Str) -> bool =
+  copy tok.tag == tok_tag_keyword() && tok_text(copy p, copy tok) == kw
+
+tok_is_symbol(p: Parser, tok: Token, sym: Str) -> bool =
+  copy tok.tag == tok_tag_symbol() && tok_text(copy p, copy tok) == sym
+
+add_ident(a: Ast, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append2(copy a.idents, ident_stride(), copy start, copy end)
+  { ast: copy ast_set_idents(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_path(a: Ast, idents: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append3(copy a.paths, path_stride(), idents, copy start, copy end)
+  { ast: copy ast_set_paths(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_type_named(a: Ast, name: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append6(copy a.types, type_stride(), type_tag_named(), name, 0, 0, copy start, copy end)
+  { ast: copy ast_set_types(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_type_ref(a: Ast, inner: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append6(copy a.types, type_stride(), type_tag_ref(), 0, inner, 0, copy start, copy end)
+  { ast: copy ast_set_types(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_type_record(a: Ast, fields: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append6(copy a.types, type_stride(), type_tag_record(), 0, 0, fields, copy start, copy end)
+  { ast: copy ast_set_types(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_literal_int(a: Ast, val: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append5(copy a.literals, literal_stride(), literal_tag_int(), val, 0, 0, 0)
+  { ast: copy ast_set_literals(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_literal_bool(a: Ast, val: i32) -> AstIdx = {
+  res: TableRes = table_append5(copy a.literals, literal_stride(), literal_tag_bool(), 0, val, 0, 0)
+  { ast: copy ast_set_literals(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_literal_str(a: Ast, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append5(copy a.literals, literal_stride(), literal_tag_str(), 0, 0, copy start, copy end)
+  { ast: copy ast_set_literals(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_literal_unit(a: Ast) -> AstIdx = {
+  res: TableRes = table_append5(copy a.literals, literal_stride(), literal_tag_unit(), 0, 0, 0, 0)
+  { ast: copy ast_set_literals(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_expr(a: Ast, tag: i32, data: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append4(copy a.exprs, expr_stride(), tag, data, copy start, copy end)
+  { ast: copy ast_set_exprs(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_unary(a: Ast, op: i32, expr: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append4(copy a.unaries, unary_stride(), op, expr, copy start, copy end)
+  { ast: copy ast_set_unaries(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_binary(a: Ast, op: i32, left: i32, right: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append5(copy a.binaries, binary_stride(), op, left, right, copy start, copy end)
+  { ast: copy ast_set_binaries(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_stmt(a: Ast, tag: i32, data: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append4(copy a.stmts, stmt_stride(), tag, data, copy start, copy end)
+  { ast: copy ast_set_stmts(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_assign(a: Ast, target: i32, value: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append4(copy a.assigns, assign_stride(), target, value, copy start, copy end)
+  { ast: copy ast_set_assigns(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_block(a: Ast, stmts: i32, tail: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append4(copy a.blocks, block_stride(), stmts, tail, copy start, copy end)
+  { ast: copy ast_set_blocks(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_call(a: Ast, callee: i32, args: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append4(copy a.calls, call_stride(), callee, args, copy start, copy end)
+  { ast: copy ast_set_calls(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_if(a: Ast, cond: i32, then_i: i32, else_i: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append5(copy a.ifs, if_stride(), cond, then_i, else_i, copy start, copy end)
+  { ast: copy ast_set_ifs(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_record_lit(a: Ast, fields: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append3(copy a.record_lits, record_lit_stride(), fields, copy start, copy end)
+  { ast: copy ast_set_record_lits(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_field_type(a: Ast, name: i32, ty: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append4(copy a.field_types, field_type_stride(), name, ty, copy start, copy end)
+  { ast: copy ast_set_field_types(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_field_init(a: Ast, name: i32, value: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append4(copy a.field_inits, field_init_stride(), name, value, copy start, copy end)
+  { ast: copy ast_set_field_inits(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_binding(a: Ast, mutable: i32, name: i32, ty: i32, value: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append6(copy a.bindings, binding_stride(), mutable, name, ty, value, copy start, copy end)
+  { ast: copy ast_set_bindings(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_type_decl(a: Ast, name: i32, ty: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append4(copy a.type_decls, type_decl_stride(), name, ty, copy start, copy end)
+  { ast: copy ast_set_type_decls(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_param(a: Ast, mutable: i32, name: i32, ty: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append5(copy a.params, param_stride(), mutable, name, ty, copy start, copy end)
+  { ast: copy ast_set_params(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_func(a: Ast, name: i32, params: i32, ret: i32, body: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append6(copy a.funcs, func_stride(), name, params, ret, body, copy start, copy end)
+  { ast: copy ast_set_funcs(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_import(a: Ast, module: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append3(copy a.imports, import_stride(), module, copy start, copy end)
+  { ast: copy ast_set_imports(copy a, copy res.table), idx: copy res.idx }
+}
+
+add_decl(a: Ast, tag: i32, data: i32, start: i32, end: i32) -> AstIdx = {
+  res: TableRes = table_append4(copy a.decls, decl_stride(), tag, data, copy start, copy end)
+  { ast: copy ast_set_decls(copy a, copy res.table), idx: copy res.idx }
+}
+
+get_ident_span(a: Ast, idx: i32) -> Pair =
+  table_get2(copy a.idents, ident_stride(), idx)
+
+get_path(a: Ast, idx: i32) -> Triple =
+  table_get3(copy a.paths, path_stride(), idx)
+
+get_type(a: Ast, idx: i32) -> Sext =
+  table_get6(copy a.types, type_stride(), idx)
+
+get_literal(a: Ast, idx: i32) -> Quint =
+  table_get5(copy a.literals, literal_stride(), idx)
+
+get_expr(a: Ast, idx: i32) -> Quad =
+  table_get4(copy a.exprs, expr_stride(), idx)
+
+get_decl(a: Ast, idx: i32) -> Quad =
+  table_get4(copy a.decls, decl_stride(), idx)
+
+get_binding(a: Ast, idx: i32) -> Sext =
+  table_get6(copy a.bindings, binding_stride(), idx)
+
+get_func(a: Ast, idx: i32) -> Sext =
+  table_get6(copy a.funcs, func_stride(), idx)
+
+get_param(a: Ast, idx: i32) -> Quint =
+  table_get5(copy a.params, param_stride(), idx)
+
+get_stmt(a: Ast, idx: i32) -> Quad =
+  table_get4(copy a.stmts, stmt_stride(), idx)
+
+get_assign(a: Ast, idx: i32) -> Quad =
+  table_get4(copy a.assigns, assign_stride(), idx)
+
+get_block(a: Ast, idx: i32) -> Quad =
+  table_get4(copy a.blocks, block_stride(), idx)
+
+get_call(a: Ast, idx: i32) -> Quad =
+  table_get4(copy a.calls, call_stride(), idx)
+
+get_if(a: Ast, idx: i32) -> Quint =
+  table_get5(copy a.ifs, if_stride(), idx)
+
+get_record_lit(a: Ast, idx: i32) -> Triple =
+  table_get3(copy a.record_lits, record_lit_stride(), idx)
+
+get_field_init(a: Ast, idx: i32) -> Quad =
+  table_get4(copy a.field_inits, field_init_stride(), idx)
+
+get_unary(a: Ast, idx: i32) -> Quad =
+  table_get4(copy a.unaries, unary_stride(), idx)
+
+get_binary(a: Ast, idx: i32) -> Quint =
+  table_get5(copy a.binaries, binary_stride(), idx)
+
+get_field_type(a: Ast, idx: i32) -> Quad =
+  table_get4(copy a.field_types, field_type_stride(), idx)
+
+get_import(a: Ast, idx: i32) -> Triple =
+  table_get3(copy a.imports, import_stride(), idx)
+
+// Minimal smoke checks (1 = ok, 0 = fail).
+smoke_table_roundtrip() -> i32 = {
+  a: Ast = empty_ast()
+  id: AstIdx = add_ident(copy a, 1, 3)
+  span: Pair = get_ident_span(copy id.ast, copy id.idx)
+  if copy span.a == 1 && copy span.b == 3 then 1 else 0
+}
+
+smoke_parse_min() -> i32 = {
+  prog: Program = parse("main() = 1")
+  if prog.decls == 0 then 0 else 1
+}
+
+prev_token(p: Parser) -> Token = TokTable_get(copy p.toks, copy p.idx - 1)
+
+parse_ident(p: Parser, a: Ast) -> ParseRes = {
+  tok: Token = peek(copy p)
+  res: AstIdx = add_ident(copy a, copy tok.start, copy tok.end)
+  { p: advance(copy p), ast: copy res.ast, idx: copy res.idx, start: copy tok.start, end: copy tok.end }
+}
+
+parse_path(p: Parser, a: Ast) -> ParseRes = {
+  first: ParseRes = parse_ident(copy p, copy a)
+  list_res: ListRes = append_ident_list(copy first.ast, 0, copy first.idx)
+  parse_path_tail(copy first.p, copy list_res.ast, copy list_res.list, copy first.start, copy first.end)
+}
+
+parse_path_tail_dot(p: Parser, a: Ast, list: i32, start: i32, end: i32) -> ParseRes = {
+  p1: Parser = advance(copy p)
+  id_res: ParseRes = parse_ident(p1, copy a)
+  list_res: ListRes = append_ident_list(copy id_res.ast, copy list, copy id_res.idx)
+  parse_path_tail(copy id_res.p, copy list_res.ast, copy list_res.list, copy start, copy id_res.end)
+}
+
+parse_path_tail_finish(p: Parser, a: Ast, list: i32, start: i32, end: i32) -> ParseRes = {
+  path_res: AstIdx = add_path(copy a, copy list, copy start, copy end)
+  { p: copy p, ast: copy path_res.ast, idx: copy path_res.idx, start: copy start, end: copy end }
+}
+
+parse_path_tail(p: Parser, a: Ast, list: i32, start: i32, end: i32) -> ParseRes = {
+  tok: Token = peek(copy p)
+  if tok_is_symbol(copy p, copy tok, ".") then
+    parse_path_tail_dot(copy p, copy a, copy list, copy start, copy end)
+  else parse_path_tail_finish(copy p, copy a, copy list, copy start, copy end)
+}
+
+parse_type_ref(p: Parser, a: Ast, start: i32) -> ParseRes = {
+  p1: Parser = advance(copy p)
+  inner: ParseRes = parse_type(p1, copy a)
+  res: AstIdx = add_type_ref(copy inner.ast, copy inner.idx, copy start, copy inner.end)
+  { p: copy inner.p, ast: copy res.ast, idx: copy res.idx, start: copy start, end: copy inner.end }
+}
+
+parse_type_record(p: Parser, a: Ast, start: i32) -> ParseRes = {
+  p1: Parser = advance(copy p)
+  fields_res: ParseListRes = parse_field_types(p1, copy a, 0)
+  end_tok: Token = peek(copy fields_res.p)
+  p2: Parser = advance(copy fields_res.p)
+  res: AstIdx = add_type_record(copy fields_res.ast, copy fields_res.list, copy start, copy end_tok.end)
+  { p: copy p2, ast: copy res.ast, idx: copy res.idx, start: copy start, end: copy end_tok.end }
+}
+
+parse_type_named(p: Parser, a: Ast) -> ParseRes = {
+  id_res: ParseRes = parse_ident(copy p, copy a)
+  res: AstIdx = add_type_named(copy id_res.ast, copy id_res.idx, copy id_res.start, copy id_res.end)
+  { p: copy id_res.p, ast: copy res.ast, idx: copy res.idx, start: copy id_res.start, end: copy id_res.end }
+}
+
+parse_type(p: Parser, a: Ast) -> ParseRes = {
+  tok: Token = peek(copy p)
+  if tok_is_symbol(copy p, copy tok, "&") then parse_type_ref(copy p, copy a, copy tok.start)
+  else if tok_is_symbol(copy p, copy tok, "{") then parse_type_record(copy p, copy a, copy tok.start)
+  else parse_type_named(copy p, copy a)
+}
+
+parse_field_types_more(p: Parser, a: Ast, list: i32) -> ParseListRes = {
+  name: ParseRes = parse_ident(copy p, copy a)
+  p1: Parser = advance(copy name.p) // ':'
+  ty: ParseRes = parse_type(p1, copy name.ast)
+  ft: AstIdx = add_field_type(copy ty.ast, copy name.idx, copy ty.idx, copy name.start, copy ty.end)
+  list_res: ListRes = append_field_type_list(copy ft.ast, copy list, copy ft.idx)
+  next: Token = peek(copy ty.p)
+  if tok_is_symbol(copy ty.p, copy next, ",") then
+    parse_field_types(advance(copy ty.p), copy list_res.ast, copy list_res.list)
+  else parse_field_types(copy ty.p, copy list_res.ast, copy list_res.list)
+}
+
+parse_field_types(p: Parser, a: Ast, list: i32) -> ParseListRes = {
+  tok: Token = peek(copy p)
+  if tok_is_symbol(copy p, copy tok, "}") then { p: copy p, ast: copy a, list: copy list }
+  else parse_field_types_more(copy p, copy a, copy list)
+}
+
+parse_literal_int_expr(p: Parser, a: Ast, tok: Token) -> ParseRes = {
+  lit: AstIdx = add_literal_int(copy a, copy tok.int_val, copy tok.start, copy tok.end)
+  expr: AstIdx = add_expr(copy lit.ast, expr_tag_literal(), copy lit.idx, copy tok.start, copy tok.end)
+  { p: advance(copy p), ast: copy expr.ast, idx: copy expr.idx, start: copy tok.start, end: copy tok.end }
+}
+
+parse_literal_str_expr(p: Parser, a: Ast, tok: Token) -> ParseRes = {
+  lit: AstIdx = add_literal_str(copy a, copy tok.start, copy tok.end)
+  expr: AstIdx = add_expr(copy lit.ast, expr_tag_literal(), copy lit.idx, copy tok.start, copy tok.end)
+  { p: advance(copy p), ast: copy expr.ast, idx: copy expr.idx, start: copy tok.start, end: copy tok.end }
+}
+
+parse_literal_bool_expr(p: Parser, a: Ast, tok: Token, val: i32) -> ParseRes = {
+  lit: AstIdx = add_literal_bool(copy a, val)
+  expr: AstIdx = add_expr(copy lit.ast, expr_tag_literal(), copy lit.idx, copy tok.start, copy tok.end)
+  { p: advance(copy p), ast: copy expr.ast, idx: copy expr.idx, start: copy tok.start, end: copy tok.end }
+}
+
+parse_literal_unit_expr(p: Parser, a: Ast, tok: Token) -> ParseRes = {
+  lit: AstIdx = add_literal_unit(a)
+  expr: AstIdx = add_expr(copy lit.ast, expr_tag_literal(), copy lit.idx, copy tok.start, copy tok.end)
+  { p: advance(copy p), ast: copy expr.ast, idx: copy expr.idx, start: copy tok.start, end: copy tok.end }
+}
+
+parse_literal_expr(p: Parser, a: Ast) -> ParseRes = {
+  tok: Token = peek(copy p)
+  if copy tok.tag == tok_tag_int() then parse_literal_int_expr(copy p, copy a, copy tok)
+  else if copy tok.tag == tok_tag_str() then parse_literal_str_expr(copy p, copy a, copy tok)
+  else if tok_is_keyword(copy p, copy tok, "true") then parse_literal_bool_expr(copy p, copy a, copy tok, 1)
+  else if tok_is_keyword(copy p, copy tok, "false") then parse_literal_bool_expr(copy p, copy a, copy tok, 0)
+  else parse_literal_unit_expr(copy p, copy a, copy tok)
+}
+
+parse_if_expr(p: Parser, a: Ast) -> ParseRes = {
+  start_tok: Token = peek(copy p)
+  p1: Parser = advance(copy p)
+  cond: ParseRes = parse_expr(p1, copy a, 0)
+  p2: Parser = advance(copy cond.p) // then
+  then_e: ParseRes = parse_expr(p2, copy cond.ast, 0)
+  p3: Parser = advance(copy then_e.p) // else
+  else_e: ParseRes = parse_expr(p3, copy then_e.ast, 0)
+  res: AstIdx = add_if(copy else_e.ast, copy cond.idx, copy then_e.idx, copy else_e.idx, copy start_tok.start, copy else_e.end)
+  expr: AstIdx = add_expr(copy res.ast, expr_tag_if(), copy res.idx, copy start_tok.start, copy else_e.end)
+  { p: copy else_e.p, ast: copy expr.ast, idx: copy expr.idx, start: copy start_tok.start, end: copy else_e.end }
+}
+
+parse_stmt_let(p: Parser, a: Ast, start: i32) -> ParseRes = {
+  bind: ParseRes = parse_binding(copy p, copy a, 0)
+  stmt: AstIdx = add_stmt(copy bind.ast, stmt_tag_binding(), copy bind.idx, copy start, copy bind.end)
+  { p: copy bind.p, ast: copy stmt.ast, idx: copy stmt.idx, start: copy start, end: copy bind.end }
+}
+
+parse_stmt_assign(expr: ParseRes) -> ParseRes = {
+  val: ParseRes = parse_expr(advance(copy expr.p), copy expr.ast, 0)
+  asg: AstIdx = add_assign(copy val.ast, copy expr.idx, copy val.idx, copy expr.start, copy val.end)
+  stmt: AstIdx = add_stmt(copy asg.ast, stmt_tag_assign(), copy asg.idx, copy expr.start, copy val.end)
+  { p: copy val.p, ast: copy stmt.ast, idx: copy stmt.idx, start: copy expr.start, end: copy val.end }
+}
+
+parse_stmt_expr_only(expr: ParseRes) -> ParseRes = {
+  stmt: AstIdx = add_stmt(copy expr.ast, stmt_tag_expr(), copy expr.idx, copy expr.start, copy expr.end)
+  { p: copy expr.p, ast: copy stmt.ast, idx: copy stmt.idx, start: copy expr.start, end: copy expr.end }
+}
+
+parse_stmt_expr(p: Parser, a: Ast) -> ParseRes = {
+  expr: ParseRes = parse_expr(copy p, copy a, 0)
+  next: Token = peek(copy expr.p)
+  if tok_is_symbol(copy expr.p, copy next, "=") then parse_stmt_assign(copy expr)
+  else parse_stmt_expr_only(copy expr)
+}
+
+parse_stmt(p: Parser, a: Ast) -> ParseRes = {
+  tok: Token = peek(copy p)
+  if tok_is_keyword(copy p, copy tok, "let") then
+    parse_stmt_let(advance(copy p), copy a, copy tok.start)
+  else parse_stmt_expr(copy p, copy a)
+}
+
+parse_block_inner_more(p: Parser, a: Ast, stmts: i32) -> ParseListRes = {
+  stmt: ParseRes = parse_stmt(copy p, copy a)
+  next: Token = peek(copy stmt.p)
+  list_res: ListRes = append_stmt_list(copy stmt.ast, stmts, copy stmt.idx)
+  if tok_is_symbol(copy stmt.p, copy next, "}") then
+    { p: copy stmt.p, ast: copy list_res.ast, list: copy list_res.list }
+  else parse_block_inner(copy stmt.p, copy list_res.ast, copy list_res.list)
+}
+
+parse_block_inner(p: Parser, a: Ast, stmts: i32) -> ParseListRes = {
+  tok: Token = peek(copy p)
+  if tok_is_symbol(copy p, copy tok, "}") then { p: copy p, ast: copy a, list: copy stmts }
+  else parse_block_inner_more(copy p, copy a, copy stmts)
+}
+
+parse_block_expr_empty(p: Parser, a: Ast, start: i32, end: i32) -> ParseRes = {
+  p2: Parser = advance(copy p)
+  block: AstIdx = add_block(copy a, 0, 0, copy start, copy end)
+  expr: AstIdx = add_expr(copy block.ast, expr_tag_block(), copy block.idx, copy start, copy end)
+  { p: copy p2, ast: copy expr.ast, idx: copy expr.idx, start: copy start, end: copy end }
+}
+
+parse_block_expr_nonempty(p: Parser, a: Ast, start: i32) -> ParseRes = {
+  inner: ParseListRes = parse_block_inner(copy p, copy a, 0)
+  end_tok: Token = peek(copy inner.p)
+  p2: Parser = advance(copy inner.p)
+  block: AstIdx = add_block(copy inner.ast, copy inner.list, 0, copy start, copy end_tok.end)
+  expr: AstIdx = add_expr(copy block.ast, expr_tag_block(), copy block.idx, copy start, copy end_tok.end)
+  { p: copy p2, ast: copy expr.ast, idx: copy expr.idx, start: copy start, end: copy end_tok.end }
+}
+
+parse_block_expr(p: Parser, a: Ast) -> ParseRes = {
+  start_tok: Token = peek(copy p)
+  p1: Parser = advance(copy p)
+  next: Token = peek(copy p1)
+  if tok_is_symbol(copy p1, copy next, "}") then
+    parse_block_expr_empty(copy p1, copy a, copy start_tok.start, copy next.end)
+  else parse_block_expr_nonempty(copy p1, copy a, copy start_tok.start)
+}
+
+parse_record_expr(p: Parser, a: Ast) -> ParseRes = {
+  start_tok: Token = peek(copy p)
+  p1: Parser = advance(copy p)
+  fields_res: ParseListRes = parse_field_inits(p1, copy a, 0)
+  end_tok: Token = peek(copy fields_res.p)
+  p2: Parser = advance(copy fields_res.p)
+  rec: AstIdx = add_record_lit(copy fields_res.ast, copy fields_res.list, copy start_tok.start, copy end_tok.end)
+  expr: AstIdx = add_expr(copy rec.ast, expr_tag_record(), copy rec.idx, copy start_tok.start, copy end_tok.end)
+  { p: copy p2, ast: copy expr.ast, idx: copy expr.idx, start: copy start_tok.start, end: copy end_tok.end }
+}
+
+parse_field_inits_more(p: Parser, a: Ast, list: i32) -> ParseListRes = {
+  name: ParseRes = parse_ident(copy p, copy a)
+  p1: Parser = advance(copy name.p) // ':'
+  val: ParseRes = parse_expr(p1, copy name.ast, 0)
+  fi: AstIdx = add_field_init(copy val.ast, copy name.idx, copy val.idx, copy name.start, copy val.end)
+  list_res: ListRes = append_field_init_list(copy fi.ast, copy list, copy fi.idx)
+  next: Token = peek(copy val.p)
+  if tok_is_symbol(copy val.p, copy next, ",") then
+    parse_field_inits(advance(copy val.p), copy list_res.ast, copy list_res.list)
+  else parse_field_inits(copy val.p, copy list_res.ast, copy list_res.list)
+}
+
+parse_field_inits(p: Parser, a: Ast, list: i32) -> ParseListRes = {
+  tok: Token = peek(copy p)
+  if tok_is_symbol(copy p, copy tok, "}") then { p: copy p, ast: copy a, list: copy list }
+  else parse_field_inits_more(copy p, copy a, copy list)
+}
+
+looks_like_record(p: Parser) -> bool = {
+  tok: Token = peek(copy p)
+  if tok_is_symbol(copy p, copy tok, "}") then true
+  else if tok_is_keyword(copy p, copy tok, "mut") then false
+  else if copy tok.tag == tok_tag_ident() && tok_is_symbol(copy p, copy peek_n(copy p, 1), ":") then
+    if has_eq_before_sep(copy p, copy p.idx + 2) then false else true
+  else false
+}
+
+has_eq_before_sep(p: Parser, i: i32) -> bool = {
+  tok: Token = TokTable_get(copy p.toks, copy i)
+  if tok_is_symbol(copy p, copy tok, ",") || tok_is_symbol(copy p, copy tok, "}") then false
+  else if tok_is_symbol(copy p, copy tok, "=") then true
+  else has_eq_before_sep(copy p, i + 1)
+}
+
+parse_primary_if(p: Parser, a: Ast) -> ParseRes = parse_if_expr(copy p, copy a)
+
+parse_primary_brace(p: Parser, a: Ast) -> ParseRes = {
+  if looks_like_record(copy p) then parse_record_expr(copy p, copy a)
+  else parse_block_expr(copy p, copy a)
+}
+
+parse_primary_unit_paren(p: Parser, a: Ast, start: i32, end: i32) -> ParseRes = {
+  p2: Parser = advance(advance(copy p))
+  lit: AstIdx = add_literal_unit(a)
+  expr: AstIdx = add_expr(copy lit.ast, expr_tag_literal(), copy lit.idx, copy start, copy end)
+  { p: copy p2, ast: copy expr.ast, idx: copy expr.idx, start: copy start, end: copy end }
+}
+
+parse_primary_paren_expr(p: Parser, a: Ast, start: i32) -> ParseRes = {
+  p1: Parser = advance(copy p)
+  inner: ParseRes = parse_expr(p1, copy a, 0)
+  end_tok: Token = peek(copy inner.p)
+  p2: Parser = advance(copy inner.p)
+  { p: copy p2, ast: copy inner.ast, idx: copy inner.idx, start: copy start, end: copy end_tok.end }
+}
+
+parse_primary_paren(p: Parser, a: Ast, start: i32) -> ParseRes = {
+  next: Token = peek_n(copy p, 1)
+  if tok_is_symbol(copy p, copy next, ")") then
+    parse_primary_unit_paren(copy p, copy a, copy start, copy next.end)
+  else parse_primary_paren_expr(copy p, copy a, copy start)
+}
+
+parse_primary_call(path: ParseRes) -> ParseRes = {
+  args: ParseListRes = parse_call_args(advance(copy path.p), copy path.ast, 0)
+  end_tok: Token = peek(copy args.p)
+  p2: Parser = advance(copy args.p)
+  call: AstIdx = add_call(copy args.ast, copy path.idx, copy args.list, copy path.start, copy end_tok.end)
+  expr: AstIdx = add_expr(copy call.ast, expr_tag_call(), copy call.idx, copy path.start, copy end_tok.end)
+  { p: copy p2, ast: copy expr.ast, idx: copy expr.idx, start: copy path.start, end: copy end_tok.end }
+}
+
+parse_primary_path(path: ParseRes) -> ParseRes = {
+  expr: AstIdx = add_expr(copy path.ast, expr_tag_path(), copy path.idx, copy path.start, copy path.end)
+  { p: copy path.p, ast: copy expr.ast, idx: copy expr.idx, start: copy path.start, end: copy path.end }
+}
+
+parse_primary_ident(p: Parser, a: Ast) -> ParseRes = {
+  path: ParseRes = parse_path(copy p, copy a)
+  next: Token = peek(copy path.p)
+  if tok_is_symbol(copy path.p, copy next, "(") then parse_primary_call(copy path)
+  else parse_primary_path(copy path)
+}
+
+parse_primary(p: Parser, a: Ast) -> ParseRes = {
+  tok: Token = peek(copy p)
+  if tok_is_keyword(copy p, copy tok, "if") then parse_primary_if(copy p, copy a)
+  else if tok_is_symbol(copy p, copy tok, "{") then parse_primary_brace(copy p, copy a)
+  else if tok_is_symbol(copy p, copy tok, "(") then parse_primary_paren(copy p, copy a, copy tok.start)
+  else if copy tok.tag == tok_tag_ident() then parse_primary_ident(copy p, copy a)
+  else parse_literal_expr(copy p, copy a)
+}
+
+parse_call_args_more(p: Parser, a: Ast, list: i32) -> ParseListRes = {
+  arg: ParseRes = parse_expr(copy p, copy a, 0)
+  list_res: ListRes = append_expr_list(copy arg.ast, copy list, copy arg.idx)
+  next: Token = peek(copy arg.p)
+  if tok_is_symbol(copy arg.p, copy next, ",") then
+    parse_call_args(advance(copy arg.p), copy list_res.ast, copy list_res.list)
+  else parse_call_args(copy arg.p, copy list_res.ast, copy list_res.list)
+}
+
+parse_call_args(p: Parser, a: Ast, list: i32) -> ParseListRes = {
+  tok: Token = peek(copy p)
+  if tok_is_symbol(copy p, copy tok, ")") then { p: copy p, ast: copy a, list: copy list }
+  else parse_call_args_more(copy p, copy a, copy list)
+}
+
+parse_unary_neg(p: Parser, a: Ast, start: i32) -> ParseRes = {
+  p1: Parser = advance(copy p)
+  inner: ParseRes = parse_unary(p1, copy a)
+  un: AstIdx = add_unary(copy inner.ast, unary_op_neg(), copy inner.idx, copy start, copy inner.end)
+  expr: AstIdx = add_expr(copy un.ast, expr_tag_unary(), copy un.idx, copy start, copy inner.end)
+  { p: copy inner.p, ast: copy expr.ast, idx: copy expr.idx, start: copy start, end: copy inner.end }
+}
+
+parse_unary_not(p: Parser, a: Ast, start: i32) -> ParseRes = {
+  p1: Parser = advance(copy p)
+  inner: ParseRes = parse_unary(p1, copy a)
+  un: AstIdx = add_unary(copy inner.ast, unary_op_not(), copy inner.idx, copy start, copy inner.end)
+  expr: AstIdx = add_expr(copy un.ast, expr_tag_unary(), copy un.idx, copy start, copy inner.end)
+  { p: copy inner.p, ast: copy expr.ast, idx: copy expr.idx, start: copy start, end: copy inner.end }
+}
+
+parse_unary_ref(p: Parser, a: Ast, start: i32) -> ParseRes = {
+  p1: Parser = advance(copy p)
+  inner: ParseRes = parse_unary(p1, copy a)
+  expr: AstIdx = add_expr(copy inner.ast, expr_tag_ref(), copy inner.idx, copy start, copy inner.end)
+  { p: copy inner.p, ast: copy expr.ast, idx: copy expr.idx, start: copy start, end: copy inner.end }
+}
+
+parse_unary_copy(p: Parser, a: Ast, start: i32) -> ParseRes = {
+  p1: Parser = advance(copy p)
+  inner: ParseRes = parse_unary(p1, copy a)
+  expr: AstIdx = add_expr(copy inner.ast, expr_tag_copy(), copy inner.idx, copy start, copy inner.end)
+  { p: copy inner.p, ast: copy expr.ast, idx: copy expr.idx, start: copy start, end: copy inner.end }
+}
+
+parse_unary(p: Parser, a: Ast) -> ParseRes = {
+  tok: Token = peek(copy p)
+  if tok_is_symbol(copy p, copy tok, "-") then parse_unary_neg(copy p, copy a, copy tok.start)
+  else if tok_is_symbol(copy p, copy tok, "!") then parse_unary_not(copy p, copy a, copy tok.start)
+  else if tok_is_symbol(copy p, copy tok, "&") then parse_unary_ref(copy p, copy a, copy tok.start)
+  else if tok_is_keyword(copy p, copy tok, "copy") then parse_unary_copy(copy p, copy a, copy tok.start)
+  else parse_primary(copy p, copy a)
+}
+
+op_prec(sym: Str) -> i32 = {
+  if copy sym == "||" then 1
+  else if copy sym == "&&" then 2
+  else if copy sym == "==" then 3
+  else if copy sym == "<" then 4
+  else if copy sym == "+" || copy sym == "-" then 5
+  else if copy sym == "*" || copy sym == "/" then 6
+  else 0
+}
+
+op_tag(sym: Str) -> i32 = {
+  if copy sym == "*" then binary_op_mul()
+  else if copy sym == "/" then binary_op_div()
+  else if copy sym == "+" then binary_op_add()
+  else if copy sym == "-" then binary_op_sub()
+  else if copy sym == "<" then binary_op_lt()
+  else if copy sym == "==" then binary_op_eq()
+  else if copy sym == "&&" then binary_op_and()
+  else binary_op_or()
+}
+
+parse_expr(p: Parser, a: Ast, min_prec: i32) -> ParseRes = {
+  left: ParseRes = parse_unary(copy p, copy a)
+  parse_bin_tail(copy left.p, copy left.ast, copy left.idx, copy left.start, copy left.end, min_prec)
+}
+
+parse_bin_tail_more(
+  p: Parser, a: Ast, left_idx: i32, start: i32, end: i32, min_prec: i32, prec: i32, sym: Str
+) -> ParseRes = {
+  p1: Parser = advance(copy p)
+  right: ParseRes = parse_expr(p1, copy a, prec + 1)
+  bin: AstIdx = add_binary(copy right.ast, op_tag(sym), copy left_idx, copy right.idx, copy start, copy right.end)
+  expr: AstIdx = add_expr(copy bin.ast, expr_tag_binary(), copy bin.idx, copy start, copy right.end)
+  parse_bin_tail(copy right.p, copy expr.ast, copy expr.idx, copy start, copy right.end, copy min_prec)
+}
+
+parse_bin_tail_sym(
+  p: Parser, a: Ast, left_idx: i32, start: i32, end: i32, min_prec: i32
+) -> ParseRes = {
+  tok: Token = peek(copy p)
+  sym: Str = tok_text(copy p, tok)
+  prec: i32 = op_prec(copy sym)
+  if copy prec < copy min_prec || copy prec == 0 then { p: copy p, ast: copy a, idx: copy left_idx, start: copy start, end: copy end }
+  else parse_bin_tail_more(copy p, copy a, copy left_idx, copy start, copy end, copy min_prec, copy prec, copy sym)
+}
+
+parse_bin_tail(p: Parser, a: Ast, left_idx: i32, start: i32, end: i32, min_prec: i32) -> ParseRes = {
+  tok: Token = peek(copy p)
+  if !(copy tok.tag == tok_tag_symbol()) then { p: copy p, ast: copy a, idx: copy left_idx, start: copy start, end: copy end }
+  else parse_bin_tail_sym(copy p, copy a, copy left_idx, copy start, copy end, copy min_prec)
+}
+
+parse_binding(p: Parser, a: Ast, mutable: i32) -> ParseRes = {
+  name: ParseRes = parse_ident(copy p, copy a)
+  p1: Parser = advance(copy name.p) // ':'
+  ty: ParseRes = parse_type(p1, copy name.ast)
+  p2: Parser = advance(copy ty.p) // '='
+  val: ParseRes = parse_expr(p2, copy ty.ast, 0)
+  bind: AstIdx = add_binding(copy val.ast, mutable, copy name.idx, copy ty.idx, copy val.idx, copy name.start, copy val.end)
+  { p: copy val.p, ast: copy bind.ast, idx: copy bind.idx, start: copy name.start, end: copy val.end }
+}
+
+parse_params_more(p: Parser, a: Ast, list: i32) -> ParseListRes = {
+  tok: Token = peek(copy p)
+  mut_flag: i32 = if tok_is_keyword(copy p, copy tok, "mut") then 1 else 0
+  p1: Parser = if copy mut_flag == 1 then advance(copy p) else p
+  name: ParseRes = parse_ident(p1, copy a)
+  p2: Parser = advance(copy name.p) // ':'
+  ty: ParseRes = parse_type(p2, copy name.ast)
+  param: AstIdx = add_param(copy ty.ast, copy mut_flag, copy name.idx, copy ty.idx, copy name.start, copy ty.end)
+  list_res: ListRes = append_param_list(copy param.ast, copy list, copy param.idx)
+  next: Token = peek(copy ty.p)
+  if tok_is_symbol(copy ty.p, copy next, ",") then
+    parse_params(advance(copy ty.p), copy list_res.ast, copy list_res.list)
+  else parse_params(copy ty.p, copy list_res.ast, copy list_res.list)
+}
+
+parse_params(p: Parser, a: Ast, list: i32) -> ParseListRes = {
+  tok: Token = peek(copy p)
+  if tok_is_symbol(copy p, copy tok, ")") then { p: copy p, ast: copy a, list: copy list }
+  else parse_params_more(copy p, copy a, copy list)
+}
+
+parse_func_ret_arrow(p: Parser, a: Ast) -> RetInfo = {
+  ty: ParseRes = parse_type(advance(copy p), copy a)
+  { ret_idx: copy ty.idx, p: copy ty.p, ast: copy ty.ast, end_ret: copy ty.end }
+}
+
+parse_func_ret_none(p: Parser, a: Ast) -> RetInfo = {
+  { ret_idx: 0, p: copy p, ast: copy a, end_ret: 0 }
+}
+
+parse_func_ret(p: Parser, a: Ast) -> RetInfo = {
+  next: Token = peek(copy p)
+  if tok_is_symbol(copy p, copy next, "->") then parse_func_ret_arrow(copy p, copy a)
+  else parse_func_ret_none(copy p, copy a)
+}
+
+parse_decl_import(p: Parser, a: Ast, start: i32) -> ParseRes = {
+  mod: ParseRes = parse_ident(advance(copy p), copy a)
+  imp: AstIdx = add_import(copy mod.ast, copy mod.idx, copy start, copy mod.end)
+  decl: AstIdx = add_decl(copy imp.ast, decl_tag_import(), copy imp.idx, copy start, copy mod.end)
+  { p: copy mod.p, ast: copy decl.ast, idx: copy decl.idx, start: copy start, end: copy mod.end }
+}
+
+parse_decl_type(p: Parser, a: Ast, start: i32) -> ParseRes = {
+  name: ParseRes = parse_ident(advance(copy p), copy a)
+  p2: Parser = advance(copy name.p) // '='
+  ty: ParseRes = parse_type(p2, copy name.ast)
+  td: AstIdx = add_type_decl(copy ty.ast, copy name.idx, copy ty.idx, copy start, copy ty.end)
+  decl: AstIdx = add_decl(copy td.ast, decl_tag_type(), copy td.idx, copy start, copy ty.end)
+  { p: copy ty.p, ast: copy decl.ast, idx: copy decl.idx, start: copy start, end: copy ty.end }
+}
+
+parse_decl_global(p: Parser, a: Ast, start: i32) -> ParseRes = {
+  bind: ParseRes = parse_binding(advance(copy p), copy a, 0)
+  decl: AstIdx = add_decl(copy bind.ast, decl_tag_global(), copy bind.idx, copy start, copy bind.end)
+  { p: copy bind.p, ast: copy decl.ast, idx: copy decl.idx, start: copy start, end: copy bind.end }
+}
+
+parse_decl_let(p: Parser, a: Ast, start: i32) -> ParseRes = {
+  bind: ParseRes = parse_binding(advance(copy p), copy a, 0)
+  decl: AstIdx = add_decl(copy bind.ast, decl_tag_let(), copy bind.idx, copy start, copy bind.end)
+  { p: copy bind.p, ast: copy decl.ast, idx: copy decl.idx, start: copy start, end: copy bind.end }
+}
+
+parse_decl_func(p: Parser, a: Ast) -> ParseRes = {
+  name: ParseRes = parse_ident(copy p, copy a)
+  p1: Parser = advance(copy name.p) // '('
+  params: ParseListRes = parse_params(p1, copy name.ast, 0)
+  p2: Parser = advance(copy params.p) // ')'
+  ret: RetInfo = parse_func_ret(copy p2, copy params.ast)
+  p4: Parser = advance(copy ret.p) // '='
+  body: ParseRes = parse_expr(p4, copy ret.ast, 0)
+  fnn: AstIdx = add_func(copy body.ast, copy name.idx, copy params.list, copy ret.ret_idx, copy body.idx, copy name.start, copy body.end)
+  decl: AstIdx = add_decl(copy fnn.ast, decl_tag_func(), copy fnn.idx, copy name.start, copy body.end)
+  { p: copy body.p, ast: copy decl.ast, idx: copy decl.idx, start: copy name.start, end: copy body.end }
+}
+
+parse_decl(p: Parser, a: Ast) -> ParseRes = {
+  tok: Token = peek(copy p)
+  if tok_is_keyword(copy p, copy tok, "import") then parse_decl_import(copy p, copy a, copy tok.start)
+  else if tok_is_keyword(copy p, copy tok, "type") then parse_decl_type(copy p, copy a, copy tok.start)
+  else if tok_is_keyword(copy p, copy tok, "global") then parse_decl_global(copy p, copy a, copy tok.start)
+  else if tok_is_keyword(copy p, copy tok, "let") then parse_decl_let(copy p, copy a, copy tok.start)
+  else parse_decl_func(copy p, copy a)
+}
+
+parse_decls_more(p: Parser, a: Ast, list: i32) -> ParseListRes = {
+  d: ParseRes = parse_decl(copy p, copy a)
+  list_res: ListRes = append_decl_list(copy d.ast, copy list, copy d.idx)
+  parse_decls(copy d.p, copy list_res.ast, copy list_res.list)
+}
+
+parse_decls(p: Parser, a: Ast, list: i32) -> ParseListRes = {
+  tok: Token = peek(copy p)
+  if copy tok.tag == tok_tag_eof() || copy tok.tag == tok_tag_error() then { p: copy p, ast: copy a, list: copy list }
+  else parse_decls_more(copy p, copy a, copy list)
+}
+
 parse(src: Str) -> Program = {
   a: Ast = empty_ast()
-  { decls: 0, ast: a }
+  p: Parser = parser_init(copy src)
+  res: ParseListRes = parse_decls(copy p, copy a, 0)
+  { src: src, decls: copy res.list, ast: copy res.ast }
 }

@@ -1,0 +1,411 @@
+import ast
+
+type Token = { tag: i32, start: i32, end: i32, int_val: i32 }
+
+type TokTable = { buf: Bytes, count: i32 }
+
+type ScanState = { src: Str, i: i32, n: i32 }
+
+type TokenRes = { tok: Token, state: ScanState }
+
+type Parser = { src: Str, toks: TokTable, idx: i32 }
+
+type TableRes = { table: Table, idx: i32 }
+type ParseRes = { p: Parser, ast: Ast, idx: i32 }
+type ParseListRes = { p: Parser, ast: Ast, list: i32 }
+type ListRes = { ast: Ast, list: i32 }
+type AstIdx = { ast: Ast, idx: i32 }
+
+type Pair = { a: i32, b: i32 }
+type Triple = { a: i32, b: i32, c: i32 }
+type Quad = { a: i32, b: i32, c: i32, d: i32 }
+type Quint = { a: i32, b: i32, c: i32, d: i32, e: i32 }
+type Sext = { a: i32, b: i32, c: i32, d: i32, e: i32, f: i32 }
+type Sept = { a: i32, b: i32, c: i32, d: i32, e: i32, f: i32, g: i32 }
+
+empty_bytes() -> Bytes = bytes_slice(args(), 0, 0)
+
+empty_table() -> Table = { buf: empty_bytes(), count: 0 }
+
+empty_ast() -> Ast = {
+  decls: empty_table(),
+  imports: empty_table(),
+  bindings: empty_table(),
+  type_decls: empty_table(),
+  funcs: empty_table(),
+  params: empty_table(),
+  stmts: empty_table(),
+  assigns: empty_table(),
+  blocks: empty_table(),
+  exprs: empty_table(),
+  calls: empty_table(),
+  ifs: empty_table(),
+  record_lits: empty_table(),
+  field_inits: empty_table(),
+  unaries: empty_table(),
+  binaries: empty_table(),
+  literals: empty_table(),
+  types: empty_table(),
+  field_types: empty_table(),
+  paths: empty_table(),
+  idents: empty_table(),
+  decl_lists: empty_table(),
+  param_lists: empty_table(),
+  stmt_lists: empty_table(),
+  expr_lists: empty_table(),
+  field_init_lists: empty_table(),
+  field_type_lists: empty_table(),
+  ident_lists: empty_table()
+}
+
+ast_set_decls(a: Ast, t: Table) -> Ast = {
+  decls: t,
+  imports: a.imports,
+  bindings: a.bindings,
+  type_decls: a.type_decls,
+  funcs: a.funcs,
+  params: a.params,
+  stmts: a.stmts,
+  assigns: a.assigns,
+  blocks: a.blocks,
+  exprs: a.exprs,
+  calls: a.calls,
+  ifs: a.ifs,
+  record_lits: a.record_lits,
+  field_inits: a.field_inits,
+  unaries: a.unaries,
+  binaries: a.binaries,
+  literals: a.literals,
+  types: a.types,
+  field_types: a.field_types,
+  paths: a.paths,
+  idents: a.idents,
+  decl_lists: a.decl_lists,
+  param_lists: a.param_lists,
+  stmt_lists: a.stmt_lists,
+  expr_lists: a.expr_lists,
+  field_init_lists: a.field_init_lists,
+  field_type_lists: a.field_type_lists,
+  ident_lists: a.ident_lists
+}
+
+ast_set_imports(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: t, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_bindings(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: t, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_type_decls(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: t, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_funcs(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: t, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_params(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: t, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_stmts(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: t, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_assigns(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: t, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_blocks(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: t, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_exprs(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: t, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_calls(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: t, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_ifs(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: t, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_record_lits(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: t, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_field_inits(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: t, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_unaries(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: t, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_binaries(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: t, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_literals(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: t, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_types(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: t, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_field_types(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: t, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_paths(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: t, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_idents(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: t, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_decl_lists(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: t, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_param_lists(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: t, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_stmt_lists(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: t, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_expr_lists(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: t, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_field_init_lists(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: t, field_type_lists: a.field_type_lists, ident_lists: a.ident_lists }
+ast_set_field_type_lists(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: t, ident_lists: a.ident_lists }
+ast_set_ident_lists(a: Ast, t: Table) -> Ast = { decls: a.decls, imports: a.imports, bindings: a.bindings, type_decls: a.type_decls, funcs: a.funcs, params: a.params, stmts: a.stmts, assigns: a.assigns, blocks: a.blocks, exprs: a.exprs, calls: a.calls, ifs: a.ifs, record_lits: a.record_lits, field_inits: a.field_inits, unaries: a.unaries, binaries: a.binaries, literals: a.literals, types: a.types, field_types: a.field_types, paths: a.paths, idents: a.idents, decl_lists: a.decl_lists, param_lists: a.param_lists, stmt_lists: a.stmt_lists, expr_lists: a.expr_lists, field_init_lists: a.field_init_lists, field_type_lists: a.field_type_lists, ident_lists: t }
+
+tok_tag_eof() -> i32 = 1
+
+tok_tag_ident() -> i32 = 2
+
+tok_tag_int() -> i32 = 3
+
+tok_tag_str() -> i32 = 4
+
+tok_tag_keyword() -> i32 = 5
+
+tok_tag_symbol() -> i32 = 6
+
+tok_tag_error() -> i32 = 7
+
+token_make(tag: i32, start: i32, end: i32, int_val: i32) -> Token =
+  { tag: tag, start: start, end: end, int_val: int_val }
+
+scan_init(src: Str) -> ScanState =
+  { src: src, i: 0, n: str_len(copy src) }
+
+is_space(b: i32) -> bool =
+  b == 32 || b == 9 || b == 10 || b == 13
+
+is_alpha(b: i32) -> bool =
+  (!(b < 65) && !(90 < b)) || (!(b < 97) && !(122 < b)) || b == 95
+
+is_digit(b: i32) -> bool =
+  !(b < 48) && !(57 < b)
+
+is_ident_continue(b: i32) -> bool =
+  is_alpha(copy b) || is_digit(copy b)
+
+skip_line_comment(s: Str, i: i32, n: i32) -> i32 =
+  if !(copy i < copy n) then copy n else
+  if str_byte_at(copy s, copy i) == 10 then copy i
+  else skip_line_comment(copy s, copy i + 1, copy n)
+
+skip_space(s: Str, i: i32, n: i32) -> i32 =
+  if !(copy i < copy n) then copy n else
+  if is_space(str_byte_at(copy s, copy i)) then skip_space(copy s, copy i + 1, copy n)
+  else
+    if str_byte_at(copy s, copy i) == 47 && str_byte_at(copy s, copy i + 1) == 47 then
+      skip_space(copy s, skip_line_comment(copy s, copy i + 2, copy n), copy n)
+    else copy i
+
+scan_ident_end(s: Str, i: i32, n: i32) -> i32 =
+  if !(copy i < copy n) then copy i else
+  if is_ident_continue(str_byte_at(copy s, copy i)) then scan_ident_end(copy s, copy i + 1, copy n)
+  else copy i
+
+scan_number_end(s: Str, i: i32, n: i32) -> i32 =
+  if !(copy i < copy n) then copy i else
+  if is_digit(str_byte_at(copy s, copy i)) then scan_number_end(copy s, copy i + 1, copy n)
+  else copy i
+
+scan_string_end(s: Str, i: i32, n: i32) -> i32 =
+  if !(copy i < copy n) then copy n else
+  if str_byte_at(copy s, copy i) == 34 then copy i else
+  if str_byte_at(copy s, copy i) == 92 && copy i + 1 < copy n then
+    scan_string_end(copy s, copy i + 2, copy n)
+  else scan_string_end(copy s, copy i + 1, copy n)
+
+parse_int_loop(s: Str, i: i32, end: i32, acc: i32) -> i32 =
+  if !(copy i < copy end) then copy acc else {
+    b: i32 = str_byte_at(copy s, copy i)
+    digit: i32 = copy b - 48
+    next_acc: i32 = copy acc * 10 + copy digit
+    parse_int_loop(copy s, copy i + 1, copy end, next_acc)
+  }
+
+parse_int(s: Str, start: i32, end: i32) -> i32 =
+  parse_int_loop(copy s, copy start, copy end, 0)
+
+is_keyword(s: Str) -> bool =
+  s == "import" || s == "type" || s == "global" || s == "let" || s == "mut"
+  || s == "if" || s == "then" || s == "else" || s == "true" || s == "false"
+  || s == "copy"
+
+scan_symbol(s: Str, i: i32) -> TokenRes = {
+  b0: i32 = str_byte_at(copy s, copy i)
+  b1: i32 = str_byte_at(copy s, copy i + 1)
+  n: i32 = str_len(copy s)
+  mut out_tok: Token = token_make(tok_tag_error(), copy i, copy i, 0)
+  mut out_state: ScanState = { src: copy s, i: copy i, n: copy n }
+  if b0 == 45 && b1 == 62 then {
+    tok: Token = token_make(tok_tag_symbol(), copy i, copy i + 2, 0)
+    out_tok = tok
+    out_state = { src: copy s, i: copy i + 2, n: copy n }
+  } else if b0 == 61 && b1 == 61 then {
+    tok: Token = token_make(tok_tag_symbol(), copy i, copy i + 2, 0)
+    out_tok = tok
+    out_state = { src: copy s, i: copy i + 2, n: copy n }
+  } else if b0 == 38 && b1 == 38 then {
+    tok: Token = token_make(tok_tag_symbol(), copy i, copy i + 2, 0)
+    out_tok = tok
+    out_state = { src: copy s, i: copy i + 2, n: copy n }
+  } else if b0 == 124 && b1 == 124 then {
+    tok: Token = token_make(tok_tag_symbol(), copy i, copy i + 2, 0)
+    out_tok = tok
+    out_state = { src: copy s, i: copy i + 2, n: copy n }
+  } else {
+    tok: Token = token_make(tok_tag_symbol(), copy i, copy i + 1, 0)
+    out_tok = tok
+    out_state = { src: copy s, i: copy i + 1, n: copy n }
+  }
+  { tok: out_tok, state: out_state }
+}
+
+next_token(state: ScanState) -> TokenRes = {
+  s: Str = state.src
+  n: i32 = state.n
+  i0: i32 = skip_space(copy s, state.i, copy n)
+  mut out_tok: Token = token_make(tok_tag_error(), copy i0, copy i0, 0)
+  mut out_state: ScanState = { src: copy s, i: copy i0, n: copy n }
+  if !(copy i0 < copy n) then {
+    tok: Token = token_make(tok_tag_eof(), copy i0, copy i0, 0)
+    out_tok = tok
+    out_state = { src: copy s, i: copy i0, n: copy n }
+  } else {
+    b: i32 = str_byte_at(copy s, copy i0)
+    if is_alpha(copy b) then {
+      end: i32 = scan_ident_end(copy s, copy i0 + 1, copy n)
+      text: Str = str_slice(copy s, copy i0, copy end - copy i0)
+      tag: i32 = if is_keyword(copy text) then tok_tag_keyword() else tok_tag_ident()
+      tok: Token = token_make(tag, copy i0, copy end, 0)
+      out_tok = tok
+      out_state = { src: copy s, i: copy end, n: copy n }
+    } else if is_digit(copy b) then {
+      end: i32 = scan_number_end(copy s, copy i0 + 1, copy n)
+      val: i32 = parse_int(copy s, copy i0, copy end)
+      tok: Token = token_make(tok_tag_int(), copy i0, copy end, val)
+      out_tok = tok
+      out_state = { src: copy s, i: copy end, n: copy n }
+    } else if b == 34 then {
+      end_q: i32 = scan_string_end(copy s, copy i0 + 1, copy n)
+      if !(copy end_q < copy n) then {
+        tok: Token = token_make(tok_tag_error(), copy i0, copy n, 0)
+        out_tok = tok
+        out_state = { src: copy s, i: copy n, n: copy n }
+      } else {
+        tok: Token = token_make(tok_tag_str(), copy i0 + 1, copy end_q, 0)
+        out_tok = tok
+        out_state = { src: copy s, i: copy end_q + 1, n: copy n }
+      }
+    } else {
+      res: TokenRes = scan_symbol(copy s, copy i0)
+      out_tok = copy res.tok
+      out_state = copy res.state
+    }
+  }
+  { tok: out_tok, state: out_state }
+}
+
+encode_i32_le(buf: Bytes, x: i32) -> Bytes = {
+  b0: i32 = copy x - (copy x / 256) * 256
+  q1: i32 = copy x / 256
+  b1: i32 = copy q1 - (copy q1 / 256) * 256
+  q2: i32 = copy q1 / 256
+  b2: i32 = copy q2 - (copy q2 / 256) * 256
+  q3: i32 = copy q2 / 256
+  b3: i32 = copy q3 - (copy q3 / 256) * 256
+  buf1: Bytes = bytes_push(copy buf, copy b0)
+  buf2: Bytes = bytes_push(copy buf1, copy b1)
+  buf3: Bytes = bytes_push(copy buf2, copy b2)
+  bytes_push(copy buf3, copy b3)
+}
+
+decode_i32_le(buf: Bytes, off: i32) -> i32 = {
+  b0: i32 = bytes_at(copy buf, copy off)
+  b1: i32 = bytes_at(copy buf, copy off + 1)
+  b2: i32 = bytes_at(copy buf, copy off + 2)
+  b3: i32 = bytes_at(copy buf, copy off + 3)
+  copy b0 + copy b1 * 256 + copy b2 * 65536 + copy b3 * 16777216
+}
+
+table_append2(tbl: Table, stride: i32, a: i32, b: i32) -> TableRes = {
+  buf1: Bytes = encode_i32_le(tbl.buf, a)
+  buf2: Bytes = encode_i32_le(buf1, b)
+  idx: i32 = tbl.count + 1
+  { table: { buf: buf2, count: idx }, idx: idx }
+}
+
+table_append3(tbl: Table, stride: i32, a: i32, b: i32, c: i32) -> TableRes = {
+  buf1: Bytes = encode_i32_le(tbl.buf, a)
+  buf2: Bytes = encode_i32_le(buf1, b)
+  buf3: Bytes = encode_i32_le(buf2, c)
+  idx: i32 = tbl.count + 1
+  { table: { buf: buf3, count: idx }, idx: idx }
+}
+
+table_append4(tbl: Table, stride: i32, a: i32, b: i32, c: i32, d: i32) -> TableRes = {
+  buf1: Bytes = encode_i32_le(tbl.buf, a)
+  buf2: Bytes = encode_i32_le(buf1, b)
+  buf3: Bytes = encode_i32_le(buf2, c)
+  buf4: Bytes = encode_i32_le(buf3, d)
+  idx: i32 = tbl.count + 1
+  { table: { buf: buf4, count: idx }, idx: idx }
+}
+
+table_append5(
+  tbl: Table, stride: i32, a: i32, b: i32, c: i32, d: i32, e: i32
+) -> TableRes = {
+  buf1: Bytes = encode_i32_le(tbl.buf, a)
+  buf2: Bytes = encode_i32_le(buf1, b)
+  buf3: Bytes = encode_i32_le(buf2, c)
+  buf4: Bytes = encode_i32_le(buf3, d)
+  buf5: Bytes = encode_i32_le(buf4, e)
+  idx: i32 = tbl.count + 1
+  { table: { buf: buf5, count: idx }, idx: idx }
+}
+
+table_append6(
+  tbl: Table, stride: i32, a: i32, b: i32, c: i32, d: i32, e: i32, f: i32
+) -> TableRes = {
+  buf1: Bytes = encode_i32_le(tbl.buf, a)
+  buf2: Bytes = encode_i32_le(buf1, b)
+  buf3: Bytes = encode_i32_le(buf2, c)
+  buf4: Bytes = encode_i32_le(buf3, d)
+  buf5: Bytes = encode_i32_le(buf4, e)
+  buf6: Bytes = encode_i32_le(buf5, f)
+  idx: i32 = tbl.count + 1
+  { table: { buf: buf6, count: idx }, idx: idx }
+}
+
+table_get2(tbl: Table, stride: i32, idx: i32) -> Pair = {
+  off: i32 = (copy idx - 1) * copy stride
+  a: i32 = decode_i32_le(tbl.buf, copy off)
+  b: i32 = decode_i32_le(tbl.buf, copy off + 4)
+  { a: a, b: b }
+}
+
+table_get3(tbl: Table, stride: i32, idx: i32) -> Triple = {
+  off: i32 = (copy idx - 1) * copy stride
+  a: i32 = decode_i32_le(tbl.buf, copy off)
+  b: i32 = decode_i32_le(tbl.buf, copy off + 4)
+  c: i32 = decode_i32_le(tbl.buf, copy off + 8)
+  { a: a, b: b, c: c }
+}
+
+table_get4(tbl: Table, stride: i32, idx: i32) -> Quad = {
+  off: i32 = (copy idx - 1) * copy stride
+  a: i32 = decode_i32_le(tbl.buf, copy off)
+  b: i32 = decode_i32_le(tbl.buf, copy off + 4)
+  c: i32 = decode_i32_le(tbl.buf, copy off + 8)
+  d: i32 = decode_i32_le(tbl.buf, copy off + 12)
+  { a: a, b: b, c: c, d: d }
+}
+
+table_get5(tbl: Table, stride: i32, idx: i32) -> Quint = {
+  off: i32 = (copy idx - 1) * copy stride
+  a: i32 = decode_i32_le(tbl.buf, copy off)
+  b: i32 = decode_i32_le(tbl.buf, copy off + 4)
+  c: i32 = decode_i32_le(tbl.buf, copy off + 8)
+  d: i32 = decode_i32_le(tbl.buf, copy off + 12)
+  e: i32 = decode_i32_le(tbl.buf, copy off + 16)
+  { a: a, b: b, c: c, d: d, e: e }
+}
+
+table_get6(tbl: Table, stride: i32, idx: i32) -> Sext = {
+  off: i32 = (copy idx - 1) * copy stride
+  a: i32 = decode_i32_le(tbl.buf, copy off)
+  b: i32 = decode_i32_le(tbl.buf, copy off + 4)
+  c: i32 = decode_i32_le(tbl.buf, copy off + 8)
+  d: i32 = decode_i32_le(tbl.buf, copy off + 12)
+  e: i32 = decode_i32_le(tbl.buf, copy off + 16)
+  f: i32 = decode_i32_le(tbl.buf, copy off + 20)
+  { a: a, b: b, c: c, d: d, e: e, f: f }
+}
+
+table_get7(tbl: Table, stride: i32, idx: i32) -> Sept = {
+  off: i32 = (copy idx - 1) * copy stride
+  a: i32 = decode_i32_le(tbl.buf, copy off)
+  b: i32 = decode_i32_le(tbl.buf, copy off + 4)
+  c: i32 = decode_i32_le(tbl.buf, copy off + 8)
+  d: i32 = decode_i32_le(tbl.buf, copy off + 12)
+  e: i32 = decode_i32_le(tbl.buf, copy off + 16)
+  f: i32 = decode_i32_le(tbl.buf, copy off + 20)
+  g: i32 = decode_i32_le(tbl.buf, copy off + 24)
+  { a: a, b: b, c: c, d: d, e: e, f: f, g: g }
+}
+
+list_cons(tbl: Table, head: i32, tail: i32) -> TableRes =
+  table_append2(copy tbl, list_stride(), head, tail)
+
+list_head(tbl: Table, idx: i32) -> i32 =
+  table_get2(tbl, list_stride(), idx).a
+
+list_tail(tbl: Table, idx: i32) -> i32 =
+  table_get2(tbl, list_stride(), idx).b
+
+list_append(tbl: Table, list_idx: i32, item: i32) -> TableRes = {
+  if list_idx == 0 then list_cons(copy tbl, item, 0)

@@ -73,7 +73,9 @@ fn parse_args(args: Vec<String>) -> Result<Mode, CliError> {
             other if file.is_none() => {
                 file = Some(PathBuf::from(other));
             }
-            _ => return Err(CliError::Message("unexpected arguments".into())),
+            _ => {
+                // Ignore extra args so they can be consumed by the program via args().
+            }
         }
     }
 

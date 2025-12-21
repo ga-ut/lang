@@ -28,6 +28,7 @@ This guide explains how to work on the Gaut language workspace and contribute sa
 
 ## Planning & Execution
 - When asked to proceed with multi-step work, always decompose into independently executable units, assign a clear priority order, and record the plan in a new `plans/*.md` file before implementation.
+- When there are decisions/questions to ask or a plan is formulated, record the details in a separate `plans/*.md` file and explicitly ask the user to confirm or choose before proceeding.
 
 ## Commit & Pull Request Guidelines
 - Commits: short imperative summaries (e.g., `Add move checker coverage`); group related changes by crate or feature.

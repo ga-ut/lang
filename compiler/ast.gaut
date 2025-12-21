@@ -1,5 +1,6 @@
 // Core AST tables for the Gaut compiler (index-based storage).
 // Each table stores fixed-size records encoded in Bytes; indices are 1-based, 0 means empty.
+// String data is referenced by (start, end) spans into Program.src.
 
 type Table = { buf: Bytes, count: i32 }
 
@@ -34,4 +35,71 @@ type Ast = {
   ident_lists: Table
 }
 
-type Program = { decls: i32, ast: Ast }
+type Program = { src: Str, decls: i32, ast: Ast }
+
+// Tag values.
+decl_tag_import() -> i32 = 1
+decl_tag_global() -> i32 = 2
+decl_tag_let() -> i32 = 3
+decl_tag_type() -> i32 = 4
+decl_tag_func() -> i32 = 5
+
+stmt_tag_binding() -> i32 = 1
+stmt_tag_assign() -> i32 = 2
+stmt_tag_expr() -> i32 = 3
+
+expr_tag_literal() -> i32 = 1
+expr_tag_path() -> i32 = 2
+expr_tag_copy() -> i32 = 3
+expr_tag_ref() -> i32 = 4
+expr_tag_call() -> i32 = 5
+expr_tag_if() -> i32 = 6
+expr_tag_block() -> i32 = 7
+expr_tag_record() -> i32 = 8
+expr_tag_unary() -> i32 = 9
+expr_tag_binary() -> i32 = 10
+
+type_tag_named() -> i32 = 1
+type_tag_ref() -> i32 = 2
+type_tag_record() -> i32 = 3
+
+literal_tag_int() -> i32 = 1
+literal_tag_bool() -> i32 = 2
+literal_tag_str() -> i32 = 3
+literal_tag_unit() -> i32 = 4
+
+unary_op_neg() -> i32 = 1
+unary_op_not() -> i32 = 2
+
+binary_op_mul() -> i32 = 1
+binary_op_div() -> i32 = 2
+binary_op_add() -> i32 = 3
+binary_op_sub() -> i32 = 4
+binary_op_lt() -> i32 = 5
+binary_op_eq() -> i32 = 6
+binary_op_and() -> i32 = 7
+binary_op_or() -> i32 = 8
+
+// Record layouts (stride in bytes, 4 bytes per i32).
+decl_stride() -> i32 = 16          // tag, data, start, end
+import_stride() -> i32 = 12        // module_ident, start, end
+binding_stride() -> i32 = 24       // mutable, name, ty, value, start, end
+type_decl_stride() -> i32 = 16     // name, ty, start, end
+func_stride() -> i32 = 24          // name, params, ret, body, start, end
+param_stride() -> i32 = 20         // mutable, name, ty, start, end
+stmt_stride() -> i32 = 16          // tag, data, start, end
+assign_stride() -> i32 = 16        // target, value, start, end
+block_stride() -> i32 = 16         // stmts, tail, start, end
+expr_stride() -> i32 = 16          // tag, data, start, end
+call_stride() -> i32 = 16          // callee, args, start, end
+if_stride() -> i32 = 20            // cond, then, else, start, end
+record_lit_stride() -> i32 = 12    // fields, start, end
+field_init_stride() -> i32 = 16    // name, value, start, end
+unary_stride() -> i32 = 16         // op, expr, start, end
+binary_stride() -> i32 = 20        // op, left, right, start, end
+literal_stride() -> i32 = 20       // tag, int_val, bool_val, str_start, str_end
+type_stride() -> i32 = 24          // tag, name, inner, fields, start, end
+field_type_stride() -> i32 = 16    // name, ty, start, end
+path_stride() -> i32 = 12          // idents, start, end
+ident_stride() -> i32 = 8          // start, end
+list_stride() -> i32 = 8           // head, tail

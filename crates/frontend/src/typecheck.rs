@@ -615,6 +615,12 @@ impl TypeChecker {
             .ok_or_else(|| TypeError::UnknownFunc(name.clone()))?
             .clone();
         if sig.params.len() != call.args.len() {
+            eprintln!(
+                "typecheck arity mismatch: {} expected {}, found {}",
+                name,
+                sig.params.len(),
+                call.args.len()
+            );
             return Err(TypeError::ArityMismatch {
                 expected: sig.params.len(),
                 found: call.args.len(),

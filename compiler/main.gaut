@@ -23,46 +23,47 @@ read_line(s: Str, i: i32) -> LineRes = {
   else read_line_at(copy s, copy i, copy n)
 }
 
-type ArgParse = { emit_c: Str, input: Str }
+type ArgParse = { emit_c: Str, input: Str, smoke: bool }
 
-parse_args_emit_c(s: Str, i: i32, emit_c: Str, input: Str) -> ArgParse = {
+parse_args_emit_c(s: Str, i: i32, emit_c: Str, input: Str, smoke: bool) -> ArgParse = {
   p: LineRes = read_line(copy s, copy i)
   ok: bool = copy p.ok
   next_p: i32 = copy p.next
   out: Str = if copy ok then p.line else emit_c
   next_i: i32 = if copy ok then next_p else copy i
-  parse_args_loop(copy s, next_i, out, input)
+  parse_args_loop(copy s, next_i, out, input, smoke)
 }
 
-parse_args_build(s: Str, i: i32, emit_c: Str, input: Str) -> ArgParse = {
+parse_args_build(s: Str, i: i32, emit_c: Str, input: Str, smoke: bool) -> ArgParse = {
   p: LineRes = read_line(copy s, copy i)
   ok: bool = copy p.ok
   next_p: i32 = copy p.next
   next_i: i32 = if copy ok then next_p else copy i
-  parse_args_loop(copy s, next_i, emit_c, input)
+  parse_args_loop(copy s, next_i, emit_c, input, smoke)
 }
 
 parse_args_positional(
-  s: Str, a: Str, next_i: i32, emit_c: Str, input: Str
+  s: Str, a: Str, next_i: i32, emit_c: Str, input: Str, smoke: bool
 ) -> ArgParse = {
   is_flag: bool = 0 < str_len(copy a) && str_byte_at(copy a, 0) == 45
   new_input: Str = if copy input == "" && !is_flag then a else copy input
-  parse_args_loop(copy s, copy next_i, emit_c, new_input)
+  parse_args_loop(copy s, copy next_i, emit_c, new_input, smoke)
 }
 
-parse_args_dispatch(s: Str, r: LineRes, emit_c: Str, input: Str) -> ArgParse = {
+parse_args_dispatch(s: Str, r: LineRes, emit_c: Str, input: Str, smoke: bool) -> ArgParse = {
   next_i: i32 = copy r.next
   a: Str = r.line
-  if copy a == "--emit-c" then parse_args_emit_c(copy s, copy next_i, copy emit_c, copy input)
-  else if copy a == "--build" then parse_args_build(copy s, copy next_i, copy emit_c, copy input)
-  else parse_args_positional(copy s, a, copy next_i, copy emit_c, copy input)
+  if copy a == "--emit-c" then parse_args_emit_c(copy s, copy next_i, copy emit_c, copy input, copy smoke)
+  else if copy a == "--build" then parse_args_build(copy s, copy next_i, copy emit_c, copy input, copy smoke)
+  else if copy a == "--smoke-parser" then parse_args_loop(copy s, copy next_i, emit_c, input, true)
+  else parse_args_positional(copy s, a, copy next_i, copy emit_c, copy input, copy smoke)
 }
 
-parse_args_loop(s: Str, i: i32, emit_c: Str, input: Str) -> ArgParse = {
+parse_args_loop(s: Str, i: i32, emit_c: Str, input: Str, smoke: bool) -> ArgParse = {
   r: LineRes = read_line(copy s, i)
   ok: bool = copy r.ok
-  if !ok then { emit_c: copy emit_c, input: copy input }
-  else parse_args_dispatch(copy s, r, emit_c, input)
+  if !ok then { emit_c: copy emit_c, input: copy input, smoke: smoke }
+  else parse_args_dispatch(copy s, r, emit_c, input, smoke)
 }
 
 parse_args() -> ArgParse = {
@@ -72,15 +73,21 @@ parse_args() -> ArgParse = {
   ok: bool = copy first.ok
   next_i: i32 = copy first.next
   start: i32 = if ok then next_i else 0
-  parse_args_loop(copy argv, start, "", "")
+  parse_args_loop(copy argv, start, "", "", false)
 }
 
 main() -> Unit = {
   a: ArgParse = parse_args()
   emit_c: Str = copy a.emit_c
+  if copy a.smoke then {
+    ok1: bool = smoke_table_roundtrip() == 1
+    ok2: bool = smoke_parse_min() == 1
+    if ok1 && ok2 then println("parser smoke ok") else println("parser smoke fail")
+  } else {
   out: Str = if copy emit_c == "" then "target/self_host/gautc2.stage1.c" else emit_c
 
   // TODO: 실제 구현에서는 input을 read_file로 읽고 parse/typecheck/cgen 수행.
   c: Str = emit_stub()
-  write_file(out, c)
+  write_file(copy out, copy c)
+  }
 }
