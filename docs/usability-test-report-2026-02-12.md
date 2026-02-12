@@ -70,3 +70,15 @@
 4. `SELF_HOST_COMPILER=1 ./scripts/self_host.sh`
 5. `SELF_HOST_COMPILER=1 SELF_HOST_COMPILER_STRICT=1 ./scripts/self_host.sh`
 6. `cargo test`
+
+
+### 시나리오 G: self-hosted compiler 입력 검증(누락/읽기 실패)
+- 명령:
+  - `cargo run -p cli -- --emit-c target/usability/gautc_test.c --build target/usability/gautc_test compiler/main.gaut`
+  - `./target/usability/gautc_test --emit-c target/usability/out_missing.c`
+  - `./target/usability/gautc_test --emit-c target/usability/out_bad.c does_not_exist.gaut`
+- 기대: 입력 누락/읽기 실패 시 성공처럼 진행하지 않고 실패 코드를 반환하며 출력 C 파일을 남기지 않음
+- 결과:
+  - 누락 입력: exit code `2`
+  - 읽기 실패: exit code `3`
+  - `out_missing.c`, `out_bad.c` 미생성 확인

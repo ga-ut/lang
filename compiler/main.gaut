@@ -75,15 +75,24 @@ parse_args() -> ArgParse = {
   parse_args_loop(copy argv, start, "", "")
 }
 
-main() -> Unit = {
+compile_source(src: Str, out: Str) -> i32 = {
+  prog: Program = parse(copy src)
+  checked: Program = check(prog)
+  c: Str = emit(checked)
+  write_file(copy out, c)
+  0
+}
+
+compile_input(input: Str, out: Str) -> i32 = {
+  src: Str = read_file(copy input)
+  if str_len(copy src) == 0 then 3 else compile_source(copy src, copy out)
+}
+
+main() -> i32 = {
   a: ArgParse = parse_args()
   input: Str = copy a.input
   emit_c: Str = copy a.emit_c
   out: Str = if copy emit_c == "" then "target/self_host/gautc2.stage1.c" else emit_c
 
-  src: Str = if copy input == "" then "" else read_file(copy input)
-  prog: Program = parse(copy src)
-  checked: Program = check(prog)
-  c: Str = emit(checked)
-  write_file(copy out, c)
+  if copy input == "" then 2 else compile_input(copy input, copy out)
 }
