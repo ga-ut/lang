@@ -77,10 +77,13 @@ parse_args() -> ArgParse = {
 
 main() -> Unit = {
   a: ArgParse = parse_args()
+  input: Str = copy a.input
   emit_c: Str = copy a.emit_c
   out: Str = if copy emit_c == "" then "target/self_host/gautc2.stage1.c" else emit_c
 
-  // TODO: 실제 구현에서는 input을 read_file로 읽고 parse/typecheck/cgen 수행.
-  c: Str = emit_stub()
-  write_file(out, c)
+  src: Str = if copy input == "" then "" else read_file(copy input)
+  prog: Program = parse(copy src)
+  checked: Program = check(prog)
+  c: Str = emit(checked)
+  write_file(copy out, c)
 }

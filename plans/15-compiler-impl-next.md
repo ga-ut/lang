@@ -1,5 +1,16 @@
 목표: Gaut로 작성된 `compiler/`가 실제로 “입력 .gaut → C 생성(→ 선택적으로 clang 빌드)”까지 수행하고, `SELF_HOST_COMPILER_STRICT=1`에서 stage0→stage1→stage2 고정점을 통과한다.
 
+진행 현황(2026-02-12)
+- [x] (6) `compiler/main.gaut`의 TODO 제거: `--emit-c`/입력 인자 파싱 결과를 사용해 `read_file -> parse -> check -> emit -> write_file` 파이프라인 연결.
+- [x] (3-준비) `compiler/parser.gaut` 스텁 고정값(`decls=0`) 제거: 입력 길이(`str_len`)를 Program 메타로 반영해 입력 의존적인 결정적 출력으로 전환.
+- [ ] (1)~(5) Gaut 컴파일러 본체(실제 AST/파서/타입체커/C 생성기) 구현.
+- [ ] (7) strict self-host 고정점 달성.
+
+추가 진행 필요 항목
+1. 현재 `parser/check/emit`가 스텁이므로, 다음 피처 단위는 (2) AST 실체화 + (3) 토크나이저/표현식 파서 이식으로 묶어 진행.
+2. 그 다음 (4) 타입체커 최소 규칙 이식 후, (5) C 생성기를 Rust `crates/cgen` subset과 동등하게 확장.
+3. 마지막으로 `SELF_HOST_COMPILER_STRICT=1` 경로에서 stage0/1/2 hash 고정점을 CI 스크립트로 고정.
+
 전제(현재 상태)
 - `compiler/*.gaut`는 AST/파서/타입체커/cgen/main이 스텁이며, 토큰화/파싱에 필요한 문자열/바이트 조작 프리미티브가 부족하다.
 - self-host 루프는 stage0→stage1→stage2 비교/빌드 경로가 준비되어 있으나, 컴파일러가 유효한 C를 내지 못해 stage2 빌드가 실패한다.
