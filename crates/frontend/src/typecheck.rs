@@ -283,9 +283,15 @@ impl TypeChecker {
             let mut deferred: Vec<FuncDecl> = Vec::new();
             let mut progressed = false;
             for func in pending {
+                let scopes_before = self.scopes.clone();
+                let funcs_before = self.funcs.clone();
                 match self.check_func(&func) {
                     Ok(()) => progressed = true,
-                    Err(TypeError::UnknownFuncReturn(_)) => deferred.push(func),
+                    Err(TypeError::UnknownFuncReturn(_)) => {
+                        self.scopes = scopes_before;
+                        self.funcs = funcs_before;
+                        deferred.push(func);
+                    }
                     Err(err) => return Err(err),
                 }
             }
@@ -840,6 +846,21 @@ mod tests {
         main() = {
           out: i32 = id(7)
           copy out
+        }
+
+        id(x: i32) = x
+        "#;
+        check_ok(src);
+    }
+
+    #[test]
+    fn success_forward_call_retry_does_not_leak_moves() {
+        let src = r#"
+        global g: i32 = 1
+
+        main() = {
+          x: i32 = g
+          id(0)
         }
 
         id(x: i32) = x
