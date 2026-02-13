@@ -458,8 +458,11 @@ fn emit_builtin_shims(
         .map_err(|e| CgenError::Fmt(e.to_string()))?;
     }
     if !func_names.contains("str_len") {
-        writeln!(out, "int32_t str_len(char* s) {{ return gaut_str_len(s); }}")
-            .map_err(|e| CgenError::Fmt(e.to_string()))?;
+        writeln!(
+            out,
+            "int32_t str_len(char* s) {{ return gaut_str_len(s); }}"
+        )
+        .map_err(|e| CgenError::Fmt(e.to_string()))?;
     }
     if !func_names.contains("str_byte_at") {
         writeln!(
@@ -808,10 +811,8 @@ fn emit_expr(
             Literal::Int(i) => write!(out, "{}", i).map_err(|e| CgenError::Fmt(e.to_string()))?,
             Literal::Bool(b) => write!(out, "{}", if *b { "true" } else { "false" })
                 .map_err(|e| CgenError::Fmt(e.to_string()))?,
-            Literal::Str(s) => {
-                write!(out, "\"{}\"", escape_c_string(s))
-                    .map_err(|e| CgenError::Fmt(e.to_string()))?
-            }
+            Literal::Str(s) => write!(out, "\"{}\"", escape_c_string(s))
+                .map_err(|e| CgenError::Fmt(e.to_string()))?,
             Literal::Unit => write!(out, "0").map_err(|e| CgenError::Fmt(e.to_string()))?,
         },
         Expr::Path(p) => {
@@ -1172,6 +1173,21 @@ mod tests {
         assert!(c.contains("int main(int argc, char** argv)"));
         assert!(c.contains("gaut_arena __arena"));
         assert!(c.contains("add(x, y)"));
+    }
+
+    #[test]
+    fn inferred_return_function_signature() {
+        let src = r#"
+        id(x: i32) = x
+
+        main() = {
+          out: i32 = id(7)
+          out
+        }
+        "#;
+        let c = generate_c_from_source(src).unwrap();
+        assert!(c.contains("int32_t id(int32_t x);"));
+        assert!(c.contains("int32_t id(int32_t x) {"));
     }
 
     #[test]
