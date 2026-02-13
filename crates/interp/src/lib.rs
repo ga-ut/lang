@@ -679,6 +679,19 @@ mod tests {
     }
 
     #[test]
+    fn inferred_return_function_eval() {
+        let src = r#"
+        id(x: i32) = x
+
+        main() = {
+          id(42)
+        }
+        "#;
+        let v = run(src);
+        assert_eq!(v, Value::Int(42));
+    }
+
+    #[test]
     fn if_block_and_move() {
         let src = r#"
         main() = {

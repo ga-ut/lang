@@ -12,6 +12,8 @@ pub enum TypeError {
     UnknownType(String),
     #[error("unknown function {0}")]
     UnknownFunc(String),
+    #[error("cannot infer return type for function {0} yet")]
+    UnknownFuncReturn(String),
     #[error("type mismatch: expected {expected:?}, found {found:?}")]
     TypeMismatch { expected: Type, found: Type },
     #[error("function arity mismatch: expected {expected}, found {found}")]
@@ -264,19 +266,39 @@ impl TypeChecker {
         // global scope
         self.push_scope();
 
-        // pass 2: check decls
+        let mut funcs_to_check: Vec<FuncDecl> = Vec::new();
         for decl in &program.decls {
             match decl {
                 Decl::Import(_) => {}
                 Decl::Type(_) => {}
-                Decl::Func(f) => {
-                    self.check_func(f)?;
-                }
+                Decl::Func(f) => funcs_to_check.push(f.clone()),
                 Decl::Global(b) | Decl::Let(b) => {
                     self.check_binding(b, 0)?;
                 }
             }
         }
+
+        let mut pending = funcs_to_check;
+        while !pending.is_empty() {
+            let mut deferred: Vec<FuncDecl> = Vec::new();
+            let mut progressed = false;
+            for func in pending {
+                match self.check_func(&func) {
+                    Ok(()) => progressed = true,
+                    Err(TypeError::UnknownFuncReturn(_)) => deferred.push(func),
+                    Err(err) => return Err(err),
+                }
+            }
+            if !progressed {
+                let unresolved = deferred
+                    .first()
+                    .map(|f| f.name.0.clone())
+                    .unwrap_or_else(|| "<unknown>".to_string());
+                return Err(TypeError::UnknownFuncReturn(unresolved));
+            }
+            pending = deferred;
+        }
+
         Ok(())
     }
 
@@ -289,30 +311,34 @@ impl TypeChecker {
             .get(&func.name.0)
             .cloned()
             .ok_or_else(|| TypeError::UnknownFunc(func.name.0.clone()))?;
-        self.push_scope();
-        let depth = self.current_depth();
-        for p in &sig.params {
-            let ty = self.resolve_type(&p.ty)?;
-            self.insert_var(p.name.0.clone(), ty, p.mutable, depth);
-        }
-        let body_info = match &func.body {
-            Expr::Block(b) => self.check_block(b, true)?,
-            other => self.check_expr(other, ValueMode::Move)?,
-        };
-        self.ensure_not_escape(&body_info, depth)?;
 
-        let inferred_ret = if let Some(ref annotated) = sig.ret {
-            self.ensure_type(annotated, &body_info.ty)?;
-            annotated.clone()
-        } else {
-            body_info.ty.clone()
-        };
-        // update function signature with inferred return for downstream calls
-        if let Some(entry) = self.funcs.get_mut(&func.name.0) {
-            entry.ret = Some(inferred_ret);
-        }
+        self.push_scope();
+        let result = (|| {
+            let depth = self.current_depth();
+            for p in &sig.params {
+                let ty = self.resolve_type(&p.ty)?;
+                self.insert_var(p.name.0.clone(), ty, p.mutable, depth);
+            }
+            let body_info = match &func.body {
+                Expr::Block(b) => self.check_block(b, true)?,
+                other => self.check_expr(other, ValueMode::Move)?,
+            };
+            self.ensure_not_escape(&body_info, depth)?;
+
+            let inferred_ret = if let Some(ref annotated) = sig.ret {
+                self.ensure_type(annotated, &body_info.ty)?;
+                annotated.clone()
+            } else {
+                body_info.ty.clone()
+            };
+            // update function signature with inferred return for downstream calls
+            if let Some(entry) = self.funcs.get_mut(&func.name.0) {
+                entry.ret = Some(inferred_ret);
+            }
+            Ok(())
+        })();
         self.pop_scope();
-        Ok(())
+        result
     }
 
     fn check_binding(&mut self, binding: &Binding, depth: usize) -> Result<(), TypeError> {
@@ -555,7 +581,10 @@ impl TypeChecker {
             let pty = self.resolve_type(&param.ty)?;
             self.ensure_type(&pty, &arg.ty)?;
         }
-        let ret_ty = sig.ret.clone().unwrap_or(Type::Named(Ident("Unit".into())));
+        let ret_ty = sig
+            .ret
+            .clone()
+            .ok_or_else(|| TypeError::UnknownFuncReturn(name.clone()))?;
         Ok(TyInfo {
             ty: ret_ty.clone(),
             origin_depth: self.current_depth(),
@@ -800,6 +829,32 @@ mod tests {
           y: i32 = 2
           sum: i32 = add(x, y)
           copy sum
+        }
+        "#;
+        check_ok(src);
+    }
+
+    #[test]
+    fn success_forward_call_with_inferred_return() {
+        let src = r#"
+        main() = {
+          out: i32 = id(7)
+          copy out
+        }
+
+        id(x: i32) = x
+        "#;
+        check_ok(src);
+    }
+
+    #[test]
+    fn success_infer_function_return_type() {
+        let src = r#"
+        id(x: i32) = x
+
+        main() = {
+          out: i32 = id(7)
+          copy out
         }
         "#;
         check_ok(src);
