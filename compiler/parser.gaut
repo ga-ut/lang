@@ -1,6 +1,343 @@
 import ast
 
-parse(src: Str) -> Program = {
+type Token = { kind: i32, start: i32, end: i32, next: i32 }
+type ParseRes = { ok: bool, next: i32 }
+type DeclRes = { ok: bool, next: i32, decls: i32 }
+
+is_space(b: i32) -> bool =
+  b == 32 || b == 9 || b == 10 || b == 13
+
+is_digit(b: i32) -> bool =
+  48 <= b && b <= 57
+
+is_alpha(b: i32) -> bool =
+  (65 <= b && b <= 90) || (97 <= b && b <= 122) || b == 95
+
+is_ident_char(b: i32) -> bool =
+  is_alpha(copy b) || is_digit(copy b)
+
+is_symbol_single(b: i32) -> bool =
+  b == 40 || b == 41 || b == 123 || b == 125 || b == 44 || b == 46
+  || b == 58 || b == 61 || b == 43 || b == 45 || b == 42 || b == 47
+  || b == 60 || b == 62 || b == 33 || b == 38 || b == 124
+
+scan_while_ident(src: Str, i: i32, n: i32) -> i32 =
+  if !(copy i < copy n) then i else
+  if !is_ident_char(str_byte_at(copy src, copy i)) then i else
+  scan_while_ident(copy src, copy i + 1, copy n)
+
+scan_while_digit(src: Str, i: i32, n: i32) -> i32 =
+  if !(copy i < copy n) then i else
+  if !is_digit(str_byte_at(copy src, copy i)) then i else
+  scan_while_digit(copy src, copy i + 1, copy n)
+
+scan_string(src: Str, i: i32, n: i32) -> i32 =
+  if !(copy i < copy n) then i else {
+    b: i32 = str_byte_at(copy src, copy i)
+    if b == 34 then copy i + 1 else
+    if b == 92 && copy i + 1 < copy n then scan_string(copy src, copy i + 2, copy n)
+    else scan_string(copy src, copy i + 1, copy n)
+  }
+
+skip_comment(src: Str, i: i32, n: i32) -> i32 =
+  if !(copy i < copy n) then i else
+  if str_byte_at(copy src, copy i) == 10 then i else
+  skip_comment(copy src, copy i + 1, copy n)
+
+skip_ws(src: Str, i: i32, n: i32) -> i32 =
+  if !(copy i < copy n) then i else {
+    b: i32 = str_byte_at(copy src, copy i)
+    if is_space(copy b) then skip_ws(copy src, copy i + 1, copy n)
+    else if b == 47 && copy i + 1 < copy n && str_byte_at(copy src, copy i + 1) == 47
+      then skip_ws(copy src, skip_comment(copy src, copy i + 2, copy n), copy n)
+    else i
+  }
+
+is_keyword(s: Str) -> bool =
+  s == "import" || s == "global" || s == "mut" || s == "type"
+  || s == "if" || s == "then" || s == "else" || s == "copy"
+  || s == "true" || s == "false"
+
+next_token(src: Str, i: i32) -> Token = {
   n: i32 = str_len(copy src)
-  { decls: n }
+  j: i32 = skip_ws(copy src, copy i, copy n)
+  if !(copy j < copy n) then { kind: 0, start: j, end: j, next: j } else {
+    b: i32 = str_byte_at(copy src, copy j)
+    if is_alpha(copy b) then {
+      k: i32 = scan_while_ident(copy src, copy j + 1, copy n)
+      text: Str = str_slice(copy src, copy j, copy k - copy j)
+      kind: i32 = if is_keyword(copy text) then 2 else 1
+      { kind: kind, start: j, end: k, next: k }
+    } else if is_digit(copy b) then {
+      k: i32 = scan_while_digit(copy src, copy j + 1, copy n)
+      { kind: 3, start: j, end: k, next: k }
+    } else if b == 34 then {
+      k: i32 = scan_string(copy src, copy j + 1, copy n)
+      { kind: 4, start: j, end: k, next: k }
+    } else if b == 45 && copy j + 1 < copy n && str_byte_at(copy src, copy j + 1) == 62 then
+      { kind: 5, start: j, end: j + 2, next: j + 2 }
+    else if b == 61 && copy j + 1 < copy n && str_byte_at(copy src, copy j + 1) == 61 then
+      { kind: 5, start: j, end: j + 2, next: j + 2 }
+    else if b == 38 && copy j + 1 < copy n && str_byte_at(copy src, copy j + 1) == 38 then
+      { kind: 5, start: j, end: j + 2, next: j + 2 }
+    else if b == 124 && copy j + 1 < copy n && str_byte_at(copy src, copy j + 1) == 124 then
+      { kind: 5, start: j, end: j + 2, next: j + 2 }
+    else if is_symbol_single(copy b) then { kind: 5, start: j, end: j + 1, next: j + 1 }
+    else { kind: -1, start: j, end: j + 1, next: j + 1 }
+  }
+}
+
+tok_text(src: Str, t: Token) -> Str =
+  str_slice(copy src, t.start, t.end - t.start)
+
+expect_text(src: Str, i: i32, text: Str) -> ParseRes = {
+  t: Token = next_token(copy src, copy i)
+  if tok_text(copy src, t) == text then { ok: true, next: t.next }
+  else { ok: false, next: i }
+}
+
+parse_expr(src: Str, i: i32) -> ParseRes = parse_logic_or(copy src, copy i)
+
+parse_logic_or_tail(src: Str, i: i32) -> ParseRes = {
+  t: Token = next_token(copy src, copy i)
+  if tok_text(copy src, t) == "||" then {
+    r: ParseRes = parse_logic_and(copy src, t.next)
+    if !r.ok then r else parse_logic_or_tail(copy src, r.next)
+  } else { ok: true, next: i }
+}
+
+parse_logic_or(src: Str, i: i32) -> ParseRes = {
+  l: ParseRes = parse_logic_and(copy src, copy i)
+  if !l.ok then l else parse_logic_or_tail(copy src, l.next)
+}
+
+parse_logic_and_tail(src: Str, i: i32) -> ParseRes = {
+  t: Token = next_token(copy src, copy i)
+  if tok_text(copy src, t) == "&&" then {
+    r: ParseRes = parse_cmp(copy src, t.next)
+    if !r.ok then r else parse_logic_and_tail(copy src, r.next)
+  } else { ok: true, next: i }
+}
+
+parse_logic_and(src: Str, i: i32) -> ParseRes = {
+  l: ParseRes = parse_cmp(copy src, copy i)
+  if !l.ok then l else parse_logic_and_tail(copy src, l.next)
+}
+
+is_cmp_op(s: Str) -> bool =
+  s == "==" || s == "<" || s == ">"
+
+parse_cmp_tail(src: Str, i: i32) -> ParseRes = {
+  t: Token = next_token(copy src, copy i)
+  if is_cmp_op(tok_text(copy src, t)) then {
+    r: ParseRes = parse_add(copy src, t.next)
+    if !r.ok then r else parse_cmp_tail(copy src, r.next)
+  } else { ok: true, next: i }
+}
+
+parse_cmp(src: Str, i: i32) -> ParseRes = {
+  l: ParseRes = parse_add(copy src, copy i)
+  if !l.ok then l else parse_cmp_tail(copy src, l.next)
+}
+
+is_add_op(s: Str) -> bool =
+  s == "+" || s == "-"
+
+parse_add_tail(src: Str, i: i32) -> ParseRes = {
+  t: Token = next_token(copy src, copy i)
+  if is_add_op(tok_text(copy src, t)) then {
+    r: ParseRes = parse_mul(copy src, t.next)
+    if !r.ok then r else parse_add_tail(copy src, r.next)
+  } else { ok: true, next: i }
+}
+
+parse_add(src: Str, i: i32) -> ParseRes = {
+  l: ParseRes = parse_mul(copy src, copy i)
+  if !l.ok then l else parse_add_tail(copy src, l.next)
+}
+
+is_mul_op(s: Str) -> bool =
+  s == "*" || s == "/"
+
+parse_mul_tail(src: Str, i: i32) -> ParseRes = {
+  t: Token = next_token(copy src, copy i)
+  if is_mul_op(tok_text(copy src, t)) then {
+    r: ParseRes = parse_unary(copy src, t.next)
+    if !r.ok then r else parse_mul_tail(copy src, r.next)
+  } else { ok: true, next: i }
+}
+
+parse_mul(src: Str, i: i32) -> ParseRes = {
+  l: ParseRes = parse_unary(copy src, copy i)
+  if !l.ok then l else parse_mul_tail(copy src, l.next)
+}
+
+parse_unary(src: Str, i: i32) -> ParseRes = {
+  t: Token = next_token(copy src, copy i)
+  s: Str = tok_text(copy src, t)
+  if s == "-" || s == "!" || s == "copy" || s == "&" then
+    parse_unary(copy src, t.next)
+  else parse_call(copy src, copy i)
+}
+
+parse_args_tail(src: Str, i: i32) -> ParseRes = {
+  c: Token = next_token(copy src, copy i)
+  s: Str = tok_text(copy src, c)
+  if s == ")" then { ok: true, next: c.next }
+  else if s == "," then {
+    e: ParseRes = parse_expr(copy src, c.next)
+    if !e.ok then e else parse_args_tail(copy src, e.next)
+  } else { ok: false, next: i }
+}
+
+parse_args(src: Str, i: i32) -> ParseRes = {
+  c: Token = next_token(copy src, copy i)
+  if tok_text(copy src, c) == ")" then { ok: true, next: c.next } else {
+    e: ParseRes = parse_expr(copy src, copy i)
+    if !e.ok then e else parse_args_tail(copy src, e.next)
+  }
+}
+
+parse_call_suffix(src: Str, i: i32) -> ParseRes = {
+  t: Token = next_token(copy src, copy i)
+  if tok_text(copy src, t) == "(" then {
+    a: ParseRes = parse_args(copy src, t.next)
+    if !a.ok then a else parse_call_suffix(copy src, a.next)
+  } else { ok: true, next: i }
+}
+
+parse_if_expr(src: Str, i: i32) -> ParseRes = {
+  c: ParseRes = parse_expr(copy src, i)
+  if !c.ok then c else {
+    t: ParseRes = expect_text(copy src, c.next, "then")
+    if !t.ok then t else {
+      a: ParseRes = parse_expr(copy src, t.next)
+      if !a.ok then a else {
+        e: ParseRes = expect_text(copy src, a.next, "else")
+        if !e.ok then e else parse_expr(copy src, e.next)
+      }
+    }
+  }
+}
+
+parse_block_items(src: Str, i: i32) -> ParseRes = {
+  t: Token = next_token(copy src, copy i)
+  s: Str = tok_text(copy src, t)
+  if s == "}" then { ok: true, next: t.next } else {
+    e: ParseRes = parse_expr(copy src, copy i)
+    if !e.ok then e else parse_block_items(copy src, e.next)
+  }
+}
+
+parse_block(src: Str, i: i32) -> ParseRes = parse_block_items(copy src, i)
+
+parse_primary(src: Str, i: i32) -> ParseRes = {
+  t: Token = next_token(copy src, copy i)
+  s: Str = tok_text(copy src, t)
+  if t.kind == 1 || t.kind == 3 || t.kind == 4 || s == "true" || s == "false" then
+    { ok: true, next: t.next }
+  else if s == "(" then {
+    e: ParseRes = parse_expr(copy src, t.next)
+    if !e.ok then e else expect_text(copy src, e.next, ")")
+  } else if s == "{" then parse_block(copy src, t.next)
+  else if s == "if" then parse_if_expr(copy src, t.next)
+  else { ok: false, next: i }
+}
+
+parse_call(src: Str, i: i32) -> ParseRes = {
+  p: ParseRes = parse_primary(copy src, copy i)
+  if !p.ok then p else parse_call_suffix(copy src, p.next)
+}
+
+parse_param_list_tail(src: Str, i: i32) -> ParseRes = {
+  c: Token = next_token(copy src, copy i)
+  s: Str = tok_text(copy src, c)
+  if s == ")" then { ok: true, next: c.next }
+  else if s == "," then parse_param_list(copy src, c.next)
+  else { ok: false, next: i }
+}
+
+parse_param_list(src: Str, i: i32) -> ParseRes = {
+  n1: Token = next_token(copy src, copy i)
+  s1: Str = tok_text(copy src, n1)
+  a: Token = if s1 == "mut" then next_token(copy src, n1.next) else n1
+  if a.kind != 1 then { ok: false, next: i } else {
+    c: ParseRes = expect_text(copy src, a.next, ":")
+    if !c.ok then c else {
+      ty: Token = next_token(copy src, c.next)
+      if ty.kind != 1 then { ok: false, next: i }
+      else parse_param_list_tail(copy src, ty.next)
+    }
+  }
+}
+
+parse_params(src: Str, i: i32) -> ParseRes = {
+  c: Token = next_token(copy src, copy i)
+  if tok_text(copy src, c) == ")" then { ok: true, next: c.next }
+  else parse_param_list(copy src, i)
+}
+
+parse_binding_after_name(src: Str, i: i32) -> ParseRes = {
+  c: ParseRes = expect_text(copy src, copy i, ":")
+  if !c.ok then c else {
+    ty: Token = next_token(copy src, c.next)
+    if ty.kind != 1 then { ok: false, next: i } else {
+      eq: ParseRes = expect_text(copy src, ty.next, "=")
+      if !eq.ok then eq else parse_expr(copy src, eq.next)
+    }
+  }
+}
+
+parse_type_decl(src: Str, i: i32) -> ParseRes = {
+  name: Token = next_token(copy src, copy i)
+  if name.kind != 1 then { ok: false, next: i } else {
+    eq: ParseRes = expect_text(copy src, name.next, "=")
+    if !eq.ok then eq else parse_expr(copy src, eq.next)
+  }
+}
+
+parse_func_or_binding(src: Str, i: i32) -> ParseRes = {
+  name: Token = next_token(copy src, copy i)
+  if name.kind != 1 then { ok: false, next: i } else {
+    t: Token = next_token(copy src, name.next)
+    if tok_text(copy src, t) == "(" then {
+      ps: ParseRes = parse_params(copy src, t.next)
+      if !ps.ok then ps else {
+        arrow: Token = next_token(copy src, ps.next)
+        next_i: i32 = if tok_text(copy src, arrow) == "->" then next_token(copy src, arrow.next).next else ps.next
+        eq: ParseRes = expect_text(copy src, next_i, "=")
+        if !eq.ok then eq else parse_expr(copy src, eq.next)
+      }
+    } else parse_binding_after_name(copy src, name.next)
+  }
+}
+
+parse_decl(src: Str, i: i32) -> ParseRes = {
+  t: Token = next_token(copy src, copy i)
+  s: Str = tok_text(copy src, t)
+  if t.kind == 0 then { ok: true, next: t.next }
+  else if s == "import" then {
+    name: Token = next_token(copy src, t.next)
+    if name.kind == 1 then { ok: true, next: name.next }
+    else { ok: false, next: i }
+  } else if s == "type" then parse_type_decl(copy src, t.next)
+  else if s == "global" then {
+    n: Token = next_token(copy src, t.next)
+    if n.kind != 1 then { ok: false, next: i }
+    else parse_binding_after_name(copy src, n.next)
+  } else parse_func_or_binding(copy src, i)
+}
+
+parse_decls(src: Str, i: i32, c: i32) -> DeclRes = {
+  t: Token = next_token(copy src, copy i)
+  if t.kind == 0 then { ok: true, next: t.next, decls: c } else {
+    d: ParseRes = parse_decl(copy src, copy i)
+    if !d.ok then { ok: false, next: i, decls: c }
+    else parse_decls(copy src, d.next, c + 1)
+  }
+}
+
+parse(src: Str) -> Program = {
+  d: DeclRes = parse_decls(copy src, 0, 0)
+  if d.ok then { decls: d.decls } else { decls: 0 }
 }
