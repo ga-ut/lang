@@ -1,2 +1,86 @@
-// Core AST placeholder; keep names simple (no module-qualified types).
-type Program = { decls: i32 }
+// Shared AST surface for parser/typechecker/cgen.
+// Variants are represented with `kind` tags to keep the encoding minimal.
+//
+// Decl.kind
+//   1 = Func
+//   2 = Type
+//   3 = Import
+//   4 = Let
+//   5 = Global
+//
+// Expr.kind
+//   1 = IntLit
+//   2 = BoolLit
+//   3 = StrLit
+//   4 = Call
+//   5 = If
+//   6 = Block
+//   7 = Record
+//   8 = Unary
+//   9 = Binary
+//  10 = Ref
+//  11 = Copy
+//
+// Type.kind
+//   1 = Named
+//   2 = Ref
+//   3 = Record
+
+type Program = {
+  decl_count: i32,
+  first_decl: Decl,
+}
+
+type Decl = {
+  kind: i32,
+  name: Str,
+  ty: Type,
+  value: Expr,
+  module_name: Str,
+  is_mut: bool,
+}
+
+type Expr = {
+  kind: i32,
+  int_lit: i32,
+  bool_lit: bool,
+  str_lit: Str,
+  name: Str,
+  op: Str,
+  arg_count: i32,
+  value_ty: Type,
+}
+
+type Type = {
+  kind: i32,
+  name: Str,
+  field_name: Str,
+  field_ty_name: Str,
+}
+
+empty_type() -> Type = {
+  kind: 1,
+  name: "Unit",
+  field_name: "",
+  field_ty_name: "",
+}
+
+empty_expr() -> Expr = {
+  kind: 6,
+  int_lit: 0,
+  bool_lit: false,
+  str_lit: "",
+  name: "",
+  op: "",
+  arg_count: 0,
+  value_ty: empty_type(),
+}
+
+empty_decl() -> Decl = {
+  kind: 3,
+  name: "",
+  ty: empty_type(),
+  value: empty_expr(),
+  module_name: "",
+  is_mut: false,
+}
