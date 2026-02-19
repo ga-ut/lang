@@ -935,4 +935,64 @@ mod tests {
         let err = check_err(src);
         assert!(matches!(err, TypeError::TypeMismatch { .. }));
     }
+
+    #[test]
+    fn fail_call_arity_mismatch() {
+        let src = r#"
+        add(a: i32, b: i32) -> i32 = a + b
+
+        main() = {
+          add(1)
+        }
+        "#;
+        let err = check_err(src);
+        assert!(matches!(
+            err,
+            TypeError::ArityMismatch {
+                expected: 2,
+                found: 1
+            }
+        ));
+    }
+
+    #[test]
+    fn fail_call_return_type_mismatch() {
+        let src = r#"
+        id(x: i32) -> i32 = x
+
+        main() = {
+          ok: bool = id(1)
+          copy ok
+        }
+        "#;
+        let err = check_err(src);
+        assert!(matches!(err, TypeError::TypeMismatch { .. }));
+    }
+
+    #[test]
+    fn fail_escape_ref_from_block() {
+        let src = r#"
+        main() = {
+          r: &i32 = {
+            x: i32 = 1
+            &x
+          }
+          r
+        }
+        "#;
+        let err = check_err(src);
+        assert!(matches!(err, TypeError::Escape));
+    }
+
+    #[test]
+    fn fail_escape_takes_priority_over_type_mismatch() {
+        let src = r#"
+        main() = {
+          y: bool = { x: i32 = 1 x }
+          y
+        }
+        "#;
+        let err = check_err(src);
+        assert!(matches!(err, TypeError::Escape));
+    }
 }
