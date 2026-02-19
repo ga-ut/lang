@@ -1,4 +1,25 @@
 import ast
 import parser
 
-check(prog: Program) -> Program = prog
+check_basic_types(prog: Program) -> Program = {
+  // parser의 메타가 깨진 경우(음수)만 방어적으로 차단
+  if copy prog.decls < 0 then { decls: 0 } else prog
+}
+
+check_func_signatures(prog: Program) -> Program = {
+  // stage1: 함수 시그니처 수집/호출 인자·반환 타입 검증 자리
+  // TODO: parser/ast 실구현 후 decl 순회 기반으로 확장
+  prog
+}
+
+check_lifetime_rules(prog: Program) -> Program = {
+  // stage2: 블록 수명/참조 탈출/move-after-use 규칙 자리
+  // TODO: Rust frontend(typecheck.rs) 우선순위와 동일하게 이식
+  prog
+}
+
+check(prog: Program) -> Program = {
+  p1: Program = check_basic_types(prog)
+  p2: Program = check_func_signatures(p1)
+  check_lifetime_rules(p2)
+}
