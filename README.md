@@ -39,7 +39,19 @@ cargo test -p interp
 `./scripts/self_host.sh`는 예제(`hello`, `calc`, `record`)를 대상으로
 1) 두 번 C 코드를 생성해 sha256이 동일한지 확인하고,
 2) `--build`로 바이너리를 만든 뒤 실행까지 진행합니다. 산출물은 `target/self_host/`에 저장됩니다.
-- 옵션: `SELF_HOST_SKIP=1`로 self_host 루프를 건너뛰고, `SELF_HOST_COMPILER=1`이면 `compiler/main.gaut`가 있을 때 stage0→stage1→stage2 해시/빌드 루프도 수행합니다(실험적).
+- 옵션: `SELF_HOST_SKIP=1`로 self_host 루프를 건너뛰고, `SELF_HOST_COMPILER=1`이면 `compiler/main.gaut`가 있을 때 stage0→stage1→stage2 해시/빌드 루프도 수행합니다.
+- strict 모드 실행 순서(컴파일러 구현 완료 후 정상 시나리오):
+  1. `stage0`: Rust CLI가 `compiler/main.gaut`를 C(`gautc1.stage0.c`)로 emit + clang 빌드(`gautc1`)
+  2. `stage1`: `gautc1`이 동일 입력을 C(`gautc2.stage1.c`)로 emit
+  3. `stage2`: `gautc2.stage1.c`를 clang 빌드(`gautc2`) 후 다시 동일 입력을 C(`gautc3.stage2.c`)로 emit
+  4. 기대 결과: `sha256(stage0) == sha256(stage1) == sha256(stage2)`
+  5. `SELF_HOST_COMPILER_STRICT=1`일 때 `stage0↔stage1` 또는 `stage1↔stage2` hash mismatch는 실패(exit 1) 처리
+
+예시:
+
+```bash
+SELF_HOST_COMPILER=1 SELF_HOST_COMPILER_STRICT=1 ./scripts/self_host.sh
+```
 
 ## 5) std/네트워크 예제
 
@@ -68,6 +80,13 @@ cargo test -p interp
 - 설치 후 실행: `gaut examples/hello.gaut` (PATH에 등록 시)
 - std 경로 변경: `GAUT_STD_DIR=/path/to/std gaut myfile.gaut`
 - C 런타임 경로 변경: `GAUT_RUNTIME_C_DIR=/path/to/runtime/c gaut --emit-c ...`
+
+### `compiler/main.gaut` exit code 규약
+- `0`: 성공
+- `2`: 입력 파일 인자가 없음(usage 오류)
+- `3`: 입력 파일 읽기 실패
+- `4`: `--emit-c` 옵션 값 누락
+- `5`: 출력 C 파일 쓰기 실패
 
 ### 빌드/설치
 - 릴리스 빌드: `cargo build -p cli --release` → `target/release/gaut`

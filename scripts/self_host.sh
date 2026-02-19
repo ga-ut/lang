@@ -54,6 +54,11 @@ fi
 compiler_entry="$ROOT/compiler/main.gaut"
 if [[ -f "$compiler_entry" ]]; then
   if [[ "${SELF_HOST_COMPILER:-0}" == "1" ]]; then
+    # strict=1:
+    # - stage0 <-> stage1 C hash mismatch: fail immediately
+    # - stage1 <-> stage2 C hash mismatch: fail immediately
+    # strict=0:
+    # - mismatch/build failure는 경고로 보고하고 종료(현재 스텁 단계 허용)
     strict="${SELF_HOST_COMPILER_STRICT:-0}"
     runtime_dir="${GAUT_RUNTIME_C_DIR:-$ROOT/runtime/c}"
 
@@ -107,6 +112,8 @@ if [[ -f "$compiler_entry" ]]; then
       if [[ "$strict" == "1" ]]; then
         exit 1
       fi
+    elif [[ "$strict" == "1" ]]; then
+      echo "==> strict self-host fixed point reached (stage0==stage1==stage2 hashes)"
     fi
   else
     echo "compiler sources detected; set SELF_HOST_COMPILER=1 to run stage1/2 loop."
