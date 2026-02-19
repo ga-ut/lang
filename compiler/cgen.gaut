@@ -1,37 +1,53 @@
 import ast
 import parser
 
-emit_stub() -> Str =
-  // A minimal C "compiler" stub: accepts `--emit-c out.c` and writes a tiny C program.
-  "#include <stdio.h>\n"
+emit_runtime_include() -> Str =
+  "#include <stdint.h>\n"
+  + "#include <stdbool.h>\n"
+  + "#include <stddef.h>\n"
   + "#include <string.h>\n"
+  + "#include \"runtime.h\"\n"
   + "\n"
-  + "static void emit_target(FILE* f) {\n"
-  + "  fputs(\"#include <stdint.h>\\\\n\", f);\n"
-  + "  fputs(\"#include <stdbool.h>\\\\n\", f);\n"
-  + "  fputs(\"#include <stddef.h>\\\\n\", f);\n"
-  + "  fputs(\"#include \\\\\\\"runtime.h\\\\\\\"\\\\n\", f);\n"
-  + "  fputs(\"\\\\n\", f);\n"
-  + "  fputs(\"int main(int argc, char** argv) {\\\\n\", f);\n"
-  + "  fputs(\"  (void)argc; (void)argv;\\\\n\", f);\n"
-  + "  fputs(\"  return 0;\\\\n\", f);\n"
-  + "  fputs(\"}\\\\n\", f);\n"
+
+emit_builtin_shims() -> Str =
+  "typedef struct { bool ok; char* data; } ReadFileResult;\n"
+  + "char* print(char* msg) { gaut_print(msg); return msg; }\n"
+  + "char* println(char* msg) { gaut_println(msg); return msg; }\n"
+  + "char* read_file(char* path) { return gaut_read_file(path); }\n"
+  + "void write_file(char* path, char* data) { gaut_write_file(path, data); }\n"
+  + "gaut_bytes args() { return gaut_args(); }\n"
+  + "char* bytes_to_str(gaut_bytes b) { return gaut_bytes_to_str(b); }\n"
+  + "ReadFileResult try_read_file(char* path) {\n"
+  + "  ReadFileResult r;\n"
+  + "  r.data = gaut_try_read_file(path, &r.ok);\n"
+  + "  return r;\n"
   + "}\n"
+  + "bool try_write_file(char* path, char* data) { return gaut_write_file(path, data) == 0; }\n"
+  + "int32_t str_len(char* s) { return gaut_str_len(s); }\n"
+  + "int32_t str_byte_at(char* s, int32_t i) { return gaut_str_byte_at(s, i); }\n"
+  + "char* str_slice(char* s, int32_t start, int32_t len) { return gaut_str_slice(s, start, len); }\n"
   + "\n"
-  + "int main(int argc, char** argv) {\n"
-  + "  const char* out_path = NULL;\n"
-  + "  for (int i = 1; i + 1 < argc; i++) {\n"
-  + "    if (strcmp(argv[i], \"--emit-c\") == 0) {\n"
-  + "      out_path = argv[i + 1];\n"
-  + "      break;\n"
-  + "    }\n"
-  + "  }\n"
-  + "  if (!out_path) { return 0; }\n"
-  + "  FILE* f = fopen(out_path, \"wb\");\n"
-  + "  if (!f) { return 1; }\n"
-  + "  emit_target(f);\n"
-  + "  fclose(f);\n"
+
+emit_scope_helpers() -> Str =
+  "#define GAUT_FIELD(obj, field) ((obj).field)\n"
+  + "#define GAUT_FIELD_REF(obj, field) ((obj)->field)\n"
+  + "\n"
+
+emit_decl_sorted(n: i32) -> Str =
+  if copy n == 0 then "" else "  /* decls(sorted) */\n"
+
+emit_program_body(prog: Program) -> Str =
+  "int main(int argc, char** argv) {\n"
+  + "  gaut_args_init(argc, argv);\n"
+  + "  uint8_t __arena_buf[GAUT_DEFAULT_ARENA_CAP];\n"
+  + "  gaut_arena __arena = gaut_arena_from_buffer(__arena_buf, GAUT_DEFAULT_ARENA_CAP);\n"
+  + "  (void)__arena;\n"
+  + emit_decl_sorted(prog.decls)
   + "  return 0;\n"
   + "}\n"
 
-emit(prog: Program) -> Str = emit_stub()
+emit(prog: Program) -> Str =
+  emit_runtime_include()
+  + emit_builtin_shims()
+  + emit_scope_helpers()
+  + emit_program_body(prog)
