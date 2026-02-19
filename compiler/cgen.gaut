@@ -34,4 +34,7 @@ emit_stub() -> Str =
   + "  return 0;\n"
   + "}\n"
 
-emit(prog: Program) -> Str = emit_stub()
+emit(prog: Program) -> Str = {
+  _decl_count: i32 = copy prog.decl_count
+  emit_stub()
+}

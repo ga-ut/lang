@@ -2,5 +2,8 @@ import ast
 
 parse(src: Str) -> Program = {
   n: i32 = str_len(copy src)
-  { decls: n }
+  {
+    decl_count: n,
+    first_decl: empty_decl(),
+  }
 }

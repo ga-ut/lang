@@ -1,4 +1,9 @@
 import ast
 import parser
 
-check(prog: Program) -> Program = prog
+check(prog: Program) -> Program = {
+  {
+    decl_count: copy prog.decl_count,
+    first_decl: prog.first_decl,
+  }
+}
