@@ -1,6 +1,9 @@
 Readable Raw Core compiler self-host verification
 Date: 2026-08-10
 
+Historical frontend-only gate. See DIRECT_VERIFIED for the current retained
+direct compiler.
+
 Environment:
 - isolated AArch64 Alpine initramfs VM
 - Apple Virtualization framework
@@ -19,7 +22,7 @@ Fixed point:
 5. dist/core0.elf lowered compiler-stage2.core to raw-stage2.elf
 6. raw-stage1.elf and raw-stage2.elf were byte-identical
 
-Retained compiler:
+Compiler retained at this historical gate:
 - dist/raw0.elf
 - static AArch64 Linux ELF, 45,056 bytes
 - SHA-256: cb263a36415c254c8a56766e1aa3e25effe3e0980beff41ba5e834d60290f642
@@ -34,7 +37,6 @@ Readable-source tests through the retained generation:
   bytes, 21-byte ASCII diagnostic
 
 Boundary:
-- The readable frontend is self-hosted at a byte-identical fixed point.
-- It still emits Core-0 source and uses dist/core0.elf as the frozen AArch64
-  lowering backend.
-- Direct AArch64 emission and the freestanding target are not yet complete.
+- The readable frontend was self-hosted at a byte-identical fixed point.
+- At this historical gate it emitted Core-0 source and used dist/core0.elf.
+- Direct AArch64 emission was completed in the later DIRECT_VERIFIED gate.

@@ -285,9 +285,9 @@ A compiler conforms only after all of these pass:
 ## 14. Migration from verified Core-0
 
 Core-0 remains the recovery compiler. `raw0/compiler.raw` implements the
-readable draft 0.4 frontend and has rebuilt itself through two byte-identical
-native generations. It currently emits Core-0 source for the frozen AArch64
-backend; direct platform emission and the full conformance matrix remain open.
+readable draft 0.4 compiler, directly emits a static AArch64 Linux ELF, and has
+rebuilt itself through two byte-identical direct native generations. The full
+conformance matrix and freestanding platform remain open.
 
 Migration order:
 
@@ -295,12 +295,14 @@ Migration order:
    literals;
 2. complete: resolve functions, parameters, and locals and validate arity;
 3. complete: map every canonical primitive to one stable ID;
-4. complete in the frozen backend: lower each ID through one AArch64
+4. complete in the readable compiler: lower each ID through one AArch64
    implementation;
 5. complete: self-host the readable frontend to a byte-identical fixed point;
-6. next: move the existing lowering into readable Raw Core and add
-   freestanding image construction without changing primitive meaning;
-7. write the first OS in readable Raw Core.
+6. complete for the bootstrap host: move the existing lowering into readable
+   Raw Core without changing primitive meaning;
+7. next: add freestanding image construction without changing primitive
+   meaning;
+8. write the first OS in readable Raw Core.
 
 No larger type system or syntactic sugar is required for the first OS. New
 surface area requires a concrete failing program and a spec revision.

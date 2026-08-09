@@ -8,7 +8,42 @@ boundaries.
 M0 below is frozen historical bootstrap machinery. It is not the product
 language and will not be expanded into a renamed AArch64 assembler.
 
-## Current result: Core-0 self-hosted
+## Current result: readable direct compiler
+
+`raw0/compiler.raw` is a human-readable Raw Core 0.4 compiler. It accepts
+named values, decimal literals, call-shaped expressions, braces, semicolons,
+functions, branches, loops, and fixed-memory declarations. It directly writes
+a complete static AArch64 Linux ELF:
+
+```text
+Raw Core source -> raw0 compiler -> AArch64 ELF
+```
+
+It does not invoke Python, Core-0, C, Rust, LLVM, an assembler, a linker, libc,
+or a dynamic loader. In the isolated offline AArch64 VM, the first direct
+compiler built its own source twice; the two direct generations were
+byte-identical:
+
+```text
+19a989e9730b4ff68fc05ae975152cb4bd29d14a7cf49a723c78e1005674f684
+```
+
+Use the retained 48 KiB compiler inside the isolated AArch64 Linux VM:
+
+```sh
+./raw0.elf < program.raw > program.elf
+chmod +x program.elf
+./program.elf
+```
+
+Verified readable examples return 42 for arithmetic/functions, 55 for a loop,
+42 for fixed memory, and 42 for `if`/`else`. Invalid calls, arity, and nested
+early returns are rejected with status 2 and zero artifact bytes.
+
+This completes the readable hosted compiler and direct ELF-emission gate. The
+next separate gate is a freestanding AArch64 image target for the first OS.
+
+## Frozen Core-0 recovery compiler
 
 `core0/compiler.core` is a compiler written in Core-0. In the offline AArch64
 VM, the audit-constructed generation 0 compiled it to generation 1, and
@@ -18,7 +53,7 @@ generation 1 compiled it to generation 2. All three files were byte-identical:
 be6c623f15602c051fe664289659c1cdd83265506e05f7b5e34d694280fbb293
 ```
 
-The retained active compiler is `dist/core0.elf` (20 KiB). It directly emits
+The retained recovery compiler is `dist/core0.elf` (20 KiB). It directly emits
 static AArch64 Linux ELF files and needs no Python, C, Rust, LLVM, assembler,
 linker, libc, or dynamic loader. `core0/reference_compiler.py` is retained only
 to audit the one-time construction.
@@ -30,42 +65,8 @@ Verified self-hosted examples:
 - explicit arena store/load: exit 42
 - unknown operation: rejected with status 2 and no emitted bytes
 
-Core-0 is the dependency-free recovery language, not the source people should
-use to maintain the OS. The next gate is the readable named Raw Core grammar in
-`RAW-SPEC.md`, followed by a freestanding backend.
-
-## Current readable self-hosted frontend
-
-`raw0/compiler.raw` now accepts the Raw Core 0.4 grammar with named values,
-decimal literals, call-shaped expressions, braces, semicolons, functions,
-branches, loops, and fixed-memory declarations. It emits validated Core-0
-source, which the retained native Core-0 compiler lowers to AArch64 ELF.
-
-The readable compiler rebuilt its own source through two byte-identical native
-generations in the offline VM. The remaining bootstrap boundary is explicit:
-the readable compiler still emits Core-0 source, and the frozen Core-0 compiler
-performs AArch64 lowering.
-
-Use the retained compiler inside the isolated AArch64 VM:
-
-```sh
-./raw0.elf < program.raw > program.core
-./core0.elf < program.core > program.elf
-chmod +x program.elf
-./program.elf
-```
-
-`dist/raw0.elf` is the VM-built, readable self-hosted compiler. The next
-language gate moves the existing AArch64 lowering into readable Raw Core so the
-compiler can emit the final artifact directly.
-
-Compile inside the isolated AArch64 Linux VM:
-
-```sh
-./core0.elf < program.core > program.elf
-chmod +x program.elf
-./program.elf
-```
+Core-0 is no longer in the active build path. It remains a dependency-free,
+reviewable recovery seed for reconstructing the readable compiler if needed.
 
 ## Frozen M0 trust root
 
@@ -137,6 +138,9 @@ The verified result is `42`.
 - `dist/core0.elf`: retained self-hosted Core-0 compiler
 - `dist/CORE0_VERIFIED`: isolated-VM fixed-point and language-test record
 - `core0/reference_compiler.py`: audit-only Core-0 constructor
+- `raw0/compiler.raw`: maintained readable direct compiler source
+- `dist/raw0.elf`: retained self-hosted direct Raw Core compiler
+- `raw0/DIRECT_VERIFIED`: isolated-VM direct fixed-point and test record
 
 The Python constructors are not part of the active build path. Keeping them
 allows the original hand-encoded AArch64 instructions to be reviewed.

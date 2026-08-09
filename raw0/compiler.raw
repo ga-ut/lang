@@ -1,8 +1,7 @@
 # Raw Core 0.4 compiler, written in readable Raw Core.
 #
-# This compiler validates Raw Core source and emits the frozen Core-0 recovery
-# representation. The retained Core-0 compiler remains the one AArch64
-# lowering backend during this bootstrap gate.
+# This compiler validates Raw Core source and directly emits a static AArch64
+# Linux ELF. Core-0 remains only a frozen recovery seed.
 
 fn state_get(state, offset) {
   return load64(add(state, offset));
@@ -19,85 +18,172 @@ fn fail(state) {
   return 0;
 }
 
-fn put(state, value) {
+fn emit_word(state, value) {
   let cursor = state_get(state, 16);
 
-  if eq(lt(cursor, state_get(state, 128)), 0) {
+  if lt(sub(state_get(state, 128), cursor), 4) {
     drop fail(state);
   }
 
-  store8(value, cursor);
-  drop state_set(state, 16, add(cursor, 1));
+  store32(value, cursor);
+  drop state_set(state, 16, add(cursor, 4));
+  drop state_set(state, 136, add(state_get(state, 136), 1));
+  return sub(state_get(state, 136), 1);
+}
+
+fn patch_word(state, index, value) {
+  store32(value, add(add(state_get(state, 24), 120), mul(index, 4)));
   return 0;
 }
 
-fn emit_packed(state, value, length) {
-  let index = 0;
-  let remaining = value;
+fn patch_branch(state, index, target, link) {
+  let instruction = 335544320;
 
-  while lt(index, length) {
-    drop put(state, bitand(remaining, 255));
-    remaining = shr(remaining, 8);
+  if link {
+    instruction = 2483027968;
+  }
+
+  instruction = bitor(instruction, bitand(sub(target, index), 67108863));
+  drop patch_word(state, index, instruction);
+  return 0;
+}
+
+fn patch_zero_branch(state, index, target) {
+  let delta = bitand(sub(target, index), 524287);
+  drop patch_word(state, index, bitor(3019898880, shl(delta, 5)));
+  return 0;
+}
+
+fn emit_move(state, register, value) {
+  let index = 1;
+  let chunk = bitand(value, 65535);
+
+  drop emit_word(state, bitor(bitor(3531603968, shl(chunk, 5)), register));
+
+  while lt(index, 4) {
+    chunk = bitand(shr(value, mul(index, 16)), 65535);
+    if chunk {
+      drop emit_word(state, bitor(bitor(bitor(4068474880, shl(index, 21)), shl(chunk, 5)), register));
+    }
     index = add(index, 1);
   }
 
   return 0;
 }
 
-fn emit_span(state, address, length) {
-  let index = 0;
-
-  while lt(index, length) {
-    drop put(state, load8(add(address, index)));
-    index = add(index, 1);
-  }
-
-  drop put(state, 32);
+fn emit_push(state, register) {
+  drop emit_word(state, bitor(bitor(4177526784, shl(20, 5)), register));
+  drop emit_word(state, 2432705172);
   return 0;
 }
 
-fn emit_nibble(state, value) {
-  let byte = 0;
-
-  if lt(value, 10) {
-    byte = add(value, 48);
-  } else {
-    byte = add(sub(value, 10), 97);
-  }
-
-  drop put(state, byte);
+fn emit_pop(state, register) {
+  drop emit_word(state, 3506446996);
+  drop emit_word(state, bitor(bitor(4181721088, shl(20, 5)), register));
   return 0;
 }
 
-fn emit_hex(state, value) {
-  let index = 0;
-  let shift = 0;
-
-  drop put(state, 36);
-
-  while lt(index, 16) {
-    shift = mul(sub(15, index), 4);
-    drop emit_nibble(state, bitand(shr(value, shift), 15));
-    index = add(index, 1);
-  }
-
-  drop put(state, 32);
+fn emit_constant(state, value) {
+  drop emit_move(state, 0, value);
+  drop emit_push(state, 0);
   return 0;
 }
 
-fn emit_slot(state, slot, suffix) {
-  drop put(state, 118);
-  drop emit_nibble(state, bitand(shr(slot, 4), 15));
-  drop emit_nibble(state, bitand(slot, 15));
-  drop put(state, suffix);
-  drop put(state, 32);
+fn emit_local_get(state, slot) {
+  drop emit_word(state, bitor(bitor(4181721088, shl(slot, 10)), shl(19, 5)));
+  drop emit_push(state, 0);
+  return 0;
+}
+
+fn emit_local_set(state, slot) {
+  drop emit_pop(state, 0);
+  drop emit_word(state, bitor(bitor(4177526784, shl(slot, 10)), shl(19, 5)));
   return 0;
 }
 
 fn emit_memory_base(state, offset) {
-  drop emit_packed(state, 544040301, 4);
-  drop emit_hex(state, offset);
-  drop emit_packed(state, 8235, 2);
+  drop emit_move(state, 0, add(65536, offset));
+  drop emit_word(state, 2332033632);
+  drop emit_push(state, 0);
+  return 0;
+}
+
+fn emit_binary(state, instruction) {
+  drop emit_pop(state, 1);
+  drop emit_pop(state, 0);
+  drop emit_word(state, instruction);
+  drop emit_push(state, 0);
+  return 0;
+}
+
+fn emit_compare(state, instruction) {
+  drop emit_pop(state, 1);
+  drop emit_pop(state, 0);
+  drop emit_word(state, 3942711327);
+  drop emit_word(state, instruction);
+  drop emit_push(state, 0);
+  return 0;
+}
+
+fn emit_load(state, instruction) {
+  drop emit_pop(state, 0);
+  drop emit_word(state, instruction);
+  drop emit_push(state, 0);
+  return 0;
+}
+
+fn emit_store(state, instruction) {
+  drop emit_pop(state, 1);
+  drop emit_pop(state, 0);
+  drop emit_word(state, instruction);
+  return 0;
+}
+
+fn emit_host_call(state, number, outputs) {
+  drop emit_pop(state, 2);
+  drop emit_pop(state, 1);
+  drop emit_pop(state, 0);
+  drop emit_move(state, 8, number);
+  drop emit_word(state, 3556769793);
+  if outputs {
+    drop emit_push(state, 0);
+  }
+  return 0;
+}
+
+fn write_header(state) {
+  let output = state_get(state, 24);
+
+  store32(1179403647, output);
+  store32(65794, add(output, 4));
+  store32(0, add(output, 8));
+  store32(0, add(output, 12));
+  store32(11993090, add(output, 16));
+  store32(1, add(output, 20));
+  store32(4194424, add(output, 24));
+  store32(0, add(output, 28));
+  store32(64, add(output, 32));
+  store32(0, add(output, 36));
+  store32(0, add(output, 40));
+  store32(0, add(output, 44));
+  store32(0, add(output, 48));
+  store32(3670080, add(output, 52));
+  store32(1, add(output, 56));
+  store32(0, add(output, 60));
+  store32(1, add(output, 64));
+  store32(5, add(output, 68));
+  store32(0, add(output, 72));
+  store32(0, add(output, 76));
+  store32(4194304, add(output, 80));
+  store32(0, add(output, 84));
+  store32(4194304, add(output, 88));
+  store32(0, add(output, 92));
+  store32(0, add(output, 96));
+  store32(0, add(output, 100));
+  store32(0, add(output, 104));
+  store32(0, add(output, 108));
+  store32(4096, add(output, 112));
+  store32(0, add(output, 116));
   return 0;
 }
 
@@ -296,7 +382,7 @@ fn canonical_find(state, address, length) {
   return result;
 }
 
-fn function_add(state, address, length, arity) {
+fn function_add(state, address, length, arity, code_index) {
   let entry = 0;
 
   if eq(lt(state_get(state, 64), 256), 0) {
@@ -307,6 +393,7 @@ fn function_add(state, address, length, arity) {
   store64(address, entry);
   store64(length, add(entry, 8));
   store64(arity, add(entry, 16));
+  store64(code_index, add(entry, 24));
   drop state_set(state, 64, add(state_get(state, 64), 1));
   return 0;
 }
@@ -395,42 +482,86 @@ fn init_canonical(state) {
 
 fn emit_callable(state, info, address, length) {
   let id = bitand(info, 255);
+  let entry = 0;
+  let branch = 0;
 
   if eq(info, 0) {
-    drop emit_packed(state, 139257995619, 5);
-    drop emit_span(state, address, length);
+    entry = function_find(state, address, length);
+    if eq(entry, 0) {
+      drop fail(state);
+    }
+    branch = emit_word(state, 2483027968);
+    drop patch_branch(state, branch, load64(add(entry, 24)), 1);
   } else {
     if eq(id, 16) {
-      drop emit_packed(state, 8235, 2);
+      drop emit_binary(state, 2332098560);
     } else {
       if eq(id, 17) {
-        drop emit_packed(state, 8237, 2);
+        drop emit_binary(state, 3405840384);
       } else {
         if eq(id, 18) {
-          drop emit_packed(state, 8234, 2);
+          drop emit_binary(state, 2600565760);
         } else {
           if eq(id, 19) {
-            drop emit_packed(state, 8230, 2);
+            drop emit_binary(state, 2315321344);
           } else {
             if eq(id, 20) {
-              drop emit_packed(state, 8316, 2);
+              drop emit_binary(state, 2852192256);
             } else {
               if eq(id, 21) {
-                drop emit_packed(state, 8286, 2);
+                drop emit_binary(state, 3389063168);
               } else {
                 if eq(id, 22) {
-                  drop emit_packed(state, 2112572, 3);
+                  drop emit_binary(state, 2596347904);
                 } else {
                   if eq(id, 23) {
-                    drop emit_packed(state, 2113086, 3);
+                    drop emit_binary(state, 2596348928);
                   } else {
                     if eq(id, 24) {
-                      drop emit_packed(state, 8253, 2);
+                      drop emit_compare(state, 2594117600);
                     } else {
                       if eq(id, 25) {
-                        drop emit_packed(state, 8252, 2);
+                        drop emit_compare(state, 2594121696);
                       } else {
-                        drop emit_span(state, address, length);
+                        if eq(id, 32) {
+                          drop emit_load(state, 960495616);
+                        } else {
+                          if eq(id, 33) {
+                            drop emit_load(state, 3107979264);
+                          } else {
+                            if eq(id, 34) {
+                              drop emit_load(state, 4181721088);
+                            } else {
+                              if eq(id, 35) {
+                                drop emit_store(state, 956301344);
+                              } else {
+                                if eq(id, 36) {
+                                  drop emit_store(state, 3103784992);
+                                } else {
+                                  if eq(id, 37) {
+                                    drop emit_store(state, 4177526816);
+                                  } else {
+                                    if eq(id, 64) {
+                                      drop emit_host_call(state, 63, 1);
+                                    } else {
+                                      if eq(id, 65) {
+                                        drop emit_host_call(state, 64, 1);
+                                      } else {
+                                        if eq(id, 66) {
+                                          drop emit_pop(state, 0);
+                                          drop emit_move(state, 8, 93);
+                                          drop emit_word(state, 3556769793);
+                                        } else {
+                                          drop fail(state);
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
                       }
                     }
                   }
@@ -483,45 +614,46 @@ fn expression_pop(state) {
   return frame;
 }
 
-fn block_push(state, kind) {
+fn block_push(state, kind, first, second) {
   let depth = state_get(state, 112);
+  let entry = 0;
 
   if eq(lt(depth, 64), 0) {
     drop fail(state);
   }
 
-  store64(kind, add(add(state, 24576), mul(depth, 8)));
+  entry = add(add(state, 24576), mul(depth, 24));
+  store64(kind, entry);
+  store64(first, add(entry, 8));
+  store64(second, add(entry, 16));
   drop state_set(state, 112, add(depth, 1));
-  return 0;
+  return entry;
 }
 
 fn block_top(state) {
   let depth = state_get(state, 112);
-  let kind = 0;
+  let entry = 0;
 
   if eq(depth, 0) {
     drop fail(state);
   }
 
-  kind = load64(add(add(state, 24576), mul(sub(depth, 1), 8)));
-  return kind;
+  entry = add(add(state, 24576), mul(sub(depth, 1), 24));
+  return entry;
 }
 
-fn block_set(state, kind) {
-  let depth = state_get(state, 112);
-
-  if eq(depth, 0) {
-    drop fail(state);
-  }
-
-  store64(kind, add(add(state, 24576), mul(sub(depth, 1), 8)));
+fn block_set(state, kind, first, second) {
+  let entry = block_top(state);
+  store64(kind, entry);
+  store64(first, add(entry, 8));
+  store64(second, add(entry, 16));
   return 0;
 }
 
 fn block_pop(state) {
-  let kind = block_top(state);
+  let entry = block_top(state);
   drop state_set(state, 112, sub(state_get(state, 112), 1));
-  return kind;
+  return entry;
 }
 
 fn name_available(state, address, length, function_address, function_length) {
@@ -564,7 +696,7 @@ fn parse_expression(state) {
       kind = state_get(state, 32);
 
       if eq(kind, 2) {
-        drop emit_hex(state, state_get(state, 56));
+        drop emit_constant(state, state_get(state, 56));
         drop next_token(state);
         result_outputs = 1;
         need_value = 0;
@@ -616,7 +748,7 @@ fn parse_expression(state) {
             }
 
             if eq(load64(add(entry, 16)), 1) {
-              drop emit_slot(state, load64(add(entry, 24)), 64);
+              drop emit_local_get(state, load64(add(entry, 24)));
             } else {
               if eq(load64(add(entry, 16)), 2) {
                 drop emit_memory_base(state, load64(add(entry, 24)));
@@ -688,8 +820,10 @@ fn parse_function(state) {
   let size = 0;
   let offset = 0;
   let is_main = 0;
+  let code_start = 0;
+  let block_entry = 0;
+  let branch = 0;
 
-  drop emit_packed(state, 2125414, 3);
   drop next_token(state);
 
   if eq(eq(state_get(state, 32), 1), 0) {
@@ -705,8 +839,6 @@ fn parse_function(state) {
   if function_find(state, function_address, function_length) {
     drop fail(state);
   }
-
-  drop emit_span(state, function_address, function_length);
 
   if eq(function_length, 4) {
     if eq(load32(function_address), 1852399981) {
@@ -760,10 +892,17 @@ fn parse_function(state) {
     drop fail(state);
   }
 
+  code_start = state_get(state, 136);
+  if is_main {
+    drop state_set(state, 144, code_start);
+  }
+  drop emit_word(state, 4177527486);
+  drop emit_word(state, 2432705205);
+
   slot = parameter_count;
   while lt(0, slot) {
     slot = sub(slot, 1);
-    drop emit_slot(state, load64(add(add(state, 36864), mul(slot, 8))), 33);
+    drop emit_local_set(state, load64(add(add(state, 36864), mul(slot, 8))));
   }
 
   drop next_token(state);
@@ -784,7 +923,8 @@ fn parse_function(state) {
         drop fail(state);
       }
 
-      block_kind = block_top(state);
+      block_entry = block_top(state);
+      block_kind = load64(block_entry);
       if eq(block_kind, 1) {
         drop next_token(state);
         info = 0;
@@ -793,26 +933,28 @@ fn parse_function(state) {
         }
 
         if eq(bitand(info, 255), 6) {
-          drop emit_packed(state, 139141016677, 5);
+          branch = emit_word(state, 335544320);
+          drop patch_zero_branch(state, load64(add(block_entry, 8)), state_get(state, 136));
           drop next_token(state);
           if eq(eq(state_get(state, 32), 5), 0) {
             drop fail(state);
           }
-          drop block_set(state, 2);
+          drop block_set(state, 2, branch, 0);
           drop next_token(state);
         } else {
-          drop emit_packed(state, 35624226942565, 6);
+          drop patch_zero_branch(state, load64(add(block_entry, 8)), state_get(state, 136));
           drop block_pop(state);
         }
       } else {
         if eq(block_kind, 2) {
-          drop emit_packed(state, 35624226942565, 6);
+          drop patch_branch(state, load64(add(block_entry, 8)), state_get(state, 136), 0);
           drop block_pop(state);
           drop next_token(state);
         } else {
           if eq(block_kind, 3) {
-            drop emit_packed(state, 7308332192716058213, 8);
-            drop put(state, 32);
+            branch = emit_word(state, 335544320);
+            drop patch_branch(state, branch, load64(add(block_entry, 8)), 0);
+            drop patch_zero_branch(state, load64(add(block_entry, 16)), state_get(state, 136));
             drop block_pop(state);
             drop next_token(state);
           } else {
@@ -846,9 +988,11 @@ fn parse_function(state) {
           drop fail(state);
         }
 
-        drop emit_packed(state, 35658536349285, 6);
+        drop emit_word(state, 3506447029);
+        drop emit_word(state, 4181721790);
+        drop emit_word(state, 3596551104);
         drop next_token(state);
-        drop function_add(state, function_address, function_length, parameter_count);
+        drop function_add(state, function_address, function_length, parameter_count, code_start);
         if is_main {
           drop state_set(state, 104, 1);
         }
@@ -881,7 +1025,7 @@ fn parse_function(state) {
 
           slot = state_get(state, 80);
           drop local_add(state, name_address, name_length, 1, slot);
-          drop emit_slot(state, slot, 33);
+          drop emit_local_set(state, slot);
           drop state_set(state, 80, add(slot, 1));
 
           if eq(eq(state_get(state, 32), 9), 0) {
@@ -929,7 +1073,7 @@ fn parse_function(state) {
               if eq(eq(expression_outputs, 1), 0) {
                 drop fail(state);
               }
-              drop emit_packed(state, 139325305444, 5);
+              drop emit_pop(state, 0);
               if eq(eq(state_get(state, 32), 9), 0) {
                 drop fail(state);
               }
@@ -941,25 +1085,27 @@ fn parse_function(state) {
                 if eq(eq(expression_outputs, 1), 0) {
                   drop fail(state);
                 }
-                drop emit_packed(state, 2123369, 3);
+                drop emit_pop(state, 0);
+                branch = emit_word(state, 3019898880);
                 if eq(eq(state_get(state, 32), 5), 0) {
                   drop fail(state);
                 }
-                drop block_push(state, 1);
+                drop block_push(state, 1, branch, 0);
                 drop next_token(state);
               } else {
                 if eq(id, 7) {
-                  drop emit_packed(state, 35619982633079, 6);
+                  branch = state_get(state, 136);
                   drop next_token(state);
                   expression_outputs = parse_expression(state);
                   if eq(eq(expression_outputs, 1), 0) {
                     drop fail(state);
                   }
-                  drop emit_packed(state, 2125668, 3);
+                  drop emit_pop(state, 0);
+                  entry = emit_word(state, 3019898880);
                   if eq(eq(state_get(state, 32), 5), 0) {
                     drop fail(state);
                   }
-                  drop block_push(state, 3);
+                  drop block_push(state, 3, branch, entry);
                   drop next_token(state);
                 } else {
                   if eq(bitand(shr(info, 24), 255), 1) {
@@ -984,7 +1130,7 @@ fn parse_function(state) {
                     if eq(eq(expression_outputs, 1), 0) {
                       drop fail(state);
                     }
-                    drop emit_slot(state, load64(add(entry, 24)), 33);
+                    drop emit_local_set(state, load64(add(entry, 24)));
                     if eq(eq(state_get(state, 32), 9), 0) {
                       drop fail(state);
                     }
@@ -1019,10 +1165,13 @@ fn parse_function(state) {
 
 fn main() {
   memory source 131072;
-  memory output 131072;
+  memory output 262144;
   memory state 65536;
   let input_size = 0;
   let info = 0;
+  let entry_call = 0;
+  let file_size = 0;
+  let cursor = 0;
 
   store64(7955925651020013938, add(state, 65000));
   store64(8030798176169255286, add(state, 65008));
@@ -1037,7 +1186,6 @@ fn main() {
 
   drop state_set(state, 0, source);
   drop state_set(state, 8, add(source, input_size));
-  drop state_set(state, 16, output);
   drop state_set(state, 24, output);
   drop state_set(state, 64, 0);
   drop state_set(state, 72, 0);
@@ -1047,7 +1195,21 @@ fn main() {
   drop state_set(state, 104, 0);
   drop state_set(state, 112, 0);
   drop state_set(state, 120, 0);
-  drop state_set(state, 128, add(output, 131072));
+  drop state_set(state, 128, add(output, 262144));
+  drop state_set(state, 136, 0);
+  drop state_set(state, 144, 0);
+
+  drop write_header(state);
+  drop state_set(state, 16, add(output, 120));
+
+  drop emit_word(state, 3510895615);
+  drop emit_word(state, 2432697331);
+  drop emit_word(state, 2436892660);
+  drop emit_word(state, 2434794485);
+  entry_call = emit_word(state, 2483027968);
+  drop emit_pop(state, 0);
+  drop emit_move(state, 8, 93);
+  drop emit_word(state, 3556769793);
 
   drop init_canonical(state);
   drop next_token(state);
@@ -1069,6 +1231,21 @@ fn main() {
     drop fail(state);
   }
 
-  drop host.write(1, state_get(state, 24), sub(state_get(state, 16), state_get(state, 24)));
+  drop patch_branch(state, entry_call, state_get(state, 144), 1);
+
+  file_size = bitand(add(sub(state_get(state, 16), output), 4095), 18446744073709547520);
+  if lt(262144, file_size) {
+    drop fail(state);
+  }
+
+  store64(file_size, add(output, 96));
+  store64(file_size, add(output, 104));
+  cursor = state_get(state, 16);
+  while lt(cursor, add(output, file_size)) {
+    store8(0, cursor);
+    cursor = add(cursor, 1);
+  }
+
+  drop host.write(1, output, file_size);
   return 0;
 }

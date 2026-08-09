@@ -34,16 +34,17 @@ The exact v0 contract is in `LANGUAGE.md`.
 Verified fixed-point SHA-256:
 `be6c623f15602c051fe664289659c1cdd83265506e05f7b5e34d694280fbb293`.
 
-## Gate L3 — readable Raw Core and freestanding target (next)
+## Gate L3 — readable Raw Core and freestanding target (in progress)
 
-The readable-frontend L3 sub-gate is complete. `raw0/compiler.raw` rebuilt
-itself through two byte-identical native generations in the offline AArch64
-VM. Arithmetic, functions, branches, loops, fixed memory, 130 named values,
-rejection tests, and whitespace-insensitive parsing passed. The compiler still
-emits Core-0 source, so direct AArch64 and freestanding emission remain open.
+The readable hosted-compiler sub-gates are complete. `raw0/compiler.raw`
+directly emits a static AArch64 Linux ELF and rebuilt itself through two
+byte-identical direct native generations in the offline AArch64 VM. Arithmetic,
+functions, branches, loops, fixed memory, rejection tests, and
+whitespace-insensitive parsing passed. Core-0 is no longer in the active build
+path. Freestanding image emission remains open.
 
-- The self-hosted compiler can emit both bootstrap-host ELF and a freestanding
-  AArch64 image.
+- Complete: the self-hosted compiler emits the bootstrap-host ELF directly.
+- Next: the same compiler emits a freestanding AArch64 image.
 - Target-specific effects live behind explicit target modules.
 - A normal program cannot accidentally issue a Linux syscall or access a
   device register.
@@ -52,8 +53,8 @@ emits Core-0 source, so direct AArch64 and freestanding emission remain open.
   in recovery Core-0 only.
 - There is one runtime `word` type and exactly one lowering path for each
   canonical primitive.
-- The readable compiler directly emits the platform artifact without the
-  frozen Core-0 lowering backend.
+- Complete: the readable compiler directly emits the hosted platform artifact
+  without the frozen Core-0 lowering backend.
 
 ## Gate O1 — first Core OS
 
