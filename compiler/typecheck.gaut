@@ -1,4 +1,0 @@
-import ast
-import parser
-
-check(prog: Program) -> Program = prog

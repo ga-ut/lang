@@ -1,6 +1,6 @@
 # Replace the Rust/C Gaut implementation with Raw Core
 
-Status: awaiting user confirmation
+Status: completed locally after user confirmation
 
 ## Why this is a replacement
 
@@ -86,3 +86,13 @@ Large or generated resources are excluded:
 2. `Replace Rust Gaut with self-hosted Raw Core`
 
 The second commit is made only after user confirmation of this plan.
+
+## Result
+
+- Recovery tag: `archive/rust-gaut-before-raw-core` at `f7d1e97`.
+- Existing Rust, Cargo, C runtime, and old `.gaut` implementation files: zero.
+- Retained distribution checksums: all passed.
+- Audit constructor output: byte-identical to `dist/core0.elf`.
+- Primitive inventory: 24 unique IDs and 24 unique canonical names.
+- VM runtime and generated workspace: absent from the repository.
+- Remote push: deliberately not performed as part of the replacement commit.

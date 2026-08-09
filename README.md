@@ -1,79 +1,117 @@
-# Gaut 언어 예제 실행 가이드
+# Core ARM64 language and OS bootstrap
 
-`examples/*.gaut` 파일들을 타입체크/인터프리트/간단 C 코드 생성으로 확인하는 방법을 정리했습니다.
+The project now targets a self-hosted systems language followed by a minimal
+operating system written in that language. See `docs/LANGUAGE.md`,
+`docs/RAW-SPEC.md`, `docs/OS.md`, and `docs/ROADMAP.md` for the authoritative
+boundaries.
 
-## 1) 빌드/테스트 준비
+M0 below is frozen historical bootstrap machinery. It is not the product
+language and will not be expanded into a renamed AArch64 assembler.
 
-```bash
-cargo test
+## Current result: Core-0 self-hosted
+
+`core0/compiler.core` is a compiler written in Core-0. In the offline AArch64
+VM, the audit-constructed generation 0 compiled it to generation 1, and
+generation 1 compiled it to generation 2. All three files were byte-identical:
+
+```text
+be6c623f15602c051fe664289659c1cdd83265506e05f7b5e34d694280fbb293
 ```
 
-- 워크스페이스 전체 테스트가 통과하면 파서/타입체커/인터프리터/C 트랜스파일러 스켈레톤이 정상 동작합니다.
-- 네트워크가 제한된 환경이면 의존성 다운로드가 먼저 필요합니다.
+The retained active compiler is `dist/core0.elf` (20 KiB). It directly emits
+static AArch64 Linux ELF files and needs no Python, C, Rust, LLVM, assembler,
+linker, libc, or dynamic loader. `core0/reference_compiler.py` is retained only
+to audit the one-time construction.
 
-## 2) 인터프리터로 예제 실행 (Rust 테스트 기반)
+Verified self-hosted examples:
 
-현재 인터프리터는 Rust 테스트로 예제를 실행합니다. 새 예제를 추가하려면 `crates/interp/src/lib.rs`의 테스트를 참고하세요.
+- function call and arithmetic: exit 42
+- structured loop and local slots: exit 55
+- explicit arena store/load: exit 42
+- unknown operation: rejected with status 2 and no emitted bytes
 
-예제 확인:
+Core-0 is the dependency-free recovery language, not the source people should
+use to maintain the OS. The next gate is the readable named Raw Core grammar in
+`RAW-SPEC.md`, followed by a freestanding backend.
 
-```bash
-cargo test -p interp
+Compile inside the isolated AArch64 Linux VM:
+
+```sh
+./core0.elf < program.core > program.elf
+chmod +x program.elf
+./program.elf
 ```
 
-포함된 예제:
-- `examples/calc.gaut` : 기본 계산
-- `examples/record.gaut` : 구조체/참조/이동
-- `examples/hello.gaut` : 전역 문자열 결합
+## Frozen M0 trust root
 
-## 3) CLI와 C 백엔드
+M0 v0.1 is a native, self-hosting ARM64 Linux word assembler. It has no C,
+Rust, LLVM, assembler, linker, libc, interpreter, or dynamic-loader dependency.
+It reads source from standard input and writes a fixed-size native ELF to
+standard output.
 
-- 인터프리터 실행: `cargo run -p cli -- examples/hello.gaut`
-- C 코드 생성: `cargo run -p cli -- --emit-c /tmp/hello.c examples/hello.gaut`
-- C 코드 생성 후 빌드: `cargo run -p cli -- --emit-c /tmp/hello.c --build /tmp/hello examples/hello.gaut`
-- 환경 변수: `GAUT_STD_DIR`(표준 모듈 경로), `GAUT_RUNTIME_C_DIR`(C 런타임 위치). `clang -std=gnu11`로 `runtime/c/runtime.{c,h}`를 함께 빌드합니다.
-- 문자열/바이트 결합은 함수/블록 아레나(`GAUT_DEFAULT_ARENA_CAP`)에서 할당하며, 함수 반환 시에는 힙으로 승격해 수명을 보장합니다.
+## Verified bootstrap chain
 
-## 4) Self-host 스모크/결정성 체크
+```text
+hex0 -> M0 stage0 -> M0 stage1 -> M0 stage2
+```
 
-`./scripts/self_host.sh`는 예제(`hello`, `calc`, `record`)를 대상으로
-1) 두 번 C 코드를 생성해 sha256이 동일한지 확인하고,
-2) `--build`로 바이너리를 만든 뒤 실행까지 진행합니다. 산출물은 `target/self_host/`에 저장됩니다.
-- 옵션: `SELF_HOST_SKIP=1`로 self_host 루프를 건너뛰고, `SELF_HOST_COMPILER=1`이면 `compiler/main.gaut`가 있을 때 stage0→stage1→stage2 해시/빌드 루프도 수행합니다(실험적).
+The two self-hosted M0 generations were byte-identical in the offline ARM64
+VM. The retained final compiler is `dist/m0.elf`; redundant stage binaries and
+the temporary VM workspace were removed after verification.
 
-## 5) std/네트워크 예제
+## v0.1 source syntax
 
-- 표준 스텁: `std/str.gaut`, `std/bytes.gaut`, `std/net.gaut` (net은 타입 시그니처만, 런타임 연결 미구현)
-- TCP 예제: `examples/tcp_echo.gaut`는 네트워크 래퍼가 실제로 연결된 후 사용할 수 있습니다.
+All integer arguments are hexadecimal. Commands are whitespace separated.
 
-## 6) 새 .gaut 파일 작성/실행 팁
+```text
+word  d2800540   # emit one 32-bit word, little-endian
+byte  7f         # emit one byte
+movz  0 2a       # movz x0, #42
+svc              # svc #0
+jump  3          # emit B with raw signed imm26 value
+zero  10         # emit 0x10 zero bytes
+```
 
-1. `.gaut` 확장자로 저장합니다.
-2. `import foo`는 `foo.gaut`를 같은 디렉터리나 std 경로에서 찾습니다.
-3. 실행하려면:
-   - CLI: `cargo run -p cli -- my.gaut` (또는 `--emit-c/--build`),
-   - 또는 Rust 테스트에 예제를 추가해 `cargo test -p interp`로 실행 결과를 확인합니다.
+The current parser identifies commands by their first character, so comments
+are not part of v0.1 source. The annotations above are documentation only and
+must not be copied into source yet.
 
-## 7) 주의사항
+M0 emits one deterministic 4096-byte ELF with a 3976-byte code capacity. The
+small fixed format keeps the compiler and self-host comparison auditable.
 
-- 현재 IO/네트워크는 스텁 수준입니다. 실제 출력/소켓 동작은 런타임과 언어를 더 연결해야 합니다.
-- 경고: parser의 Token 가시성과 interp의 `IndexMap::remove` 경고가 남아있지만 기능에는 영향 없습니다.
+## Example
 
-## 7) CLI 사용법 및 배포
+`dist/exit42.m0`:
 
-### 실행
-- 로컬 빌드 후 실행: `cargo run -p cli -- examples/hello.gaut`
-- C 코드만 뽑기: `cargo run -p cli -- --emit-c /tmp/hello.c examples/hello.gaut`
-- C 코드 빌드까지: `cargo run -p cli -- --emit-c /tmp/hello.c --build /tmp/hello examples/hello.gaut`
-- 설치 후 실행: `gaut examples/hello.gaut` (PATH에 등록 시)
-- std 경로 변경: `GAUT_STD_DIR=/path/to/std gaut myfile.gaut`
-- C 런타임 경로 변경: `GAUT_RUNTIME_C_DIR=/path/to/runtime/c gaut --emit-c ...`
+```text
+movz 0 2a
+movz 8 5d
+svc
+```
 
-### 빌드/설치
-- 릴리스 빌드: `cargo build -p cli --release` → `target/release/gaut`
-- PATH 등록: `ln -sf $(pwd)/target/release/gaut /usr/local/bin/gaut` (또는 PATH 내 디렉터리에 복사)
-- Cargo 설치: `cargo install --path crates/cli` → `~/.cargo/bin/gaut`
+Compile inside the ARM64 Linux VM:
 
-### 배포(바이너리 묶음)
-- `cargo build -p cli --release` 후 `target/release/gaut`와 `std/` 디렉터리를 함께 tar/zip으로 패키징
-- 사용자는 압축 해제 후 `gaut` 실행, `std/`는 실행 파일과 동일 루트에 두면 기본 경로로 인식
+```sh
+./m0.elf < exit42.m0 > exit42.elf
+chmod +x exit42.elf
+./exit42.elf
+echo $?
+```
+
+The verified result is `42`.
+
+## Retained files
+
+- `dist/m0.elf`: final self-hosted compiler
+- `dist/m0.m0`: compiler represented in its own source language
+- `dist/exit42.m0` and `dist/exit42.elf`: verified example
+- `dist/M0_VERIFIED`: isolated-VM verification record
+- `dist/hex0.hex`: tiny historical trust-root source
+- `bootstrap/` and `m0/build_m0.py`: audit-only seed constructors
+- `core0/compiler.core`: self-hosted compiler source
+- `dist/core0.elf`: retained self-hosted Core-0 compiler
+- `dist/CORE0_VERIFIED`: isolated-VM fixed-point and language-test record
+- `core0/reference_compiler.py`: audit-only Core-0 constructor
+
+The Python constructors are not part of the active build path. Keeping them
+allows the original hand-encoded AArch64 instructions to be reviewed.

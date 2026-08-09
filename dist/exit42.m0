@@ -1,0 +1,3 @@
+movz 0 2a
+movz 8 5d
+svc

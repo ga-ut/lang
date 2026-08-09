@@ -1,6 +1,12 @@
-target/
-**/*.rs.bk
 .DS_Store
-/.idea/
-/.vscode/
-/*.log
+__pycache__/
+*.pyc
+*.log
+*.img
+
+/lab/runtime/
+/work/
+/core0/*.stage*.elf
+/core0/*.failed.elf
+/core0/*.partial.elf
+/core0/examples/*.elf
