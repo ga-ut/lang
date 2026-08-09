@@ -7,7 +7,7 @@
 - entry privilege: EL1 from QEMU direct-kernel boot
 - RAM: 128 MiB beginning at `0x40000000`
 - console: PL011 UART at `0x09000000`
-- source input: one checked RAM packet at `0x47000000`
+- build input: one checked request packet at `0x47000000`
 - network device: absent
 - persistent disk: absent
 
@@ -16,8 +16,8 @@ QEMU is a replaceable hardware model, not part of Gaut semantics.
 ## Current compile-and-run flow
 
 `dist/gaut-os.img` is the readable Gaut compiler built for `qemu_virt`.
-`os/run.sh` places an eight-byte little-endian source length followed by the
-exact source bytes in the input packet and boots the compiler.
+`os/run.sh` places external profile `2`, an eight-byte little-endian source
+length, and the exact source bytes in the input packet and boots the compiler.
 
 The compiler:
 

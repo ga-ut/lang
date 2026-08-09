@@ -235,26 +235,34 @@ Platform effects are outside the canonical value primitive set and are legal
 only for the selected platform. Trap numbers and device addresses are backend
 data, never implicit source behavior.
 
-The freestanding platform adds only an effect demanded by the next boot test.
-It does not predefine UART, timer, task, file, network, rendering, or AI APIs.
+Platform selection is not Gaut syntax. `target`, platform names, ABI names,
+container names, and board names are never keywords or canonical source names.
+Identical source bytes may be submitted with different external build profiles
+without changing the source or parser.
 
-An optional first declaration selects the output target:
+The compiler consumes one binary build request:
 
 ```text
-target qemu_virt;
+offset  size  meaning
+0       8     little-endian build profile ID
+8       8     little-endian source byte length
+16      N     exact Gaut source bytes
 ```
 
-`target` is build metadata, not a value or runtime primitive. It may occur
-once, before every function. `qemu_virt` selects the checked AArch64 QEMU
-`virt` board layout, a raw boot image container, and a freestanding entry
-adapter. A source without the declaration retains the bootstrap-host AArch64
-Linux ELF target for compiler self-hosting. Target-specific names are reserved
-and cannot be used as functions, parameters, locals, or memories.
+Profile `1` selects the current AArch64 Linux static ELF adapter. Profile `2`
+selects the current AArch64 QEMU `virt` raw-image adapter. These IDs belong to
+the compiler request protocol, not the language inventory. The source length
+is at most 131055 bytes and the request contains no trailing bytes.
 
-The target declaration does not grant an implicit UART operation. Gaut kernel
-source performs device access through the same ordered `load32` and `store32`
+A build profile selects the architecture backend, ABI, container, entry
+adapter, and available platform-effect lowering. Adding a new platform changes
+that external profile table and its backend adapter; it must not change the
+Gaut grammar or reserve a source name.
+
+Profile selection does not grant an implicit UART operation. Gaut board source
+performs device access through the same ordered `load32` and `store32`
 primitive implementations used for ordinary explicit addresses. Board
-addresses belong in the selected board source and must not leak into portable
+addresses belong in board-specific source and must not leak into portable
 programs.
 
 Target effects retain one spelling and arity across targets. Their adapters
@@ -262,11 +270,10 @@ may differ only where the selected machine boundary requires it:
 
 - `host.read(descriptor, address, count)` reads platform input bytes and
   returns the number copied. On bootstrap Linux it is the direct descriptor
-  read. In the `qemu_virt` compiler image, the machine has one input channel:
-  a launch packet at physical address `0x47000000`, containing an eight-byte
-  little-endian length followed by that many source bytes. The descriptor is
-  accepted for source compatibility but is not interpreted, and the length
-  must not exceed `count`.
+  read. In the QEMU `virt` compiler image, the machine has one input channel:
+  a complete build request at physical address `0x47000000`. The descriptor is
+  accepted for source compatibility but is not interpreted, and the request
+  length must not exceed `count`.
 - `host.write(descriptor, address, count)` writes platform output bytes and
   returns the number written. On bootstrap Linux it is the direct descriptor
   write. On `qemu_virt`, the machine has one polled PL011 serial output channel,
@@ -327,9 +334,10 @@ A compiler conforms only after all of these pass:
 ## 14. Current implementation boundary
 
 `gaut/compiler.gaut` implements this grammar and directly emits a static
-AArch64 Linux ELF or an explicit QEMU `virt` raw image. It has rebuilt itself
-through byte-identical native generations. The current freestanding adapter
-compiles and transfers control to one child per boot.
+AArch64 Linux ELF or an explicit QEMU `virt` raw image selected by the external
+build profile. It has rebuilt itself through byte-identical native generations.
+The current freestanding adapter compiles and transfers control to one child
+per boot.
 
 The next implementation boundary is a returnable child ABI with non-overlapping
 compiler and child memory. It does not require a larger type system or syntax
