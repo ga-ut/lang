@@ -1,0 +1,5 @@
+fn main() {
+  memory bytes 16;
+  store8(42, bytes);
+  return load8(bytes);
+}

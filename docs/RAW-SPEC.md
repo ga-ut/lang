@@ -1,4 +1,4 @@
-# Raw Core specification - draft 0.1
+# Raw Core specification - draft 0.4
 
 Raw Core is the one semantic layer shared by the compiler, future kernel, and
 later frontends. It is deliberately small, unsafe, and direct.
@@ -17,8 +17,9 @@ semantic definition, and one lowering function per target.
 ## 2. Not built yet
 
 - signed integers
+- source-level type declarations
 - separate boolean, byte, pointer, slice, array, structure, enum, or string
-  types
+  value types
 - ownership, garbage collection, exceptions, or hidden bounds checks
 - infix precedence, implicit conversions, generics, macros, optimizers, or
   multiple calling conventions
@@ -35,18 +36,23 @@ understand an assignment or call.
 Postfix Core-0 remains the frozen recovery representation. It is not the
 maintained source language for the OS.
 
-Raw Core uses one canonical parenthesized form. Parentheses are structure, not
-optional sugar: there is no alternative infix notation, precedence, shorthand,
-or implicit call syntax.
+Raw Core uses explicitly terminated statements, braced blocks, and call-shaped
+expressions. Whitespace, including line breaks, never changes program meaning.
+There is no infix expression parser, operator precedence, indentation
+semantics, shorthand, or implicit call syntax.
 
 ```text
-(fn sum (limit)
-  (let total 0x0)
-  (let i 0x1)
-  (while (lt i limit)
-    (set total (add total i))
-    (set i (add i 0x1)))
-  (return total))
+fn sum(limit) {
+  let total = 0;
+  let i = 1;
+
+  while lt(i, limit) {
+    total = add(total, i);
+    i = add(i, 1);
+  }
+
+  return total;
+}
 ```
 
 This source has the same minimal machine model as Core-0, but names replace
@@ -54,17 +60,19 @@ numbered slots and every operation's arguments are visible at its use site.
 
 ## 4. Lexical format
 
-Source is ASCII. Other input bytes are rejected. Space, tab, LF, and CR
-separate tokens. A `#` begins a comment through LF or end of file.
+Source is ASCII. Other input bytes are rejected. Space, tab, LF, and CR are
+equivalent whitespace and separate tokens. A `#` begins a comment through LF
+or end of file.
 
-- A literal is `0x` followed by one through sixteen hexadecimal digits.
+- A literal is one or more decimal digits from `0` through `9`.
 - A name starts with an ASCII letter or underscore and continues with ASCII
   letters, digits, underscore, or dot.
-- Parentheses are the only structural punctuation.
+- Punctuation is limited to `(`, `)`, `{`, `}`, `,`, `;`, and `=`.
 
-Wider or malformed literals are rejected rather than truncated. There are no
-decimal literals, strings, escapes, implicit terminators, or alternative
-spellings.
+Whitespace is ignored outside tokens; indentation and line breaks have no
+meaning. A value above the maximum 64-bit unsigned word or any malformed
+literal is rejected rather than truncated. There are no hexadecimal literals,
+strings, escapes, or alternative numeric spellings.
 
 ## 5. The only runtime type
 
@@ -73,7 +81,8 @@ word = unsigned 64-bit value
 ```
 
 Every parameter, local, return value, address, comparison result, and loaded
-value is one `word`.
+value is one `word`. Source contains no type annotations because there is no
+second value type to select.
 
 - Arithmetic wraps modulo 2^64.
 - Comparisons return exactly zero or one.
@@ -82,46 +91,61 @@ value is one `word`.
 - Address validity and alignment are programmer obligations.
 - Allocation and conversion never happen implicitly.
 
+The compiler still distinguishes name categories at compile time. A value
+name, fixed-memory name, function name, primitive name, and target-effect name
+cannot be redeclared or used in a position that requires another category.
+This is name and arity validation, not a source-visible type system.
+
 Raw Core is intentionally unsafe. A new type is proposed only with a concrete
 compiler or kernel failure that it prevents.
 
-## 6. Canonical grammar
+## 6. Canonical grammar and small-parser boundary
 
-The grammar below is the entire maintained source surface for draft 0.1.
+The grammar below is the entire maintained source surface for draft 0.4.
 
 ```text
-program   := function+
-function  := (fn name (name*) statement* (return expression))
+program    := function+
+function   := "fn" name "(" parameters? ")" function-body
+parameters := name ("," name)*
+function-body := "{" statement* "return" expression ";" "}"
+block      := "{" statement* "}"
 
-statement := (let name expression)
-           | (set name expression)
-           | (drop expression)
-           | (store8 expression expression)
-           | (store32 expression expression)
-           | (store64 expression expression)
-           | (if expression (then statement*) (else statement*))
-           | (while expression statement*)
-           | target-statement
+statement  := "let" name "=" expression ";"
+            | name "=" expression ";"
+            | "memory" name literal ";"
+            | "drop" expression ";"
+            | call ";"
+            | "if" expression block ("else" block)?
+            | "while" expression block
 
 expression := literal
             | name
-            | (call name expression*)
-            | (primitive expression*)
-            | target-expression
+            | call
+call       := name "(" arguments? ")"
+arguments  := expression ("," expression)*
 ```
 
-`let` introduces one named local initialized by its expression. `set` changes
-an existing local. Parameters and locals share one namespace; shadowing and
-redeclaration are errors. Reading before `let` is impossible because names are
-resolved in source order.
+The lexer has ten token kinds: name, decimal literal, left/right parenthesis,
+left/right brace, comma, equals, semicolon, and end-of-file. Keywords are
+ordinary names interpreted by statement position. Expression parsing needs one
+token of lookahead and three cases: literal, name, or call. There is no Pratt
+parser, precedence table, newline state, or backtracking.
 
-Every function returns exactly one word through its final `return`. There is no
-implicit result, early return, void function, optional else, or implicit call.
-These constraints can be relaxed only when kernel source demonstrates a need.
+`let` introduces one initialized local. Plain assignment changes an existing
+local. Parameters and locals share one namespace; shadowing, redeclaration, and
+assignment before declaration are errors.
 
-Function arguments and primitive arguments evaluate left to right exactly
-once. Functions must be defined before calls, calls must match parameter count,
-and recursion is not part of draft 0.1.
+Every function ends with exactly one `return` and returns one word. `return`
+is not a general statement and therefore cannot occur inside `if`, `while`, or
+another nested block. Early return, void functions, and recursion are outside
+draft 0.4. Functions must be defined before calls and calls must match
+parameter count.
+
+Arguments evaluate left to right exactly once. A call whose inventory entry
+has zero outputs is legal only as a `call ";"` statement and cannot appear
+inside an expression. A call with one output must be consumed by an expression,
+assignment, return, condition, or explicit `drop`; it is an error to use it as
+a bare statement.
 
 ## 7. Canonical value primitives
 
@@ -153,6 +177,24 @@ stack operations. Evaluation storage is an implementation detail, not work the
 human author must simulate.
 
 ## 8. Canonical memory primitives
+
+`memory name literal;` declares one fixed byte region. Its size is a positive
+decimal compile-time constant. The compiler aligns the region's base to eight
+bytes and decides its physical placement; no allocator is called at runtime.
+
+- The name evaluates to the region's base byte address but cannot be assigned.
+- The declaration is visible from its source position to the end of the
+  function, including later nested blocks; there is no shadowing.
+- Each function invocation has a fresh logical region. Its bytes are
+  uninitialized, and reading a byte not written during that invocation
+  violates the program contract.
+- The address becomes invalid when the invocation returns. Retaining or using
+  it afterward violates the program contract.
+- A declaration inside a repeated or conditional block still denotes the one
+  statically allocated region for that function invocation. Entering the block
+  does not allocate or initialize it.
+- A zero size, a region larger than the target limit, or total fixed storage
+  beyond the target limit is a compile error.
 
 ```text
 load8 address
@@ -225,7 +267,7 @@ entry setup, and image metadata remain separate platform construction.
 
 Each platform owns exactly one lowering function for each supported primitive.
 An unsupported primitive is a compile error. Optimizations are absent in draft
-0.1.
+0.4.
 
 ## 13. Conformance gate
 
@@ -242,12 +284,12 @@ A compiler conforms only after all of these pass:
 
 ## 14. Migration from verified Core-0
 
-Core-0 remains the recovery compiler. Draft 0.1 is not yet claimed implemented.
+Core-0 remains the recovery compiler. Draft 0.4 is not yet claimed implemented.
 The next compiler is written in Core-0 but accepts the readable grammar above.
 
 Migration order:
 
-1. parse balanced forms, names, and hexadecimal literals;
+1. parse names, call punctuation, braces, semicolons, and decimal literals;
 2. resolve functions, parameters, and locals and validate arity;
 3. map every canonical primitive to one stable ID;
 4. lower each ID through one AArch64 implementation;

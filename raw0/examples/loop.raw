@@ -1,0 +1,15 @@
+fn sum(limit) {
+  let total = 0;
+  let i = 1;
+
+  while lt(i, add(limit, 1)) {
+    total = add(total, i);
+    i = add(i, 1);
+  }
+
+  return total;
+}
+
+fn main() {
+  return sum(10);
+}

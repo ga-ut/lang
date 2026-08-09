@@ -1,0 +1,845 @@
+# Raw Core 0.4 readable-source bridge, written in frozen Core-0.
+#
+# Input:  Raw Core source on stdin.
+# Output: validated deterministic Core-0 source on stdout.
+#
+# Nothing is written until the complete input has been validated.  The frozen
+# self-hosted Core-0 compiler then performs the only AArch64 lowering.
+
+fn fail
+  $2 mem $77fc0 + $15 host.write drop
+  $2 host.exit
+endfn
+
+fn put
+  v10!
+  v2@ mem $40000 + >= if
+    call fail
+  endif
+  v10@ v2@ store8
+  v2@ $1 + v2!
+endfn
+
+fn emit_packed
+  v11! # length
+  v12! # little-endian bytes
+  $0 v13!
+  while
+    v13@ v11@ <
+  do
+    v12@ $ff & call put
+    v12@ $8 >> v12!
+    v13@ $1 + v13!
+  endwhile
+endfn
+
+fn emit_span
+  v14! # length
+  v15! # address
+  $0 v16!
+  while
+    v16@ v14@ <
+  do
+    v15@ v16@ + load8 call put
+    v16@ $1 + v16!
+  endwhile
+  $20 call put
+endfn
+
+fn emit_nibble
+  v17!
+  v17@ $a < if
+    v17@ $30 + call put
+  else
+    v17@ $a - $61 + call put
+  endif
+endfn
+
+fn emit_hex
+  v18!
+  $24 call put
+  $0 v19!
+  while
+    v19@ $10 <
+  do
+    $f v19@ - $4 * v1a!
+    v18@ v1a@ >> $f & call emit_nibble
+    v19@ $1 + v19!
+  endwhile
+  $20 call put
+endfn
+
+fn emit_slot_get
+  v1b!
+  $76 call put
+  v1b@ $4 >> $f & call emit_nibble
+  v1b@ $f & call emit_nibble
+  $40 call put
+  $20 call put
+endfn
+
+fn emit_slot_set
+  v1c!
+  $76 call put
+  v1c@ $4 >> $f & call emit_nibble
+  v1c@ $f & call emit_nibble
+  $21 call put
+  $20 call put
+endfn
+
+fn emit_memory_base
+  v1d!
+  $206d656d $4 call emit_packed
+  v1d@ call emit_hex
+  $202b $2 call emit_packed
+endfn
+
+fn is_name_start
+  v20!
+  v20@ $41 >= v20@ $5a <= &
+  v20@ $61 >= v20@ $7a <= & |
+  v20@ $5f = |
+endfn
+
+fn is_name_continue
+  v21!
+  v21@ call is_name_start
+  v21@ $30 >= v21@ $39 <= & |
+  v21@ $2e = |
+endfn
+
+fn next
+  $1 v28!
+  while
+    v28@
+  do
+    v0@ v1@ >= if
+      $0 v4!
+      $0 v28!
+    else
+      v0@ load8 v29!
+      v29@ $20 =
+      v29@ $9 = |
+      v29@ $a = |
+      v29@ $d = | if
+        v0@ $1 + v0!
+      else
+        v29@ $23 = if
+          $1 v2a!
+          while
+            v2a@ v0@ v1@ < &
+          do
+            v0@ load8 $a = if
+              v0@ $1 + v0!
+              $0 v2a!
+            else
+              v0@ $1 + v0!
+            endif
+          endwhile
+        else
+          $0 v28!
+        endif
+      endif
+    endif
+  endwhile
+
+  v0@ v1@ < if
+    v0@ v5!
+    v0@ load8 v29!
+
+    v29@ call is_name_start if
+      v0@ $1 + v0!
+      $1 v2a!
+      while
+        v2a@ v0@ v1@ < &
+      do
+        v0@ load8 call is_name_continue if
+          v0@ $1 + v0!
+        else
+          $0 v2a!
+        endif
+      endwhile
+      v0@ v5@ - v6!
+      $1 v4!
+    else
+      v29@ $30 >= v29@ $39 <= & if
+        $0 v7!
+        $1 v2a!
+        while
+          v2a@ v0@ v1@ < &
+        do
+          v0@ load8 v29!
+          v29@ $30 >= v29@ $39 <= & if
+            v29@ $30 - v2b!
+            v7@ $1999999999999999 >
+            v7@ $1999999999999999 = v2b@ $5 > & | if
+              call fail
+            endif
+            v7@ $a * v2b@ + v7!
+            v0@ $1 + v0!
+          else
+            $0 v2a!
+          endif
+        endwhile
+        v0@ v5@ - v6!
+        $2 v4!
+      else
+        v0@ $1 + v0!
+        $0 v6!
+        v29@ $28 = if $3 v4! else
+        v29@ $29 = if $4 v4! else
+        v29@ $7b = if $5 v4! else
+        v29@ $7d = if $6 v4! else
+        v29@ $2c = if $7 v4! else
+        v29@ $3d = if $8 v4! else
+        v29@ $3b = if $9 v4! else
+          call fail
+        endif endif endif endif endif endif endif
+      endif
+    endif
+  endif
+endfn
+
+fn span_equal
+  v30! # right length
+  v31! # right address
+  v32! # left length
+  v33! # left address
+  v32@ v30@ != if
+    $0
+  else
+    $0 v34!
+    $1 v35!
+    while
+      v34@ v32@ < v35@ &
+    do
+      v33@ v34@ + load8 v31@ v34@ + load8 != if
+        $0 v35!
+      endif
+      v34@ $1 + v34!
+    endwhile
+    v35@
+  endif
+endfn
+
+fn canonical_add
+  v37! # info
+  v38! # length
+  v39! # second eight bytes
+  v3a! # first eight bytes
+  mem $78000 + vD@ $20 * + v3b!
+  v3a@ v3b@ store64
+  v39@ v3b@ $8 + store64
+  v38@ v3b@ $10 + store64
+  v37@ v3b@ $18 + store64
+  vD@ $1 + vD!
+endfn
+
+fn canonical_find
+  v3c! # length
+  v3d! # address
+  $0 v3e!
+  $0 v3f!
+  while
+    v3e@ vD@ < v3f@ $0 = &
+  do
+    mem $78000 + v3e@ $20 * + v37!
+    v3d@ v3c@ v37@ v37@ $10 + load64 call span_equal if
+      v37@ $18 + load64 v3f!
+    endif
+    v3e@ $1 + v3e!
+  endwhile
+  v3f@
+endfn
+
+fn function_add
+  v40! # arity
+  v41! # length
+  v42! # address
+  v8@ $100 >= if
+    call fail
+  endif
+  mem $50000 + v8@ $20 * + v43!
+  v42@ v43@ store64
+  v41@ v43@ $8 + store64
+  v40@ v43@ $10 + store64
+  v8@ $1 + v8!
+endfn
+
+fn function_find
+  v44! # length
+  v45! # address
+  $0 v46!
+  $0 v47!
+  while
+    v46@ v8@ < v47@ $0 = &
+  do
+    mem $50000 + v46@ $20 * + v48!
+    v44@ v48@ $8 + load64 = if
+      $0 v40!
+      $1 v41!
+      while
+        v40@ v44@ < v41@ &
+      do
+        v45@ v40@ + load8 v48@ load64 v40@ + load8 != if
+          $0 v41!
+        endif
+        v40@ $1 + v40!
+      endwhile
+      v41@ if
+        v48@ v47!
+      endif
+    endif
+    v46@ $1 + v46!
+  endwhile
+  v47@
+endfn
+
+fn local_add
+  v49! # value: slot or memory offset
+  v4a! # kind: 1 value, 2 memory
+  v4b! # length
+  v4c! # address
+  v9@ $100 >= if
+    call fail
+  endif
+  mem $60000 + v9@ $20 * + v4d!
+  v4c@ v4d@ store64
+  v4b@ v4d@ $8 + store64
+  v4a@ v4d@ $10 + store64
+  v49@ v4d@ $18 + store64
+  v9@ $1 + v9!
+endfn
+
+fn local_find
+  v4e! # length
+  v4f! # address
+  $0 v49!
+  $0 v4a!
+  while
+    v49@ v9@ < v4a@ $0 = &
+  do
+    mem $60000 + v49@ $20 * + v4b!
+    v4e@ v4b@ $8 + load64 = if
+      $0 v4c!
+      $1 v4d!
+      while
+        v4c@ v4e@ < v4d@ &
+      do
+        v4f@ v4c@ + load8 v4b@ load64 v4c@ + load8 != if
+          $0 v4d!
+        endif
+        v4c@ $1 + v4c!
+      endwhile
+      v4d@ if
+        v4b@ v4a!
+      endif
+    endif
+    v49@ $1 + v49!
+  endwhile
+  v4a@
+endfn
+
+fn init_canonical
+  $0 vD!
+  $6e66 $0 $2 $01000001 call canonical_add
+  $74656c $0 $3 $01000002 call canonical_add
+  $79726f6d656d $0 $6 $01000003 call canonical_add
+  $706f7264 $0 $4 $01000004 call canonical_add
+  $6669 $0 $2 $01000005 call canonical_add
+  $65736c65 $0 $4 $01000006 call canonical_add
+  $656c696877 $0 $5 $01000007 call canonical_add
+  $6e7275746572 $0 $6 $01000008 call canonical_add
+
+  $646461 $0 $3 $02010210 call canonical_add
+  $627573 $0 $3 $02010211 call canonical_add
+  $6c756d $0 $3 $02010212 call canonical_add
+  $646e61746962 $0 $6 $02010213 call canonical_add
+  $726f746962 $0 $5 $02010214 call canonical_add
+  $726f78746962 $0 $6 $02010215 call canonical_add
+  $6c6873 $0 $3 $02010216 call canonical_add
+  $726873 $0 $3 $02010217 call canonical_add
+  $7165 $0 $2 $02010218 call canonical_add
+  $746c $0 $2 $02010219 call canonical_add
+  $3864616f6c $0 $5 $02010120 call canonical_add
+  $323364616f6c $0 $6 $02010121 call canonical_add
+  $343664616f6c $0 $6 $02010122 call canonical_add
+  $3865726f7473 $0 $6 $02000223 call canonical_add
+  $323365726f7473 $0 $7 $02000224 call canonical_add
+  $343665726f7473 $0 $7 $02000225 call canonical_add
+  $6165722e74736f68 $64 $9 $02010340 call canonical_add
+  $6972772e74736f68 $6574 $a $02010341 call canonical_add
+  $6978652e74736f68 $74 $9 $02000142 call canonical_add
+endfn
+
+fn emit_callable
+  v24! # name length
+  v1f! # name address
+  v1e! # canonical info, zero for a user function
+  v1e@ $0 = if
+    $206c6c6163 $5 call emit_packed
+    v1f@ v24@ call emit_span
+  else
+    v1e@ $ff & v1e!
+    v1e@ $10 = if $202b $2 call emit_packed else
+    v1e@ $11 = if $202d $2 call emit_packed else
+    v1e@ $12 = if $202a $2 call emit_packed else
+    v1e@ $13 = if $2026 $2 call emit_packed else
+    v1e@ $14 = if $207c $2 call emit_packed else
+    v1e@ $15 = if $205e $2 call emit_packed else
+    v1e@ $16 = if $203c3c $3 call emit_packed else
+    v1e@ $17 = if $203e3e $3 call emit_packed else
+    v1e@ $18 = if $203d $2 call emit_packed else
+    v1e@ $19 = if $203c $2 call emit_packed else
+      v1f@ v24@ call emit_span
+    endif endif endif endif endif endif endif endif endif endif
+  endif
+endfn
+
+fn parse_expr
+  vC@ $40 >= if
+    call fail
+  endif
+  mem $70000 + vC@ $40 * + v50!
+  vC@ $1 + vC!
+
+  v4@ $2 = if
+    v7@ call emit_hex
+    call next
+    $1 v5f!
+  else
+    v4@ $1 != if
+      call fail
+    endif
+
+    v5@ v50@ store64
+    v6@ v50@ $8 + store64
+    call next
+
+    v4@ $3 = if
+      v50@ load64 v50@ $8 + load64 call canonical_find v53!
+      v53@ $0 != if
+        v53@ $18 >> $ff & $2 != if
+          call fail
+        endif
+        v53@ $8 >> $ff & v57!
+        v53@ $10 >> $ff & v58!
+        $0 v56!
+      else
+        v50@ load64 v50@ $8 + load64 call function_find v56!
+        v56@ $0 = if
+          call fail
+        endif
+        v56@ $10 + load64 v57!
+        $1 v58!
+      endif
+      v53@ v50@ $10 + store64
+      $0 v50@ $18 + store64
+      v57@ v50@ $20 + store64
+      v58@ v50@ $28 + store64
+      v56@ v50@ $30 + store64
+
+      call next
+      v4@ $4 != if
+        $1 v50@ $38 + store64
+        while
+          mem $70000 + vC@ $1 - $40 * + v50!
+          v50@ $38 + load64
+        do
+          call parse_expr v5b!
+          v5b@ $1 != if
+            call fail
+          endif
+          mem $70000 + vC@ $1 - $40 * + v50!
+          v50@ $18 + load64 $1 + v50@ $18 + store64
+          v4@ $7 = if
+            call next
+          else
+            $0 v50@ $38 + store64
+          endif
+        endwhile
+      endif
+
+      v4@ $4 != if
+        call fail
+      endif
+      mem $70000 + vC@ $1 - $40 * + v50!
+      v50@ $18 + load64 v50@ $20 + load64 != if
+        call fail
+      endif
+      v50@ $28 + load64 v5f!
+      v50@ $10 + load64 v50@ load64 v50@ $8 + load64 call emit_callable
+      call next
+    else
+      v50@ load64 v50@ $8 + load64 call local_find v56!
+      v56@ $0 = if
+        call fail
+      endif
+      v56@ $10 + load64 $1 = if
+        v56@ $18 + load64 call emit_slot_get
+      else
+        v56@ $10 + load64 $2 = if
+          v56@ $18 + load64 call emit_memory_base
+        else
+          call fail
+        endif
+      endif
+      $1 v5f!
+    endif
+  endif
+
+  vC@ $1 - vC!
+  v5f@
+endfn
+
+fn name_available
+  v60! # length
+  v61! # address
+  v61@ v60@ call canonical_find $0 != if
+    $0
+  else
+    v61@ v60@ call function_find $0 != if
+      $0
+    else
+      v61@ v60@ call local_find $0 != if
+        $0
+      else
+        mem $6f000 + v62!
+        v62@ load64 $0 != if
+          v61@ v60@ v62@ load64 v62@ $8 + load64 call span_equal if
+            $0
+          else
+            $1
+          endif
+        else
+          $1
+        endif
+      endif
+    endif
+  endif
+endfn
+
+fn block_push
+  v64!
+  vF@ $40 >= if
+    call fail
+  endif
+  v64@ mem $6c000 + vF@ $8 * + store64
+  vF@ $1 + vF!
+endfn
+
+fn block_top
+  vF@ $0 = if
+    call fail
+  endif
+  mem $6c000 + vF@ $1 - $8 * + load64
+endfn
+
+fn block_set
+  v65!
+  vF@ $0 = if
+    call fail
+  endif
+  v65@ mem $6c000 + vF@ $1 - $8 * + store64
+endfn
+
+fn block_pop
+  call block_top v66!
+  vF@ $1 - vF!
+  v66@
+endfn
+
+fn parse_function
+  # Current token is the reserved word fn.
+  $206e66 $3 call emit_packed
+  call next
+  v4@ $1 != if
+    call fail
+  endif
+  v5@ v6@ call canonical_find $0 != if
+    call fail
+  endif
+  v5@ v6@ call function_find $0 != if
+    call fail
+  endif
+
+  mem $6f000 + v68!
+  v5@ v68@ store64
+  v6@ v68@ $8 + store64
+  $0 v68@ $10 + store64
+  $0 v68@ $18 + store64
+  v5@ v6@ call emit_span
+
+  v6@ $4 = if
+    v5@ load32 $6e69616d = if
+      $1 v68@ $18 + store64
+    endif
+  endif
+
+  call next
+  v4@ $3 != if
+    call fail
+  endif
+  call next
+
+  $0 v9!
+  $0 v6a!
+  v4@ $4 != if
+    $1 v6c!
+    while
+      v6c@
+    do
+      v4@ $1 != if
+        call fail
+      endif
+      v5@ v6@ call name_available $0 = if
+        call fail
+      endif
+      vA@ $80 >= if
+        call fail
+      endif
+      vA@ mem $6e000 + v6a@ $8 * + store64
+      v5@ v6@ $1 vA@ call local_add
+      vA@ $1 + vA!
+      v6a@ $1 + v6a!
+      call next
+      v4@ $7 = if
+        call next
+      else
+        $0 v6c!
+      endif
+    endwhile
+  endif
+
+  v4@ $4 != if
+    call fail
+  endif
+  mem $6f000 + v68!
+  v6a@ v68@ $10 + store64
+  v68@ $18 + load64 $0 != v6a@ $0 != & if
+    call fail
+  endif
+
+  v6a@ v6b!
+  while
+    v6b@ $0 >
+  do
+    v6b@ $1 - v6b!
+    mem $6e000 + v6b@ $8 * + load64 call emit_slot_set
+  endwhile
+
+  call next
+  v4@ $5 != if
+    call fail
+  endif
+  call next
+  $0 vF!
+  $1 v6c!
+
+  while
+    v6c@
+  do
+    v4@ $0 = if
+      call fail
+    endif
+
+    v4@ $6 = if
+      vF@ $0 = if
+        call fail
+      endif
+      call block_top v6f!
+      v6f@ $1 = if
+        call next
+        v4@ $1 = if
+          v5@ v6@ call canonical_find $ff & $6 = if
+            $2065736c65 $5 call emit_packed
+            call next
+            v4@ $5 != if call fail endif
+            $2 call block_set
+            call next
+          else
+            $206669646e65 $6 call emit_packed
+            call block_pop drop
+          endif
+        else
+          $206669646e65 $6 call emit_packed
+          call block_pop drop
+        endif
+      else
+        v6f@ $2 = if
+          $206669646e65 $6 call emit_packed
+          call block_pop drop
+          call next
+        else
+          v6f@ $3 = if
+            $656c696877646e65 $8 call emit_packed
+            $20 call put
+            call block_pop drop
+            call next
+          else
+            call fail
+          endif
+        endif
+      endif
+    else
+      v4@ $1 != if
+        call fail
+      endif
+      v5@ v6@ call canonical_find v6f!
+
+      v6f@ $ff & $8 = if
+        vF@ $0 != if
+          call fail
+        endif
+        call next
+        call parse_expr v6d!
+        v6d@ $1 != if call fail endif
+        v4@ $9 != if call fail endif
+        call next
+        v4@ $6 != if call fail endif
+        $206e66646e65 $6 call emit_packed
+        call next
+
+        mem $6f000 + v68!
+        v68@ load64 v68@ $8 + load64 v68@ $10 + load64 call function_add
+        v68@ $18 + load64 $0 != if
+          $1 vE!
+        endif
+        $0 v6c!
+      else
+        v6f@ $ff & $2 = if
+          call next
+          v4@ $1 != if call fail endif
+          v5@ v68!
+          v6@ v69!
+          v68@ v69@ call name_available $0 = if call fail endif
+          call next
+          v4@ $8 != if call fail endif
+          call next
+          call parse_expr v6d!
+          v6d@ $1 != if call fail endif
+          vA@ $80 >= if call fail endif
+          v68@ v69@ $1 vA@ call local_add
+          vA@ call emit_slot_set
+          vA@ $1 + vA!
+          v4@ $9 != if call fail endif
+          call next
+        else
+          v6f@ $ff & $3 = if
+            call next
+            v4@ $1 != if call fail endif
+            v5@ v68!
+            v6@ v69!
+            v68@ v69@ call name_available $0 = if call fail endif
+            call next
+            v4@ $2 != if call fail endif
+            v7@ $0 = if call fail endif
+            vB@ $7 + $fffffffffffffff8 & v6b!
+            v7@ $e0000 v6b@ - > if call fail endif
+            v68@ v69@ $2 v6b@ call local_add
+            v6b@ v7@ + vB!
+            call next
+            v4@ $9 != if call fail endif
+            call next
+          else
+            v6f@ $ff & $4 = if
+              call next
+              call parse_expr v6d!
+              v6d@ $1 != if call fail endif
+              $20706f7264 $5 call emit_packed
+              v4@ $9 != if call fail endif
+              call next
+            else
+              v6f@ $ff & $5 = if
+                call next
+                call parse_expr v6d!
+                v6d@ $1 != if call fail endif
+                $206669 $3 call emit_packed
+                v4@ $5 != if call fail endif
+                $1 call block_push
+                call next
+              else
+                v6f@ $ff & $7 = if
+                  $20656c696877 $6 call emit_packed
+                  call next
+                  call parse_expr v6d!
+                  v6d@ $1 != if call fail endif
+                  $206f64 $3 call emit_packed
+                  v4@ $5 != if call fail endif
+                  $3 call block_push
+                  call next
+                else
+                  v6f@ $18 >> $ff & $1 = if
+                    call fail
+                  endif
+                  v5@ v68!
+                  v6@ v69!
+                  call next
+                  v4@ $8 = if
+                    v68@ v69@ call local_find v6e!
+                    v6e@ $0 = if call fail endif
+                    v6e@ $10 + load64 $1 != if call fail endif
+                    call next
+                    call parse_expr v6d!
+                    v6d@ $1 != if call fail endif
+                    v6e@ $18 + load64 call emit_slot_set
+                    v4@ $9 != if call fail endif
+                    call next
+                  else
+                    v4@ $3 != if call fail endif
+                    v68@ v0!
+                    call next
+                    call parse_expr v6d!
+                    v6d@ $0 != if call fail endif
+                    v4@ $9 != if call fail endif
+                    call next
+                  endif
+                endif
+              endif
+            endif
+          endif
+        endif
+      endif
+    endif
+  endwhile
+endfn
+
+fn main
+  $6e69203a30776172 mem $77fc0 + store64
+  $6f732064696c6176 mem $77fc8 + store64
+  $0a65637275 mem $77fd0 + store64
+  call init_canonical
+  $0 v8!
+  $0 v9!
+  $0 vA!
+  $0 vB!
+  $0 vC!
+  $0 vE!
+  $0 vF!
+
+  $0 mem $20000 host.read v70!
+  v70@ $20000 = if
+    $0 mem $7ffff + $1 host.read $0 != if
+      call fail
+    endif
+  endif
+  mem v0!
+  mem v70@ + v1!
+  mem $20000 + v3!
+  v3@ v2!
+
+  call next
+  while
+    v4@ $0 !=
+  do
+    v4@ $1 != if call fail endif
+    v5@ v6@ call canonical_find $ff & $1 != if call fail endif
+    call parse_function
+  endwhile
+
+  vE@ $0 = if
+    call fail
+  endif
+  $1 v3@ v2@ v3@ - host.write drop
+  $0
+endfn

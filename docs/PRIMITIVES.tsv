@@ -1,25 +1,26 @@
-id	canonical_name	class	inputs	outputs
-00	constant	value	0	1
-01	local.get	value	0	1
-02	local.set	statement	1	0
-03	drop	statement	1	0
-10	add	value	2	1
-11	sub	value	2	1
-12	mul	value	2	1
-13	bitand	value	2	1
-14	bitor	value	2	1
-15	bitxor	value	2	1
-16	shl	value	2	1
-17	shr	value	2	1
-18	eq	value	2	1
-19	lt	value	2	1
-20	load8	memory	1	1
-21	load32	memory	1	1
-22	load64	memory	1	1
-23	store8	memory	2	0
-24	store32	memory	2	0
-25	store64	memory	2	0
-30	if	control	1	0
-31	while	control	1	0
-32	call	control	variable	1
-33	return	control	1	0
+id	canonical_name	class	inputs	outputs	source_form
+00	constant	value	0	1	decimal literal
+01	local.get	value	0	1	value name
+02	local.set	statement	1	0	let or assignment
+03	drop	statement	1	0	drop statement
+04	memory.base	value	0	1	memory name
+10	add	value	2	1	call
+11	sub	value	2	1	call
+12	mul	value	2	1	call
+13	bitand	value	2	1	call
+14	bitor	value	2	1	call
+15	bitxor	value	2	1	call
+16	shl	value	2	1	call
+17	shr	value	2	1	call
+18	eq	value	2	1	call
+19	lt	value	2	1	call
+20	load8	memory	1	1	call
+21	load32	memory	1	1	call
+22	load64	memory	1	1	call
+23	store8	memory	2	0	call statement
+24	store32	memory	2	0	call statement
+25	store64	memory	2	0	call statement
+30	if	control	1	0	if statement
+31	while	control	1	0	while statement
+32	call	control	variable	1	user-function call
+33	return	control	1	0	final return

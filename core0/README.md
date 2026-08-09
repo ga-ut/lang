@@ -29,5 +29,6 @@ active compiler is `../dist/core0.elf`; the Python constructor is outside the
 active build path. See `../dist/CORE0_VERIFIED` for the isolated-VM record.
 
 Core-0 is deliberately an unsafe bootstrap language. The next language layer
-adds named typed values and capability-checked device access while preserving
-this compiler as the small recovery base.
+adds readable named values, fixed-memory declarations, and explicit target
+effects while preserving this compiler as the small recovery base. Raw Core
+0.4 has one runtime `word` value and therefore no source-level type syntax.

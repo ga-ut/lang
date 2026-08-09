@@ -34,6 +34,32 @@ Core-0 is the dependency-free recovery language, not the source people should
 use to maintain the OS. The next gate is the readable named Raw Core grammar in
 `RAW-SPEC.md`, followed by a freestanding backend.
 
+## Current readable-language bridge
+
+`raw0/compiler.core` now accepts the Raw Core 0.4 grammar with named values,
+decimal literals, call-shaped expressions, braces, semicolons, functions,
+branches, loops, and fixed-memory declarations. It emits validated Core-0
+source, which the retained native Core-0 compiler lowers to AArch64 ELF.
+
+The bridge and readable examples passed in the offline VM. This is intentionally
+reported as a bridge milestone rather than full readable-language self-hosting:
+the bridge source is still frozen postfix Core-0. The next gate rewrites that
+compiler in readable Raw Core and requires two byte-identical native
+generations.
+
+Use the retained bridge inside the isolated AArch64 VM:
+
+```sh
+./raw0.elf < program.raw > program.core
+./core0.elf < program.core > program.elf
+chmod +x program.elf
+./program.elf
+```
+
+`dist/raw0.elf` is the VM-built, verified bridge artifact. It is retained so
+readable programs can be compiled now; it does not change the pending
+readable-self-hosting gate.
+
 Compile inside the isolated AArch64 Linux VM:
 
 ```sh

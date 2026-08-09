@@ -36,6 +36,12 @@ Verified fixed-point SHA-256:
 
 ## Gate L3 — readable Raw Core and freestanding target (next)
 
+The first L3 sub-gate is complete: `raw0/compiler.core` is a native Core-0
+bridge that validates Raw Core 0.4 and emits deterministic Core-0 source.
+Readable arithmetic, functions, branches, loops, fixed memory, rejection
+tests, and whitespace-insensitive parsing passed in the offline AArch64 VM.
+This bridge result is not yet readable-language self-hosting.
+
 - The self-hosted compiler can emit both bootstrap-host ELF and a freestanding
   AArch64 image.
 - Target-specific effects live behind explicit target modules.
@@ -46,6 +52,8 @@ Verified fixed-point SHA-256:
   in recovery Core-0 only.
 - There is one runtime `word` type and exactly one lowering path for each
   canonical primitive.
+- The bridge compiler is rewritten in readable Raw Core and two successive
+  native generations are byte-identical.
 
 ## Gate O1 — first Core OS
 

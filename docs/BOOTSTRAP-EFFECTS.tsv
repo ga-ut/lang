@@ -1,0 +1,4 @@
+id	canonical_name	inputs	outputs	meaning
+40	host.read	3	1	read bytes from a bootstrap-host descriptor
+41	host.write	3	1	write bytes to a bootstrap-host descriptor
+42	host.exit	1	0	terminate the bootstrap-host process
