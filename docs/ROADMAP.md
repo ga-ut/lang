@@ -58,7 +58,22 @@ transcript.
 - Complete: the readable compiler directly emits the hosted platform artifact
   without the frozen Core-0 lowering backend.
 
-## Gate O1 — first Gaut OS (next)
+## Gate L4 — Linux-free one-shot development loop (complete)
+
+- The self-hosted Gaut compiler boots directly as a freestanding image.
+- A launch packet places readable Gaut source in checked RAM.
+- The compiler reads, parses, validates, and emits the child entirely inside
+  the networkless AArch64 machine.
+- `platform.run` transfers control to the generated image without returning to
+  a Linux process or foreign runtime.
+- Two clean boots produced exactly `gaut-os: compiled` from the compiled child.
+- `os/run-f1.sh` creates only a disposable source packet and starts the
+  isolated machine; it is not part of the compiler or guest runtime.
+
+F1 is one compile and run per boot. The next development-loop gate adds a
+serial command monitor and persistent workspace before broader O1 services.
+
+## Gate O1 — first Gaut OS (after the F2 development loop)
 
 - Boots on QEMU `virt` as AArch64 without Linux, libc, a dynamic loader, or a
   foreign runtime.

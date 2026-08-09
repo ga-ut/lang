@@ -1,0 +1,36 @@
+# Gaut OS F1 child compiled and launched by the freestanding Gaut compiler.
+
+target qemu_virt;
+
+fn uart_write(byte) {
+  let uart = 150994944;
+  let transmit_full = 32;
+
+  while bitand(load32(add(uart, 24)), transmit_full) {
+  }
+
+  store32(byte, uart);
+  return 0;
+}
+
+fn main() {
+  drop uart_write(103);
+  drop uart_write(97);
+  drop uart_write(117);
+  drop uart_write(116);
+  drop uart_write(45);
+  drop uart_write(111);
+  drop uart_write(115);
+  drop uart_write(58);
+  drop uart_write(32);
+  drop uart_write(99);
+  drop uart_write(111);
+  drop uart_write(109);
+  drop uart_write(112);
+  drop uart_write(105);
+  drop uart_write(108);
+  drop uart_write(101);
+  drop uart_write(100);
+  drop uart_write(10);
+  return 0;
+}

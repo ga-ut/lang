@@ -20,14 +20,14 @@ Gaut source -> gaut compiler -> AArch64 ELF
 ```
 
 It does not invoke Python, Core-0, C, Rust, LLVM, an assembler, a linker, libc,
-or a dynamic loader. In the isolated offline AArch64 VM, the first direct
-compiler rebuilt its F0-capable source through byte-identical generations:
+or a dynamic loader. In the isolated offline AArch64 VM, the direct compiler
+rebuilt its F1-capable source through byte-identical generations:
 
 ```text
-413a2e8af4b6267ec3472df68d4d267174b3ae11fa8d19489a49b494fb075649
+29e7f54267ed20aaf8fed32493cbf4b62e2b920d672da78a1505f80e316866cc
 ```
 
-Use the retained 52 KiB compiler inside the isolated AArch64 Linux VM:
+Use the retained 56 KiB compiler inside the isolated AArch64 Linux VM:
 
 ```sh
 ./gaut.elf < program.gaut > program.elf
@@ -58,8 +58,30 @@ gaut-os: boot
 ```
 
 The image contains no Linux, libc, dynamic loader, foreign runtime, assembler,
-or linker output. F0 proves direct boot and UART MMIO; running the Gaut compiler
-inside Gaut OS is the next F1 gate.
+or linker output. F0 proves direct boot and UART MMIO.
+
+## Current result: Gaut OS F1 compile and run
+
+`dist/gaut-f1.img` is the same readable self-hosted compiler built for the
+freestanding target. The launcher places one Gaut source packet in RAM; the
+compiler reads it inside the isolated AArch64 machine, emits a child image into
+RAM, and transfers control to it:
+
+```text
+Gaut source in RAM -> Gaut compiler in Gaut OS -> generated AArch64 program
+```
+
+Run the retained example with QEMU installed:
+
+```sh
+./os/run-f1.sh os/examples/compiled.gaut
+```
+
+Two clean networkless boots printed exactly `gaut-os: compiled`. The launcher
+uses the host shell only to create a disposable length-prefixed packet and
+start QEMU; the compiler and executed program contain no Linux or foreign
+language runtime. F1 is one compile/run per boot. An in-OS command monitor and
+persistent workspace are the next gate.
 
 ## Frozen Core-0 recovery compiler
 

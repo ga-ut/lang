@@ -18,3 +18,17 @@ Expected serial transcript:
 ```text
 gaut-os: boot
 ```
+
+`examples/compiled.gaut` is the F1 child program. `run-f1.sh` frames the
+selected source in a disposable RAM packet, boots `dist/gaut-f1.img` with no
+network device, and lets the freestanding Gaut compiler compile and run it.
+No Python, C, Rust, LLVM, assembler, linker, Linux guest, or persistent disk is
+in that path. QEMU remains the replaceable hardware emulator on the host.
+
+```sh
+./os/run-f1.sh os/examples/compiled.gaut
+```
+
+The current F1 machine is one-shot. Press Control-C after the child finishes;
+the launcher then removes its temporary packet. Repeated editing, named files,
+and persistent storage begin in F2.

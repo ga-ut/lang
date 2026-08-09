@@ -19,5 +19,8 @@ container and AArch64 instruction words itself and needs no assembler, linker,
 libc, or dynamic loader. `../os/boot.gaut` and `../dist/gaut-os.img` are the F0
 freestanding source and verified direct-boot image.
 
-The bootstrap-host target supports `host.read`, `host.write`, and `host.exit`.
-They are target effects rather than canonical Gaut primitives.
+The retained `../dist/gaut-f1.img` is the compiler itself built as a
+freestanding program. `host.read`, `host.write`, `host.exit`, and
+`platform.run` are explicit target effects rather than canonical value
+primitives. Their bootstrap-host and `qemu_virt` adapters are defined in the
+same direct backend; the latter provides the one-shot F1 RAM compile/run loop.

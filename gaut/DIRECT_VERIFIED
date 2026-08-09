@@ -8,21 +8,21 @@ Environment:
 
 Source:
 - gaut/compiler.gaut
-- 1,305 lines of readable Gaut 0.4
-- source SHA-256: 1010f68b3f5de9f0b960877085efdfb448b8be0053260bba428de3203ddd6121
+- 1,413 lines of readable Gaut 0.4
+- source SHA-256: 264049a271b304aa74842f5dcf6b360a822313636dd98c0540869c1d32ac157b
 
 Hosted self-host fixed point:
-1. the previously retained gaut.elf compiled compiler.gaut to F0 stage 0
+1. the previously retained gaut.elf compiled compiler.gaut to F1 stage 0
 2. stage 0 compiled compiler.gaut to stage 1
 3. stage 1 compiled compiler.gaut to stage 2
 4. stages 0, 1, and 2 were byte-identical
-5. all three generations were 53,248 bytes with SHA-256:
-   413a2e8af4b6267ec3472df68d4d267174b3ae11fa8d19489a49b494fb075649
+5. all three generations were 57,344 bytes with SHA-256:
+   29e7f54267ed20aaf8fed32493cbf4b62e2b920d672da78a1505f80e316866cc
 
 Retained compiler:
 - dist/gaut.elf
-- static AArch64 Linux ELF with no section header, 53,248 bytes
-- SHA-256: 413a2e8af4b6267ec3472df68d4d267174b3ae11fa8d19489a49b494fb075649
+- static AArch64 Linux ELF with no section header, 57,344 bytes
+- SHA-256: 29e7f54267ed20aaf8fed32493cbf4b62e2b920d672da78a1505f80e316866cc
 
 Hosted regression tests:
 - return42.gaut result: 42
@@ -35,8 +35,10 @@ Hosted regression tests:
 Freestanding target boundary:
 - `target qemu_virt;` selects a raw image and freestanding entry adapter
 - the target reuses the canonical ordered memory primitives
-- Linux host effects in a qemu_virt source are rejected with status 2 and zero
-  artifact bytes
+- `host.read`, `host.write`, and `host.exit` have explicit RAM-packet, PL011,
+  and wait-loop adapters instead of Linux system calls
+- `platform.run` is the one explicit transfer to a generated image
 - Core-0 is a recovery seed and was not used after the initial readable
   compiler transition
-- the actual F0 image and boot proof are recorded in os/F0_VERIFIED
+- F0 direct boot is recorded in os/F0_VERIFIED
+- F1 compile-and-run boot is recorded in os/F1_VERIFIED

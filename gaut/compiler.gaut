@@ -1,7 +1,8 @@
 # Gaut 0.4 compiler, written in readable Gaut.
 #
-# This compiler validates Gaut source and directly emits a static AArch64
-# Linux ELF. Core-0 remains only a frozen recovery seed.
+# This compiler validates Gaut source and directly emits either a static
+# AArch64 Linux ELF or a freestanding raw image. Core-0 remains only a frozen
+# recovery seed.
 
 fn state_get(state, offset) {
   return load64(add(state, offset));
@@ -51,6 +52,12 @@ fn patch_branch(state, index, destination, link) {
 fn patch_zero_branch(state, index, destination) {
   let delta = bitand(sub(destination, index), 524287);
   drop patch_word(state, index, bitor(3019898880, shl(delta, 5)));
+  return 0;
+}
+
+fn patch_short_branch(state, index, destination, instruction) {
+  let delta = bitand(sub(destination, index), 524287);
+  drop patch_word(state, index, bitor(instruction, shl(delta, 5)));
   return 0;
 }
 
@@ -148,6 +155,83 @@ fn emit_host_call(state, number, outputs) {
   if outputs {
     drop emit_push(state, 0);
   }
+  return 0;
+}
+
+fn emit_qemu_halt(state) {
+  let wait_at = state_get(state, 136);
+  let branch = 0;
+
+  drop emit_word(state, 3573751903);
+  branch = emit_word(state, 335544320);
+  drop patch_branch(state, branch, wait_at, 0);
+  return 0;
+}
+
+fn emit_qemu_read(state) {
+  let valid_branch = 0;
+  let loop_at = 0;
+  let empty_branch = 0;
+  let repeat_branch = 0;
+
+  drop emit_pop(state, 2);
+  drop emit_pop(state, 1);
+  drop emit_pop(state, 0);
+  drop emit_move(state, 9, 1191182336);
+  drop emit_word(state, 4181721386);
+  drop emit_word(state, 3942777183);
+  valid_branch = emit_word(state, 1409286153);
+  drop emit_qemu_halt(state);
+  drop patch_short_branch(state, valid_branch, state_get(state, 136), 1409286153);
+  drop emit_word(state, 2432704809);
+  drop emit_word(state, 2852783084);
+
+  loop_at = state_get(state, 136);
+  empty_branch = emit_word(state, 3019898890);
+  drop emit_word(state, 960495915);
+  drop emit_word(state, 956301355);
+  drop emit_word(state, 2432697641);
+  drop emit_word(state, 2432697377);
+  drop emit_word(state, 3506439498);
+  repeat_branch = emit_word(state, 335544320);
+  drop patch_branch(state, repeat_branch, loop_at, 0);
+  drop patch_short_branch(state, empty_branch, state_get(state, 136), 3019898890);
+  drop emit_word(state, 2852914144);
+  drop emit_push(state, 0);
+  return 0;
+}
+
+fn emit_qemu_write(state) {
+  let loop_at = 0;
+  let empty_branch = 0;
+  let poll_at = 0;
+  let busy_branch = 0;
+  let repeat_branch = 0;
+
+  drop emit_pop(state, 2);
+  drop emit_pop(state, 1);
+  drop emit_pop(state, 0);
+  drop emit_word(state, 2852258797);
+  drop emit_move(state, 9, 150994944);
+  drop emit_move(state, 12, 32);
+  drop emit_word(state, 2432721194);
+
+  loop_at = state_get(state, 136);
+  empty_branch = emit_word(state, 3019898882);
+  poll_at = state_get(state, 136);
+  drop emit_word(state, 3107979595);
+  drop emit_word(state, 2316042603);
+  busy_branch = emit_word(state, 3036676107);
+  drop patch_short_branch(state, busy_branch, poll_at, 3036676107);
+  drop emit_word(state, 960495659);
+  drop emit_word(state, 3103785259);
+  drop emit_word(state, 2432697377);
+  drop emit_word(state, 3506439234);
+  repeat_branch = emit_word(state, 335544320);
+  drop patch_branch(state, repeat_branch, loop_at, 0);
+  drop patch_short_branch(state, empty_branch, state_get(state, 136), 3019898882);
+  drop emit_word(state, 2852979680);
+  drop emit_push(state, 0);
   return 0;
 }
 
@@ -516,6 +600,7 @@ fn init_canonical(state) {
   drop canonical_add(state, 7018141138174570344, 100, 9, 33620800);
   drop canonical_add(state, 7598266562733371240, 25972, 10, 33620801);
   drop canonical_add(state, 7599935621384335208, 116, 9, 33554754);
+  drop canonical_add(state, 7886488383309048944, 1853190702, 12, 33554755);
   return 0;
 }
 
@@ -523,10 +608,6 @@ fn emit_callable(state, info, address, length) {
   let id = bitand(info, 255);
   let entry = 0;
   let branch = 0;
-
-  if bitand(state_get(state, 160), bitand(lt(63, id), lt(id, 67))) {
-    drop fail(state);
-  }
 
   if eq(info, 0) {
     entry = function_find(state, address, length);
@@ -585,17 +666,37 @@ fn emit_callable(state, info, address, length) {
                                     drop emit_store(state, 4177526816);
                                   } else {
                                     if eq(id, 64) {
-                                      drop emit_host_call(state, 63, 1);
+                                      if state_get(state, 160) {
+                                        drop emit_qemu_read(state);
+                                      } else {
+                                        drop emit_host_call(state, 63, 1);
+                                      }
                                     } else {
                                       if eq(id, 65) {
-                                        drop emit_host_call(state, 64, 1);
+                                        if state_get(state, 160) {
+                                          drop emit_qemu_write(state);
+                                        } else {
+                                          drop emit_host_call(state, 64, 1);
+                                        }
                                       } else {
                                         if eq(id, 66) {
-                                          drop emit_pop(state, 0);
-                                          drop emit_move(state, 8, 93);
-                                          drop emit_word(state, 3556769793);
+                                          if state_get(state, 160) {
+                                            drop emit_pop(state, 0);
+                                            drop emit_qemu_halt(state);
+                                          } else {
+                                            drop emit_pop(state, 0);
+                                            drop emit_move(state, 8, 93);
+                                            drop emit_word(state, 3556769793);
+                                          }
                                         } else {
-                                          drop fail(state);
+                                          if eq(id, 67) {
+                                            drop emit_pop(state, 0);
+                                            if state_get(state, 160) {
+                                              drop emit_word(state, 3592355840);
+                                            }
+                                          } else {
+                                            drop fail(state);
+                                          }
                                         }
                                       }
                                     }
@@ -884,8 +985,14 @@ fn parse_function(state) {
   }
 
   if eq(function_length, 4) {
-    if eq(load32(function_address), 1852399981) {
-      is_main = 1;
+    if eq(load8(function_address), 109) {
+      if eq(load8(add(function_address, 1)), 97) {
+        if eq(load8(add(function_address, 2)), 105) {
+          if eq(load8(add(function_address, 3)), 110) {
+            is_main = 1;
+          }
+        }
+      }
     }
   }
 
@@ -1300,6 +1407,7 @@ fn main() {
     cursor = add(cursor, 1);
   }
 
+  platform.run(output);
   drop host.write(1, output, file_size);
   return 0;
 }

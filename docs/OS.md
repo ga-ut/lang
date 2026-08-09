@@ -15,6 +15,27 @@ storage, the call to `main`, and the post-return wait loop. F0 does not include
 an allocator, exception vectors, interrupts, scheduling, storage, or an
 interactive development environment.
 
+## F1 — one-shot compile and run
+
+F1 boots the same self-hosted compiler as a freestanding Gaut program. The
+launcher places an eight-byte little-endian source length and the exact Gaut
+source bytes at physical address `0x47000000`. The compiler reads that packet,
+emits a raw `qemu_virt` image into its fixed output memory, and transfers
+control to its entry word. The hosted adapter returns from `platform.run` and
+then writes the artifact; the freestanding adapter does not return, so binary
+artifact bytes do not leak onto the serial console.
+
+The retained acceptance child is `os/examples/compiled.gaut`. Its final serial
+line is exactly:
+
+```text
+gaut-os: compiled
+```
+
+This proves one Linux-free `source -> compile -> execute` cycle. It does not
+provide interactive editing, a command loop, files, persistent storage,
+isolation from a faulty child, or a second compilation in the same boot.
+
 ## O1 — operating-system nucleus
 
 O1 is a small operating-system nucleus, not a Linux replacement and not a

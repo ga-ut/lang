@@ -260,6 +260,32 @@ primitive implementations used for ordinary explicit addresses. Board
 addresses belong in the selected board source and must not leak into portable
 programs.
 
+Target effects retain one spelling and arity across targets. Their adapters
+may differ only where the selected machine boundary requires it:
+
+- `host.read(descriptor, address, count)` reads platform input bytes and
+  returns the number copied. On bootstrap Linux it is the direct descriptor
+  read. In the F1 `qemu_virt` compiler image, the machine has one input channel:
+  a launch packet at physical address `0x47000000`, containing an eight-byte
+  little-endian length followed by that many source bytes. The descriptor is
+  accepted for source compatibility but is not interpreted, and the length
+  must not exceed `count`.
+- `host.write(descriptor, address, count)` writes platform output bytes and
+  returns the number written. On bootstrap Linux it is the direct descriptor
+  write. On `qemu_virt`, the machine has one polled PL011 serial output channel,
+  so every descriptor maps to that channel.
+- `host.exit(status)` terminates the bootstrap process or enters the
+  freestanding target's wait loop. It does not return.
+- `platform.run(address)` transfers control to the entry word at `address` on
+  `qemu_virt`. The bootstrap-host adapter consumes the address and returns so
+  the same compiler source remains self-hostable; ordinary hosted programs
+  must not use it as an execution facility.
+
+The complete effect IDs and arities are in `BOOTSTRAP-EFFECTS.tsv`. These are
+ordered, observable effects, not value primitives. F1 permits one RAM input
+packet and one generated-image transfer per boot; it is not a file system or
+an interactive command protocol.
+
 ## 11. Determinism and failure
 
 Identical source bytes, compiler version, and platform ID must produce

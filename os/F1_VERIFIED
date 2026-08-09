@@ -1,0 +1,56 @@
+Gaut OS freestanding F1 verification
+Date: 2026-08-10
+
+Retained source and artifacts:
+- gaut/compiler.gaut, 1,413 lines of readable Gaut 0.4
+- compiler source SHA-256:
+  264049a271b304aa74842f5dcf6b360a822313636dd98c0540869c1d32ac157b
+- os/examples/compiled.gaut, 719 bytes
+- child source SHA-256:
+  aae69b756eeb93d18dee2bc85cc2040c4c2e5d3833398bc3bb933627a7f62b07
+- dist/gaut.elf, 57,344-byte static AArch64 Linux bootstrap compiler
+- hosted compiler SHA-256:
+  29e7f54267ed20aaf8fed32493cbf4b62e2b920d672da78a1505f80e316866cc
+- dist/gaut-f1.img, 57,344-byte raw AArch64 freestanding compiler
+- freestanding compiler SHA-256:
+  29affdd1da677c6dd5300da69f78716789959b544209ffbaf3394a0399fac590
+
+Hosted self-host proof:
+1. the prior retained Gaut compiler compiled the final compiler source
+2. that generation compiled the same source twice more
+3. all three final generations were byte-identical at 57,344 bytes with
+   SHA-256 29e7f54267ed20aaf8fed32493cbf4b62e2b920d672da78a1505f80e316866cc
+4. return42, loop, memory, and branch regressions returned 42, 55, 42, and 42
+5. unknown call, wrong arity, and nested early return each returned status 2,
+   emitted zero artifact bytes, and wrote the 21-byte Gaut diagnostic
+
+Freestanding build proof:
+1. the retained source was prefixed with `target qemu_virt;` only in disposable
+   build input; no second compiler source was retained
+2. hosted generations 1 and 2 emitted byte-identical freestanding images
+3. the launch packet contained an eight-byte little-endian length followed by
+   the exact 719 source bytes at physical address 0x47000000
+
+Machine proof:
+- QEMU emulator 11.0.3
+- machine: virt with virtualization disabled
+- CPU: cortex-a53
+- RAM: 128 MiB
+- network: disabled with `-nic none`
+- direct compiler load: `-kernel dist/gaut-f1.img`
+- source packet load: QEMU generic loader at physical address 0x47000000
+
+Observed from two clean QEMU processes:
+
+gaut-os: compiled
+
+The first run captured exactly 18 serial bytes. The second used the retained
+`os/run-f1.sh` launcher and produced the same line. The child line appeared
+once, with no compiler binary bytes, diagnostic, duplicate boot, or exception.
+
+Boundary:
+- the guest compiler and child contain no Linux, libc, dynamic loader, Python,
+  C, Rust, LLVM, assembler, linker, or foreign runtime
+- host shell and QEMU only frame source and emulate the checked machine
+- F1 compiles and executes one program per boot; editing, command repetition,
+  persistent storage, and child isolation remain F2 work

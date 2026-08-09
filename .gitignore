@@ -4,6 +4,7 @@ __pycache__/
 *.log
 *.img
 !/dist/gaut-os.img
+!/dist/gaut-f1.img
 
 /lab/runtime/
 /work/

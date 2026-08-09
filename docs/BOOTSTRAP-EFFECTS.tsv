@@ -1,4 +1,5 @@
 id	canonical_name	inputs	outputs	meaning
-40	host.read	3	1	read bytes from a bootstrap-host descriptor
-41	host.write	3	1	write bytes to a bootstrap-host descriptor
-42	host.exit	1	0	terminate the bootstrap-host process
+40	host.read	3	1	read bytes from the selected platform input descriptor
+41	host.write	3	1	write bytes to the selected platform output descriptor
+42	host.exit	1	0	terminate or halt the selected platform program
+43	platform.run	1	0	transfer control to a generated image when the target supports it
