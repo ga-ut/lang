@@ -1,8 +1,0 @@
-# A function call and arithmetic. Linux observes main's result as exit status.
-fn twice
-  $2 *
-endfn
-
-fn main
-  $15 call twice
-endfn

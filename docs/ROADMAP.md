@@ -1,98 +1,49 @@
-# Gaut language -> Gaut OS
+# Gaut roadmap
 
-This is the authoritative project boundary. M0 is frozen as a recoverable seed;
-it will not grow into the user-facing language.
+## Current verified boundary
 
-## Gate L0 — frozen trust root (complete)
+- readable Gaut compiler directly emits AArch64 Linux ELF and QEMU raw images
+- one runtime `word` type and one lowering per canonical primitive
+- hosted compiler rebuilds itself to a byte-identical fixed point
+- freestanding compiler boots without Linux in a networkless AArch64 machine
+- one RAM-resident Gaut source is compiled and executed per boot
 
-- `hex0 -> M0 -> M0` reaches a byte-identical fixed point.
-- M0 is a native AArch64 Linux executable with no dynamic dependencies.
-- M0 and its tiny source remain only for audit and disaster recovery.
+## Next: resident compiler
 
-## Gate L1 — Core-0 semantics (complete)
+The current non-returning child transfer and shared arena prevent a second
+compile/run cycle. The next gate is deliberately limited to fixing that exact
+boundary.
 
-- The source language contains no AArch64 instruction names or Linux syscall
-  numbers.
-- It has functions, local values, structured conditions and loops, integer and
-  pointer operations, and explicit effects.
-- No garbage collector, exceptions, implicit allocation, implicit I/O, or
-  ambient authority.
-- The bootstrap host is Linux/AArch64, but Linux is not part of the language
-  semantics.
+Required implementation:
 
-The exact v0 contract is in `LANGUAGE.md`.
+1. extract one callable compiler engine with explicit source, output, state,
+   capacity, and result memory;
+2. keep hosted file I/O and freestanding supervision in separate small entry
+   adapters around that same engine;
+3. assign compiler and child non-overlapping runtime arenas;
+4. add one returnable child-image entry and continuation contract;
+5. compile and run two children in one boot; and
+6. prove that compiler state remains intact after each child returns.
 
-## Gate L2 — native compiler (complete)
+Acceptance transcript:
 
-- A one-time, reviewable constructor makes generation 0.
-- Generation 0 compiles the compiler source to generation 1.
-- Generation 1 compiles the same source to generation 2.
-- Generations 1 and 2 are byte-identical.
-- The retained active build uses only the Core compiler; the constructor is
-  audit material, not an active dependency.
+```text
+gaut-os: child 1
+gaut-os: child 2
+gaut-os: ready
+```
 
-Verified fixed-point SHA-256:
-`be6c623f15602c051fe664289659c1cdd83265506e05f7b5e34d694280fbb293`.
+## Then
 
-## Gate L3 — readable Gaut and freestanding target (complete)
+1. serial command channel for repeated source upload;
+2. minimal source buffer editing and named in-memory files;
+3. explicit persistent workspace;
+4. exception reporting and EL0 process isolation;
+5. physical pages, MMU mappings, timer, and scheduler;
+6. rendering and input;
+7. networking and browser runtime;
+8. CPU-oriented numerical and AI runtime.
 
-The readable hosted-compiler sub-gates are complete. `gaut/compiler.gaut`
-directly emits a static AArch64 Linux ELF and rebuilt itself through two
-byte-identical direct native generations in the offline AArch64 VM. Arithmetic,
-functions, branches, loops, fixed memory, rejection tests, and
-whitespace-insensitive parsing passed. Core-0 is no longer in the active build
-path. `target qemu_virt;` now emits a deterministic raw AArch64 image; its
-Gaut-written PL011 driver booted twice without Linux and printed the exact F0
-transcript.
-
-- Complete: the self-hosted compiler emits the bootstrap-host ELF directly.
-- Complete: the same compiler emits a freestanding AArch64 image.
-- Target-specific effects live behind explicit target modules.
-- A normal program cannot accidentally issue a Linux syscall or access a
-  device register.
-- Maintained source uses names and parenthesized expressions from
-  `GAUT-SPEC.md`; numbered slots and exposed evaluation-stack bookkeeping stay
-  in recovery Core-0 only.
-- There is one runtime `word` type and exactly one lowering path for each
-  canonical primitive.
-- Complete: the readable compiler directly emits the hosted platform artifact
-  without the frozen Core-0 lowering backend.
-
-## Gate L4 — Linux-free one-shot development loop (complete)
-
-- The self-hosted Gaut compiler boots directly as a freestanding image.
-- A launch packet places readable Gaut source in checked RAM.
-- The compiler reads, parses, validates, and emits the child entirely inside
-  the networkless AArch64 machine.
-- `platform.run` transfers control to the generated image without returning to
-  a Linux process or foreign runtime.
-- Two clean boots produced exactly `gaut-os: compiled` from the compiled child.
-- `os/run-f1.sh` creates only a disposable source packet and starts the
-  isolated machine; it is not part of the compiler or guest runtime.
-
-F1 is one compile and run per boot. The next development-loop gate adds a
-serial command monitor and persistent workspace before broader O1 services.
-
-## Gate O1 — first Gaut OS (after the F2 development loop)
-
-- Boots on QEMU `virt` as AArch64 without Linux, libc, a dynamic loader, or a
-  foreign runtime.
-- All executable kernel logic is Gaut source. The compiler may synthesize the
-  image header, reset entry, and exception-vector layout.
-- Brings up PL011 serial output, a page allocator, synchronous exception
-  reporting, the ARM generic timer, and one cooperative task.
-- Repeated clean boots produce the same serial transcript through the final
-  acceptance marker.
-
-The exact OS boundary is in `OS.md`.
-
-## Deliberately deferred
-
-- graphical compositor and GPU driver
-- browser engine
-- networking and package manager
-- mobile hardware ports
-- AI runtime
-
-Those begin only after L2 and O1 are reproducible. This prevents the browser or
-AI design from silently dictating an unstable language or kernel ABI.
+Each gate adds only behavior required by its acceptance program. Syntax sugar,
+new types, optimizers, package management, graphics, networking, browser work,
+and AI work do not enter the resident-compiler gate.

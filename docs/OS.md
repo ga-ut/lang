@@ -1,104 +1,72 @@
-# Gaut OS contracts
+# Gaut OS contract
 
-## F0 — direct boot
+## Current machine
 
-F0 proves the smallest machine boundary before O1:
+- architecture: AArch64
+- reference board: QEMU `virt`
+- entry privilege: EL1 from QEMU direct-kernel boot
+- RAM: 128 MiB beginning at `0x40000000`
+- console: PL011 UART at `0x09000000`
+- source input: one checked RAM packet at `0x47000000`
+- network device: absent
+- persistent disk: absent
 
-- `os/boot.gaut` explicitly selects `target qemu_virt;`;
-- `dist/gaut.elf` emits a deterministic raw AArch64 image;
-- QEMU `virt` boots it directly without Linux or a foreign runtime;
-- the PL011 driver is Gaut source using ordered memory primitives; and
-- serial output is exactly `gaut-os: boot` followed by one newline.
+QEMU is a replaceable hardware model, not part of Gaut semantics.
 
-The compiler may synthesize only the initial stack, evaluation and return
-storage, the call to `main`, and the post-return wait loop. F0 does not include
-an allocator, exception vectors, interrupts, scheduling, storage, or an
-interactive development environment.
+## Current compile-and-run flow
 
-## F1 — one-shot compile and run
+`dist/gaut-os.img` is the readable Gaut compiler built for `qemu_virt`.
+`os/run.sh` places an eight-byte little-endian source length followed by the
+exact source bytes in the input packet and boots the compiler.
 
-F1 boots the same self-hosted compiler as a freestanding Gaut program. The
-launcher places an eight-byte little-endian source length and the exact Gaut
-source bytes at physical address `0x47000000`. The compiler reads that packet,
-emits a raw `qemu_virt` image into its fixed output memory, and transfers
-control to its entry word. The hosted adapter returns from `platform.run` and
-then writes the artifact; the freestanding adapter does not return, so binary
-artifact bytes do not leak onto the serial console.
+The compiler:
 
-The retained acceptance child is `os/examples/compiled.gaut`. Its final serial
-line is exactly:
+1. copies the packet into its fixed source region;
+2. parses and validates Gaut;
+3. emits a raw AArch64 child image into its output region; and
+4. uses `platform.run(address)` to transfer control to the child entry.
+
+The child acceptance program is `os/examples/compiled.gaut` and must emit:
 
 ```text
 gaut-os: compiled
 ```
 
-This proves one Linux-free `source -> compile -> execute` cycle. It does not
-provide interactive editing, a command loop, files, persistent storage,
-isolation from a faulty child, or a second compilation in the same boot.
+The guest path contains no Linux, libc, dynamic loader, Python, C, Rust, LLVM,
+assembler, linker, or foreign runtime.
 
-## O1 — operating-system nucleus
+## Current hard boundary
 
-O1 is a small operating-system nucleus, not a Linux replacement and not a
-browser demo. Its job is to prove that Gaut can own the wider machine boundary.
+The compiler is not yet a resident service:
 
-## Initial machine
+- `platform.run` performs a non-returning branch;
+- the child entry establishes the same fixed stack and Gaut arenas used by the
+  compiler;
+- a child with fixed memory can overwrite compiler state;
+- input is one launch packet rather than a command channel; and
+- there is no persistent workspace or fault isolation.
 
-- architecture: AArch64
-- reference board: QEMU `virt`
-- privilege at entry: EL1 when QEMU's direct-kernel boot provides it; the boot
-  shim normalizes other supported entry states before Gaut kernel code runs
-- console: PL011 UART
-- interrupt controller: the QEMU `virt` GIC version selected by the launch
-  manifest
-- clock: ARM generic timer
-- memory layout: supplied by one checked board description, never guessed by
-  ordinary kernel code
+Therefore the current machine truthfully compiles and executes one program per
+boot, but cannot safely perform a second edit/build/run cycle.
 
-QEMU is a replaceable hardware model. QEMU behavior is not language semantics.
+## Next acceptance contract: resident compiler
 
-## What must be Gaut source
+The next implementation must keep one compiler alive across child execution:
 
-- kernel entry state machine after the compiler-generated reset shim
-- UART driver
-- physical page allocator
-- exception handlers and reports
-- timer setup and interrupt handling
-- cooperative scheduler and its first task
+1. compiler and child receive non-overlapping stack, evaluation, return, and
+   fixed-memory regions;
+2. the compiler engine receives explicit buffers instead of owning platform
+   input, output, and process lifetime in its `main` function;
+3. a returnable child entry preserves and restores the compiler continuation;
+4. the compiler compiles and runs two child programs without rebooting; and
+5. serial output ends with one `gaut-os: ready` marker after both returns.
 
-The compiler may synthesize binary layout, the minimal reset shim, exception
-vector alignment, and target intrinsics. No handwritten C, Rust, assembly, or
-foreign runtime is linked into the kernel.
+No editor, file system, scheduler, MMU, or optimizer is added to satisfy this
+gate. Serial source input follows only after resident execution is proven.
 
-## Required boot transcript
+## Later kernel boundary
 
-```text
-gaut-os: entry
-gaut-os: uart ok
-gaut-os: memory ok
-gaut-os: exceptions ok
-gaut-os: timer ok
-gaut-os: task ok
-gaut-os: O1 PASS
-```
-
-The test harness must also provoke one controlled synchronous exception and
-observe its class before continuing. A timeout, missing line, duplicate boot,
-or unexpected exception is failure.
-
-## Isolation and footprint
-
-- The compiler VM and OS emulator use no network by default.
-- Build and run storage is created on demand.
-- Generated disks, compiler generations, traces, and emulator caches are kept
-  under the project output directory or a disposable temporary directory.
-- After verification, retain source, the final compiler, the final kernel, a
-  checksum manifest, and concise logs. Remove intermediate generations,
-  temporary disks, crash dumps, and caches.
-
-## O1 completion test
-
-1. Build the compiler from the retained self-hosted compiler.
-2. Build the kernel using that newly built compiler.
-3. Boot it in a clean, networkless QEMU process.
-4. Match the required serial transcript and controlled-exception evidence.
-5. Repeat from clean generated state and compare compiler and kernel hashes.
+After the resident loop, Gaut OS adds explicit exception vectors, EL0 task
+isolation, an MMU-backed page allocator, timer interrupts, scheduling,
+persistent storage, rendering, networking, and higher-level services in that
+order as concrete programs demand them.

@@ -1,4 +1,4 @@
-# Gaut OS F1 child compiled and launched by the freestanding Gaut compiler.
+# Gaut OS compile-and-run acceptance child.
 
 target qemu_virt;
 

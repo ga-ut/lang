@@ -2,24 +2,22 @@
 
 ## Project boundary
 
-This repository builds a dependency-free AArch64 language and then an OS in
-that language. The authoritative documents are:
+This repository builds the dependency-free AArch64 Gaut language and Gaut OS.
+The authoritative documents are:
 
 - `docs/GAUT-SPEC.md`: readable maintained language
 - `docs/PRIMITIVES.tsv`: single canonical primitive inventory
-- `docs/LANGUAGE.md`: language philosophy and bootstrap boundary
+- `docs/EFFECTS.tsv`: single canonical platform-effect inventory
 - `docs/OS.md`: first OS acceptance contract
-- `docs/ROADMAP.md`: completion gates
+- `docs/ROADMAP.md`: current boundary and next gates
 
-M0 and postfix Core-0 are frozen recovery layers. Maintained compiler and OS
-source must use the readable named Gaut grammar once its compiler exists.
+Maintained compiler and OS source use only readable named Gaut. Earlier
+bootstrap layers live in Git history, not in the current tree.
 
 ## Dependency boundary
 
 - The active compiler path must not require Rust, C, LLVM, an assembler, a
   linker, libc, or a dynamic loader.
-- Python files are audit constructors only. Never make them the normal build
-  path or describe their output alone as self-hosting evidence.
 - A language change is complete only after the retained native compiler builds
   the compiler source twice to byte-identical generations in the offline
   AArch64 VM.
@@ -49,7 +47,7 @@ source must use the readable named Gaut grammar once its compiler exists.
 
 ## Planning and commits
 
-- Record destructive migrations and multi-gate work in `plans/` before acting.
+- Record destructive migrations in a focused commit before acting.
 - Preserve unrelated user changes and inspect Git status before committing.
 - Use focused imperative commit messages. Do not push, tag remote state, or
   rewrite history without explicit user authorization.

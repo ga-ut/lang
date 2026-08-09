@@ -4,11 +4,6 @@ __pycache__/
 *.log
 *.img
 !/dist/gaut-os.img
-!/dist/gaut-f1.img
 
 /lab/runtime/
 /work/
-/core0/*.stage*.elf
-/core0/*.failed.elf
-/core0/*.partial.elf
-/core0/examples/*.elf

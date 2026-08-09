@@ -1,5 +1,0 @@
-# Store and reload a byte in the explicit arena.
-fn main
-  $2a mem store8
-  mem load8
-endfn

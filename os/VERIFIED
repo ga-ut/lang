@@ -1,0 +1,47 @@
+Gaut current verification
+Date: 2026-08-10
+
+Retained source and artifacts:
+- gaut/compiler.gaut, 1,412 lines
+- compiler source SHA-256:
+  83d4e088c8b0ba57b2026c87f408ff217f194d45af29b462f362a9baf197cdf1
+- os/examples/compiled.gaut, 687 bytes
+- child source SHA-256:
+  ba173ceacc8349508358070ec2f672802fc2b73d08cde157d38a81fa3ab61488
+- dist/gaut.elf, 57,344-byte static AArch64 Linux bootstrap compiler
+- hosted compiler SHA-256:
+  29e7f54267ed20aaf8fed32493cbf4b62e2b920d672da78a1505f80e316866cc
+- dist/gaut-os.img, 57,344-byte raw AArch64 freestanding compiler
+- freestanding compiler SHA-256:
+  29affdd1da677c6dd5300da69f78716789959b544209ffbaf3394a0399fac590
+
+Self-host proof:
+1. the retained compiler built the readable compiler source
+2. two following generations built the same source
+3. all three outputs were byte-identical at 57,344 bytes
+4. arithmetic, loop, fixed-memory, and branch regressions returned 42, 55, 42,
+   and 42
+5. unknown call, wrong arity, and nested early return each returned status 2,
+   emitted zero artifact bytes, and wrote the 21-byte Gaut diagnostic
+
+Freestanding proof:
+1. the readable compiler was built for `qemu_virt` without a second compiler
+   implementation
+2. two hosted generations emitted byte-identical freestanding images
+3. QEMU loaded an eight-byte length and the exact source bytes at `0x47000000`
+4. two clean networkless QEMU processes emitted exactly:
+
+gaut-os: compiled
+
+Machine:
+- QEMU 11.0.3, `virt`, Cortex-A53, 128 MiB RAM
+- no network device
+- compiler loaded directly with `-kernel dist/gaut-os.img`
+- second run used the retained `os/run.sh` launcher
+
+Boundary:
+- the guest contains no Linux, libc, dynamic loader, Python, C, Rust, LLVM,
+  assembler, linker, or foreign runtime
+- the host shell and QEMU only frame source and emulate the checked machine
+- the compiler executes one child per boot and does not survive the transfer
+- the next verified gate is the resident compiler contract in `docs/OS.md`

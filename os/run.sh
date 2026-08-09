@@ -3,7 +3,7 @@ set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 SOURCE=${1:-"$ROOT/os/examples/compiled.gaut"}
-COMPILER="$ROOT/dist/gaut-f1.img"
+COMPILER="$ROOT/dist/gaut-os.img"
 
 if [ ! -f "$SOURCE" ]; then
     echo "Gaut source not found: $SOURCE" >&2
@@ -20,14 +20,14 @@ fi
 
 SIZE=$(/usr/bin/wc -c < "$SOURCE" | /usr/bin/tr -d ' ')
 if [ "$SIZE" -gt 131072 ]; then
-    echo "Gaut source exceeds the 131072-byte F1 input limit." >&2
+    echo "Gaut source exceeds the 131072-byte input limit." >&2
     exit 2
 fi
 
-F1_TEMP=$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/gaut-f1.XXXXXX")
-PACKET="$F1_TEMP/source.packet"
+RUN_TEMP=$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/gaut-run.XXXXXX")
+PACKET="$RUN_TEMP/source.packet"
 cleanup() {
-    /bin/rm -rf "$F1_TEMP"
+    /bin/rm -rf "$RUN_TEMP"
 }
 trap cleanup EXIT INT TERM
 

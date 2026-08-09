@@ -33,9 +33,6 @@ The maintained compiler and OS source must expose names and tree structure. A
 reader must not have to simulate the data stack or decode numbered slots to
 understand an assignment or call.
 
-Postfix Core-0 remains the frozen recovery representation. It is not the
-maintained source language for the OS.
-
 Gaut uses explicitly terminated statements, braced blocks, and call-shaped
 expressions. Whitespace, including line breaks, never changes program meaning.
 There is no infix expression parser, operator precedence, indentation
@@ -55,8 +52,8 @@ fn sum(limit) {
 }
 ```
 
-This source has the same minimal machine model as Core-0, but names replace
-numbered slots and every operation's arguments are visible at its use site.
+Names replace numbered storage and every operation's arguments are visible at
+its use site.
 
 ## 4. Lexical format
 
@@ -265,7 +262,7 @@ may differ only where the selected machine boundary requires it:
 
 - `host.read(descriptor, address, count)` reads platform input bytes and
   returns the number copied. On bootstrap Linux it is the direct descriptor
-  read. In the F1 `qemu_virt` compiler image, the machine has one input channel:
+  read. In the `qemu_virt` compiler image, the machine has one input channel:
   a launch packet at physical address `0x47000000`, containing an eight-byte
   little-endian length followed by that many source bytes. The descriptor is
   accepted for source compatibility but is not interpreted, and the length
@@ -281,10 +278,10 @@ may differ only where the selected machine boundary requires it:
   the same compiler source remains self-hostable; ordinary hosted programs
   must not use it as an execution facility.
 
-The complete effect IDs and arities are in `BOOTSTRAP-EFFECTS.tsv`. These are
-ordered, observable effects, not value primitives. F1 permits one RAM input
-packet and one generated-image transfer per boot; it is not a file system or
-an interactive command protocol.
+The complete effect IDs and arities are in `EFFECTS.tsv`. These are ordered,
+observable effects, not value primitives. The current freestanding adapter
+permits one RAM input packet and one generated-image transfer per boot; it is
+not a file system or an interactive command protocol.
 
 ## 11. Determinism and failure
 
@@ -327,28 +324,14 @@ A compiler conforms only after all of these pass:
 7. human review showing maintained source uses names rather than numbered slots
    or exposed evaluation-stack bookkeeping.
 
-## 14. Migration from verified Core-0
+## 14. Current implementation boundary
 
-Core-0 remains the recovery compiler. `gaut/compiler.gaut` implements the
-readable draft 0.4 compiler, directly emits a static AArch64 Linux ELF or an
-explicit QEMU `virt` raw image, and has rebuilt itself through byte-identical
-direct native generations. The full cross-platform conformance matrix remains
-open.
+`gaut/compiler.gaut` implements this grammar and directly emits a static
+AArch64 Linux ELF or an explicit QEMU `virt` raw image. It has rebuilt itself
+through byte-identical native generations. The current freestanding adapter
+compiles and transfers control to one child per boot.
 
-Migration order:
-
-1. complete: parse names, call punctuation, braces, semicolons, and decimal
-   literals;
-2. complete: resolve functions, parameters, and locals and validate arity;
-3. complete: map every canonical primitive to one stable ID;
-4. complete in the readable compiler: lower each ID through one AArch64
-   implementation;
-5. complete: self-host the readable frontend to a byte-identical fixed point;
-6. complete for the bootstrap host: move the existing lowering into readable
-   Gaut without changing primitive meaning;
-7. complete for F0: add freestanding image construction without changing
-   primitive meaning;
-8. in progress: write the first OS in readable Gaut.
-
-No larger type system or syntactic sugar is required for the first OS. New
-surface area requires a concrete failing program and a spec revision.
+The next implementation boundary is a returnable child ABI with non-overlapping
+compiler and child memory. It does not require a larger type system or syntax
+sugar. New language surface still requires a concrete failing program and a
+spec revision.

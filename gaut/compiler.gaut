@@ -1,8 +1,7 @@
 # Gaut 0.4 compiler, written in readable Gaut.
 #
 # This compiler validates Gaut source and directly emits either a static
-# AArch64 Linux ELF or a freestanding raw image. Core-0 remains only a frozen
-# recovery seed.
+# AArch64 Linux ELF or a freestanding raw image.
 
 fn state_get(state, offset) {
   return load64(add(state, offset));
