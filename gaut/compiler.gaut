@@ -1,6 +1,6 @@
-# Raw Core 0.4 compiler, written in readable Raw Core.
+# Gaut 0.4 compiler, written in readable Gaut.
 #
-# This compiler validates Raw Core source and directly emits a static AArch64
+# This compiler validates Gaut source and directly emits a static AArch64
 # Linux ELF. Core-0 remains only a frozen recovery seed.
 
 fn state_get(state, offset) {

@@ -30,5 +30,5 @@ active build path. See `../dist/CORE0_VERIFIED` for the isolated-VM record.
 
 Core-0 is deliberately an unsafe bootstrap language. The next language layer
 adds readable named values, fixed-memory declarations, and explicit target
-effects while preserving this compiler as the small recovery base. Raw Core
+effects while preserving this compiler as the small recovery base. Gaut
 0.4 has one runtime `word` value and therefore no source-level type syntax.

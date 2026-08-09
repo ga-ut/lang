@@ -1,4 +1,4 @@
-# Replace the Rust/C Gaut implementation with Raw Core
+# Replace old Rust/C Gaut with self-hosted Gaut
 
 Status: completed locally after user confirmation
 
@@ -11,16 +11,15 @@ the remaining compiler, runtime, examples, plans, and documentation unusable
 and would mix two incompatible language directions.
 
 The replacement therefore removes the old implementation as one unit and
-imports the verified dependency-free Core-0 bootstrap plus the readable Raw
-Core specification.
+imports the verified dependency-free Core-0 bootstrap plus the readable Gaut
+specification.
 
 ## Recovery boundary
 
 - Current pre-replacement HEAD: `f7d1e97`.
 - `main` is four commits ahead of `origin/main`; those commits already remain
   in Git history.
-- Before deletion, create local tag `archive/rust-gaut-before-raw-core` at the
-  current HEAD.
+- Before deletion, create a local recovery tag at the current HEAD.
 - Do not rewrite or squash existing history.
 - Do not push the replacement until the local tree, checksums, and commit have
   been reviewed separately.
@@ -42,9 +41,9 @@ change.
 
 ```text
 README.md                  project state and bootstrap instructions
-AGENTS.md                  Raw Core repository rules
+AGENTS.md                  Gaut repository rules
 docs/LANGUAGE.md           language philosophy and current boundary
-docs/RAW-SPEC.md           readable minimal Raw Core draft
+docs/GAUT-SPEC.md           readable minimal Gaut draft
 docs/PRIMITIVES.tsv        single authoritative primitive inventory
 docs/OS.md                 first OS acceptance contract
 docs/ROADMAP.md            Core-to-OS gates
@@ -82,14 +81,14 @@ Large or generated resources are excluded:
 
 ## Intended commit sequence
 
-1. `Document Raw Core repository replacement`
-2. `Replace Rust Gaut with self-hosted Raw Core`
+1. `Document Gaut repository replacement`
+2. `Replace Rust Gaut with self-hosted Gaut`
 
 The second commit is made only after user confirmation of this plan.
 
 ## Result
 
-- Recovery tag: `archive/rust-gaut-before-raw-core` at `f7d1e97`.
+- Recovery tag: `archive/rust-gaut-before-self-hosted-gaut` at `f7d1e97`.
 - Existing Rust, Cargo, C runtime, and old `.gaut` implementation files: zero.
 - Retained distribution checksums: all passed.
 - Audit constructor output: byte-identical to `dist/core0.elf`.

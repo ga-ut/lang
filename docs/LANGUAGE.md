@@ -31,13 +31,13 @@ effects     host.read, host.write, host.exit bootstrap adapter
 Core-0 uses postfix bootstrap syntax because a small program can compile it.
 It remains the recovery representation, not the maintained OS source.
 
-## Readable Raw Core layer
+## Readable Gaut layer
 
 The compiler and OS that people maintain use the named, parenthesized grammar
-in `RAW-SPEC.md`. Names and visible expression trees are required semantic
+in `GAUT-SPEC.md`. Names and visible expression trees are required semantic
 structure, not optional syntactic sugar.
 
-Raw Core has only one runtime type:
+Gaut has only one runtime type:
 
 ```text
 word = unsigned 64-bit value
@@ -50,9 +50,9 @@ concrete failing compiler or kernel example; none is reserved in advance.
 ## Memory model
 
 - Words have 64-bit width and arithmetic wraps modulo 2^64.
-- Raw addresses are words and arithmetic is measured in bytes.
+- Unrestricted addresses are words and arithmetic is measured in bytes.
 - Address validity and alignment are programmer obligations.
-- Raw memory effects are always ordered and observable, including device
+- Direct memory effects are always ordered and observable, including device
   access. Reorderable memory is not introduced yet.
 - Allocation is never implicit. Early programs receive an explicit linear
   arena; the OS later supplies page and region allocators.
@@ -69,7 +69,7 @@ uart.write(device, bytes)     # Core OS target
 timer.arm(device, deadline)
 ```
 
-There is no general `syscall(number, ...)` in user Core. Raw trap and system
+There is no general `syscall(number, ...)` in user Core. Direct trap and system
 register operations are compiler intrinsics restricted to target modules.
 
 ## Calling and binary rules

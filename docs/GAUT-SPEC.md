@@ -1,6 +1,6 @@
-# Raw Core specification - draft 0.4
+# Gaut specification - draft 0.4
 
-Raw Core is the one semantic layer shared by the compiler, future kernel, and
+Gaut is the one semantic layer shared by the compiler, future kernel, and
 later frontends. It is deliberately small, unsafe, and direct.
 
 ## 1. One behavior, one primitive
@@ -11,7 +11,7 @@ semantic definition, and one lowering function per target.
 - No aliases or overloads.
 - No hidden macro expansion or compiler-known library helpers.
 - No alternative fast path outside the same primitive lowering.
-- Derived behavior is ordinary Raw Core source.
+- Derived behavior is ordinary Gaut source.
 - Each target has one adapter implementation for each supported target effect.
 
 ## 2. Not built yet
@@ -36,7 +36,7 @@ understand an assignment or call.
 Postfix Core-0 remains the frozen recovery representation. It is not the
 maintained source language for the OS.
 
-Raw Core uses explicitly terminated statements, braced blocks, and call-shaped
+Gaut uses explicitly terminated statements, braced blocks, and call-shaped
 expressions. Whitespace, including line breaks, never changes program meaning.
 There is no infix expression parser, operator precedence, indentation
 semantics, shorthand, or implicit call syntax.
@@ -96,7 +96,7 @@ name, fixed-memory name, function name, primitive name, and target-effect name
 cannot be redeclared or used in a position that requires another category.
 This is name and arity validation, not a source-visible type system.
 
-Raw Core is intentionally unsafe. A new type is proposed only with a concrete
+Gaut is intentionally unsafe. A new type is proposed only with a concrete
 compiler or kernel failure that it prevents.
 
 ## 6. Canonical grammar and small-parser boundary
@@ -168,8 +168,8 @@ lt a b       one when a is unsigned-less-than b, otherwise zero
 ```
 
 There is no primitive division, remainder, not-equal, greater-than,
-less-or-equal, or greater-or-equal. Such behavior begins as an ordinary Raw
-Core function composed from the canonical primitives. The compiler never
+less-or-equal, or greater-or-equal. Such behavior begins as an ordinary Gaut
+function composed from the canonical primitives. The compiler never
 recognizes that helper as special.
 
 There are no source-visible `dup`, `swap`, `over`, local-slot, register, or
@@ -209,13 +209,13 @@ The three widths are different observable behaviors, not aliases. They are
 already justified by source parsing, 32-bit instruction/MMIO emission, and
 64-bit machine values.
 
-Every Raw Core memory access is ordered and observable. A compiler must not
+Every Gaut memory access is ordered and observable. A compiler must not
 remove, duplicate, merge, or move it across another memory or target effect.
 The same primitive therefore serves RAM and device access through one lowering
 path. Reorderable ordinary memory is not introduced yet.
 
 Stores keep the low 8, 32, or 64 bits. Loads zero-extend 8- and 32-bit values.
-Misaligned or invalid addresses violate the Raw Core program contract and may
+Misaligned or invalid addresses violate the Gaut program contract and may
 produce a target fault; no hidden check is inserted.
 
 ## 9. Control and function behavior
@@ -284,7 +284,7 @@ A compiler conforms only after all of these pass:
 
 ## 14. Migration from verified Core-0
 
-Core-0 remains the recovery compiler. `raw0/compiler.raw` implements the
+Core-0 remains the recovery compiler. `gaut/compiler.gaut` implements the
 readable draft 0.4 compiler, directly emits a static AArch64 Linux ELF, and has
 rebuilt itself through two byte-identical direct native generations. The full
 conformance matrix and freestanding platform remain open.
@@ -299,10 +299,10 @@ Migration order:
    implementation;
 5. complete: self-host the readable frontend to a byte-identical fixed point;
 6. complete for the bootstrap host: move the existing lowering into readable
-   Raw Core without changing primitive meaning;
+   Gaut without changing primitive meaning;
 7. next: add freestanding image construction without changing primitive
    meaning;
-8. write the first OS in readable Raw Core.
+8. write the first OS in readable Gaut.
 
 No larger type system or syntactic sugar is required for the first OS. New
 surface area requires a concrete failing program and a spec revision.

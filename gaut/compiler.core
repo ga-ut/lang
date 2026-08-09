@@ -1,6 +1,6 @@
-# Raw Core 0.4 readable-source bridge, written in frozen Core-0.
+# Gaut 0.4 readable-source bridge, written in frozen Core-0.
 #
-# Input:  Raw Core source on stdin.
+# Input:  Gaut source on stdin.
 # Output: validated deterministic Core-0 source on stdout.
 #
 # Nothing is written until the complete input has been validated.  The frozen

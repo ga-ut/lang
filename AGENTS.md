@@ -1,18 +1,18 @@
-# Raw Core repository guidelines
+# Gaut repository guidelines
 
 ## Project boundary
 
 This repository builds a dependency-free AArch64 language and then an OS in
 that language. The authoritative documents are:
 
-- `docs/RAW-SPEC.md`: readable maintained language
+- `docs/GAUT-SPEC.md`: readable maintained language
 - `docs/PRIMITIVES.tsv`: single canonical primitive inventory
 - `docs/LANGUAGE.md`: language philosophy and bootstrap boundary
 - `docs/OS.md`: first OS acceptance contract
 - `docs/ROADMAP.md`: completion gates
 
 M0 and postfix Core-0 are frozen recovery layers. Maintained compiler and OS
-source must use the readable named Raw Core grammar once its compiler exists.
+source must use the readable named Gaut grammar once its compiler exists.
 
 ## Dependency boundary
 
@@ -35,7 +35,7 @@ source must use the readable named Raw Core grammar once its compiler exists.
 - Human readability is mandatory for maintained source: use names and visible
   expression structure; do not expose numbered slots, registers, instruction
   words, or evaluation-stack bookkeeping.
-- Update `docs/RAW-SPEC.md` and `docs/PRIMITIVES.tsv` before implementing a new
+- Update `docs/GAUT-SPEC.md` and `docs/PRIMITIVES.tsv` before implementing a new
   primitive.
 
 ## Verification

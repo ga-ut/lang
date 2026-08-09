@@ -34,9 +34,9 @@ The exact v0 contract is in `LANGUAGE.md`.
 Verified fixed-point SHA-256:
 `be6c623f15602c051fe664289659c1cdd83265506e05f7b5e34d694280fbb293`.
 
-## Gate L3 — readable Raw Core and freestanding target (in progress)
+## Gate L3 — readable Gaut and freestanding target (in progress)
 
-The readable hosted-compiler sub-gates are complete. `raw0/compiler.raw`
+The readable hosted-compiler sub-gates are complete. `gaut/compiler.gaut`
 directly emits a static AArch64 Linux ELF and rebuilt itself through two
 byte-identical direct native generations in the offline AArch64 VM. Arithmetic,
 functions, branches, loops, fixed memory, rejection tests, and
@@ -49,7 +49,7 @@ path. Freestanding image emission remains open.
 - A normal program cannot accidentally issue a Linux syscall or access a
   device register.
 - Maintained source uses names and parenthesized expressions from
-  `RAW-SPEC.md`; numbered slots and exposed evaluation-stack bookkeeping stay
+  `GAUT-SPEC.md`; numbered slots and exposed evaluation-stack bookkeeping stay
   in recovery Core-0 only.
 - There is one runtime `word` type and exactly one lowering path for each
   canonical primitive.

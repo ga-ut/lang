@@ -1,19 +1,19 @@
-# Readable Raw Core implementation
+# Readable Gaut implementation
 
 ## Goal
 
-Replace maintained postfix Core-0 source with the readable Raw Core 0.4
+Replace maintained postfix Core-0 source with the readable Gaut 0.4
 grammar while retaining Core-0 as the dependency-free recovery compiler.
 
 ## Gates
 
 1. Freeze the 0.4 grammar, single-`word` value model, fixed-memory lifetime,
    call arities, and bootstrap-host effect boundary.
-2. Implement a Core-0 bridge that validates Raw Core and emits deterministic
+2. Implement a Core-0 bridge that validates Gaut and emits deterministic
    Core-0 source without writing partial output on failure.
-3. Verify readable examples through `raw0 -> Core-0 -> AArch64 ELF` in the
+3. Verify readable examples through `gaut -> Core-0 -> AArch64 ELF` in the
    offline VM.
-4. Rewrite the bridge compiler in readable Raw Core.
+4. Rewrite the bridge compiler in readable Gaut.
 5. Build the readable compiler through two native generations and require
    byte-identical results.
 6. Retain source, the final compiler, checksums, and concise verification;

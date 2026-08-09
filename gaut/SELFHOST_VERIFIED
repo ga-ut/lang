@@ -1,4 +1,4 @@
-Readable Raw Core compiler self-host verification
+Readable Gaut compiler self-host verification
 Date: 2026-08-10
 
 Historical frontend-only gate. See DIRECT_VERIFIED for the current retained
@@ -10,20 +10,20 @@ Environment:
 - loopback-only networking; no network interface or persistent root disk
 
 Source:
-- raw0/compiler.raw
-- 1,074 lines of readable Raw Core 0.4
+- gaut/compiler.gaut
+- 1,074 lines of readable Gaut 0.4
 - source SHA-256: 52e8153364d9e01004f00ef62806781f6dcd9063ccac8831d32e7e2c52921030
 
 Fixed point:
-1. the Core-0 bridge compiled compiler.raw to compiler-stage1.core
-2. dist/core0.elf lowered compiler-stage1.core to raw-stage1.elf
-3. raw-stage1.elf compiled compiler.raw to compiler-stage2.core
+1. the Core-0 bridge compiled compiler.gaut to compiler-stage1.core
+2. dist/core0.elf lowered compiler-stage1.core to gaut-stage1.elf
+3. gaut-stage1.elf compiled compiler.gaut to compiler-stage2.core
 4. compiler-stage1.core and compiler-stage2.core were byte-identical
-5. dist/core0.elf lowered compiler-stage2.core to raw-stage2.elf
-6. raw-stage1.elf and raw-stage2.elf were byte-identical
+5. dist/core0.elf lowered compiler-stage2.core to gaut-stage2.elf
+6. gaut-stage1.elf and gaut-stage2.elf were byte-identical
 
 Compiler retained at this historical gate:
-- dist/raw0.elf
+- dist/gaut.elf
 - static AArch64 Linux ELF, 45,056 bytes
 - SHA-256: cb263a36415c254c8a56766e1aa3e25effe3e0980beff41ba5e834d60290f642
 

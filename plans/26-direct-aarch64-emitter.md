@@ -1,14 +1,14 @@
-# Direct Raw Core AArch64 emitter
+# Direct Gaut AArch64 emitter
 
 ## Goal
 
-Make the maintained readable Raw Core compiler emit a complete static AArch64
+Make the maintained readable Gaut compiler emit a complete static AArch64
 Linux ELF directly. Remove Core-0 text and `dist/core0.elf` from the active
 compile path while retaining them as recovery artifacts.
 
 ## Gates
 
-1. Keep the Raw Core 0.4 grammar and primitive inventory unchanged.
+1. Keep the Gaut 0.4 grammar and primitive inventory unchanged.
 2. Replace Core-0 text emission with one direct AArch64 lowering for every
    existing value, memory, control, call, and bootstrap-host operation.
 3. Use the previously verified two-stage compiler only once to construct the

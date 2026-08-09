@@ -2,7 +2,7 @@
 
 The project now targets a self-hosted systems language followed by a minimal
 operating system written in that language. See `docs/LANGUAGE.md`,
-`docs/RAW-SPEC.md`, `docs/OS.md`, and `docs/ROADMAP.md` for the authoritative
+`docs/GAUT-SPEC.md`, `docs/OS.md`, and `docs/ROADMAP.md` for the authoritative
 boundaries.
 
 M0 below is frozen historical bootstrap machinery. It is not the product
@@ -10,13 +10,13 @@ language and will not be expanded into a renamed AArch64 assembler.
 
 ## Current result: readable direct compiler
 
-`raw0/compiler.raw` is a human-readable Raw Core 0.4 compiler. It accepts
+`gaut/compiler.gaut` is a human-readable Gaut 0.4 compiler. It accepts
 named values, decimal literals, call-shaped expressions, braces, semicolons,
 functions, branches, loops, and fixed-memory declarations. It directly writes
 a complete static AArch64 Linux ELF:
 
 ```text
-Raw Core source -> raw0 compiler -> AArch64 ELF
+Gaut source -> gaut compiler -> AArch64 ELF
 ```
 
 It does not invoke Python, Core-0, C, Rust, LLVM, an assembler, a linker, libc,
@@ -31,7 +31,7 @@ byte-identical:
 Use the retained 48 KiB compiler inside the isolated AArch64 Linux VM:
 
 ```sh
-./raw0.elf < program.raw > program.elf
+./gaut.elf < program.gaut > program.elf
 chmod +x program.elf
 ./program.elf
 ```
@@ -138,9 +138,9 @@ The verified result is `42`.
 - `dist/core0.elf`: retained self-hosted Core-0 compiler
 - `dist/CORE0_VERIFIED`: isolated-VM fixed-point and language-test record
 - `core0/reference_compiler.py`: audit-only Core-0 constructor
-- `raw0/compiler.raw`: maintained readable direct compiler source
-- `dist/raw0.elf`: retained self-hosted direct Raw Core compiler
-- `raw0/DIRECT_VERIFIED`: isolated-VM direct fixed-point and test record
+- `gaut/compiler.gaut`: maintained readable direct compiler source
+- `dist/gaut.elf`: retained self-hosted direct Gaut compiler
+- `gaut/DIRECT_VERIFIED`: isolated-VM direct fixed-point and test record
 
 The Python constructors are not part of the active build path. Keeping them
 allows the original hand-encoded AArch64 instructions to be reviewed.

@@ -1,4 +1,4 @@
-Raw Core 0.4 bridge verification
+Gaut 0.4 bridge verification
 Date: 2026-08-10
 
 Environment:
@@ -7,16 +7,16 @@ Environment:
 - loopback-only networking; no network interface or persistent root disk
 
 Build:
-- dist/core0.elf compiled raw0/compiler.core twice
+- dist/core0.elf compiled gaut/compiler.core twice
 - both bridge artifacts were byte-identical
 - bridge SHA-256: 5dd002d70a6d8615a37d7a4847652251711adac5ce0f9f238dd179e6cfee8f4b
 - the audit constructor independently produced the same bridge hash
 
 Readable-source pipeline:
-- return42.raw -> Raw bridge -> Core-0 -> AArch64 ELF -> status 42
-- loop.raw -> Raw bridge -> Core-0 -> AArch64 ELF -> status 55
-- memory.raw -> Raw bridge -> Core-0 -> AArch64 ELF -> status 42
-- branch.raw -> Raw bridge -> Core-0 -> AArch64 ELF -> status 42
+- return42.gaut -> Gaut bridge -> Core-0 -> AArch64 ELF -> status 42
+- loop.gaut -> Gaut bridge -> Core-0 -> AArch64 ELF -> status 55
+- memory.gaut -> Gaut bridge -> Core-0 -> AArch64 ELF -> status 42
+- branch.gaut -> Gaut bridge -> Core-0 -> AArch64 ELF -> status 42
 - formatted and one-line return42 sources produced byte-identical Core-0
 
 Failure behavior:
@@ -29,5 +29,5 @@ Failure behavior:
 Boundary:
 - This proves the readable frontend bridge, not readable-language self-hosting.
 - The active lowering still uses the retained self-hosted Core-0 compiler.
-- The bridge must be rewritten in Raw Core and rebuilt through two identical
+- The bridge must be rewritten in Gaut and rebuilt through two identical
   native generations before Gate L3 is complete.
