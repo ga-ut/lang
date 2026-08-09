@@ -1,0 +1,1074 @@
+# Raw Core 0.4 compiler, written in readable Raw Core.
+#
+# This compiler validates Raw Core source and emits the frozen Core-0 recovery
+# representation. The retained Core-0 compiler remains the one AArch64
+# lowering backend during this bootstrap gate.
+
+fn state_get(state, offset) {
+  return load64(add(state, offset));
+}
+
+fn state_set(state, offset, value) {
+  store64(value, add(state, offset));
+  return 0;
+}
+
+fn fail(state) {
+  drop host.write(2, add(state, 65000), 21);
+  host.exit(2);
+  return 0;
+}
+
+fn put(state, value) {
+  let cursor = state_get(state, 16);
+
+  if eq(lt(cursor, state_get(state, 128)), 0) {
+    drop fail(state);
+  }
+
+  store8(value, cursor);
+  drop state_set(state, 16, add(cursor, 1));
+  return 0;
+}
+
+fn emit_packed(state, value, length) {
+  let index = 0;
+  let remaining = value;
+
+  while lt(index, length) {
+    drop put(state, bitand(remaining, 255));
+    remaining = shr(remaining, 8);
+    index = add(index, 1);
+  }
+
+  return 0;
+}
+
+fn emit_span(state, address, length) {
+  let index = 0;
+
+  while lt(index, length) {
+    drop put(state, load8(add(address, index)));
+    index = add(index, 1);
+  }
+
+  drop put(state, 32);
+  return 0;
+}
+
+fn emit_nibble(state, value) {
+  let byte = 0;
+
+  if lt(value, 10) {
+    byte = add(value, 48);
+  } else {
+    byte = add(sub(value, 10), 97);
+  }
+
+  drop put(state, byte);
+  return 0;
+}
+
+fn emit_hex(state, value) {
+  let index = 0;
+  let shift = 0;
+
+  drop put(state, 36);
+
+  while lt(index, 16) {
+    shift = mul(sub(15, index), 4);
+    drop emit_nibble(state, bitand(shr(value, shift), 15));
+    index = add(index, 1);
+  }
+
+  drop put(state, 32);
+  return 0;
+}
+
+fn emit_slot(state, slot, suffix) {
+  drop put(state, 118);
+  drop emit_nibble(state, bitand(shr(slot, 4), 15));
+  drop emit_nibble(state, bitand(slot, 15));
+  drop put(state, suffix);
+  drop put(state, 32);
+  return 0;
+}
+
+fn emit_memory_base(state, offset) {
+  drop emit_packed(state, 544040301, 4);
+  drop emit_hex(state, offset);
+  drop emit_packed(state, 8235, 2);
+  return 0;
+}
+
+fn is_name_start(byte) {
+  let result = 0;
+
+  if bitand(lt(64, byte), lt(byte, 91)) {
+    result = 1;
+  }
+  if bitand(lt(96, byte), lt(byte, 123)) {
+    result = 1;
+  }
+  if eq(byte, 95) {
+    result = 1;
+  }
+
+  return result;
+}
+
+fn is_name_continue(byte) {
+  let result = is_name_start(byte);
+
+  if bitand(lt(47, byte), lt(byte, 58)) {
+    result = 1;
+  }
+  if eq(byte, 46) {
+    result = 1;
+  }
+
+  return result;
+}
+
+fn next_token(state) {
+  let skipping = 1;
+  let cursor = 0;
+  let end = 0;
+  let byte = 0;
+  let scanning = 0;
+  let digit = 0;
+  let value = 0;
+
+  while skipping {
+    cursor = state_get(state, 0);
+    end = state_get(state, 8);
+
+    if eq(lt(cursor, end), 0) {
+      drop state_set(state, 32, 0);
+      skipping = 0;
+    } else {
+      byte = load8(cursor);
+
+      if bitor(bitor(eq(byte, 32), eq(byte, 9)), bitor(eq(byte, 10), eq(byte, 13))) {
+        drop state_set(state, 0, add(cursor, 1));
+      } else {
+        if eq(byte, 35) {
+          scanning = 1;
+          while bitand(scanning, lt(state_get(state, 0), end)) {
+            cursor = state_get(state, 0);
+            if eq(load8(cursor), 10) {
+              drop state_set(state, 0, add(cursor, 1));
+              scanning = 0;
+            } else {
+              drop state_set(state, 0, add(cursor, 1));
+            }
+          }
+        } else {
+          skipping = 0;
+        }
+      }
+    }
+  }
+
+  cursor = state_get(state, 0);
+  end = state_get(state, 8);
+
+  if lt(cursor, end) {
+    byte = load8(cursor);
+    drop state_set(state, 40, cursor);
+
+    if is_name_start(byte) {
+      cursor = add(cursor, 1);
+      scanning = 1;
+
+      while bitand(scanning, lt(cursor, end)) {
+        if is_name_continue(load8(cursor)) {
+          cursor = add(cursor, 1);
+        } else {
+          scanning = 0;
+        }
+      }
+
+      drop state_set(state, 0, cursor);
+      drop state_set(state, 48, sub(cursor, state_get(state, 40)));
+      drop state_set(state, 32, 1);
+    } else {
+      if bitand(lt(47, byte), lt(byte, 58)) {
+        value = 0;
+        scanning = 1;
+
+        while bitand(scanning, lt(cursor, end)) {
+          byte = load8(cursor);
+          if bitand(lt(47, byte), lt(byte, 58)) {
+            digit = sub(byte, 48);
+            if bitor(lt(1844674407370955161, value), bitand(eq(value, 1844674407370955161), lt(5, digit))) {
+              drop fail(state);
+            }
+            value = add(mul(value, 10), digit);
+            cursor = add(cursor, 1);
+          } else {
+            scanning = 0;
+          }
+        }
+
+        drop state_set(state, 0, cursor);
+        drop state_set(state, 48, sub(cursor, state_get(state, 40)));
+        drop state_set(state, 56, value);
+        drop state_set(state, 32, 2);
+      } else {
+        drop state_set(state, 0, add(cursor, 1));
+        drop state_set(state, 48, 0);
+
+        if eq(byte, 40) {
+          drop state_set(state, 32, 3);
+        } else {
+          if eq(byte, 41) {
+            drop state_set(state, 32, 4);
+          } else {
+            if eq(byte, 123) {
+              drop state_set(state, 32, 5);
+            } else {
+              if eq(byte, 125) {
+                drop state_set(state, 32, 6);
+              } else {
+                if eq(byte, 44) {
+                  drop state_set(state, 32, 7);
+                } else {
+                  if eq(byte, 61) {
+                    drop state_set(state, 32, 8);
+                  } else {
+                    if eq(byte, 59) {
+                      drop state_set(state, 32, 9);
+                    } else {
+                      drop fail(state);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return 0;
+}
+
+fn span_equal(left, left_length, right, right_length) {
+  let index = 0;
+  let equal = eq(left_length, right_length);
+
+  while bitand(equal, lt(index, left_length)) {
+    if eq(eq(load8(add(left, index)), load8(add(right, index))), 0) {
+      equal = 0;
+    }
+    index = add(index, 1);
+  }
+
+  return equal;
+}
+
+fn canonical_add(state, first, second, length, info) {
+  let entry = add(add(state, 4096), mul(state_get(state, 96), 32));
+
+  store64(first, entry);
+  store64(second, add(entry, 8));
+  store64(length, add(entry, 16));
+  store64(info, add(entry, 24));
+  drop state_set(state, 96, add(state_get(state, 96), 1));
+  return 0;
+}
+
+fn canonical_find(state, address, length) {
+  let index = 0;
+  let result = 0;
+  let entry = 0;
+
+  while bitand(lt(index, state_get(state, 96)), eq(result, 0)) {
+    entry = add(add(state, 4096), mul(index, 32));
+    if span_equal(address, length, entry, load64(add(entry, 16))) {
+      result = load64(add(entry, 24));
+    }
+    index = add(index, 1);
+  }
+
+  return result;
+}
+
+fn function_add(state, address, length, arity) {
+  let entry = 0;
+
+  if eq(lt(state_get(state, 64), 256), 0) {
+    drop fail(state);
+  }
+
+  entry = add(add(state, 8192), mul(state_get(state, 64), 32));
+  store64(address, entry);
+  store64(length, add(entry, 8));
+  store64(arity, add(entry, 16));
+  drop state_set(state, 64, add(state_get(state, 64), 1));
+  return 0;
+}
+
+fn function_find(state, address, length) {
+  let index = 0;
+  let result = 0;
+  let entry = 0;
+
+  while bitand(lt(index, state_get(state, 64)), eq(result, 0)) {
+    entry = add(add(state, 8192), mul(index, 32));
+    if span_equal(address, length, load64(entry), load64(add(entry, 8))) {
+      result = entry;
+    }
+    index = add(index, 1);
+  }
+
+  return result;
+}
+
+fn local_add(state, address, length, kind, value) {
+  let entry = 0;
+
+  if eq(lt(state_get(state, 72), 256), 0) {
+    drop fail(state);
+  }
+
+  entry = add(add(state, 16384), mul(state_get(state, 72), 32));
+  store64(address, entry);
+  store64(length, add(entry, 8));
+  store64(kind, add(entry, 16));
+  store64(value, add(entry, 24));
+  drop state_set(state, 72, add(state_get(state, 72), 1));
+  return 0;
+}
+
+fn local_find(state, address, length) {
+  let index = 0;
+  let result = 0;
+  let entry = 0;
+
+  while bitand(lt(index, state_get(state, 72)), eq(result, 0)) {
+    entry = add(add(state, 16384), mul(index, 32));
+    if span_equal(address, length, load64(entry), load64(add(entry, 8))) {
+      result = entry;
+    }
+    index = add(index, 1);
+  }
+
+  return result;
+}
+
+fn init_canonical(state) {
+  drop state_set(state, 96, 0);
+
+  drop canonical_add(state, 28262, 0, 2, 16777217);
+  drop canonical_add(state, 7628140, 0, 3, 16777218);
+  drop canonical_add(state, 133532402673005, 0, 6, 16777219);
+  drop canonical_add(state, 1886351972, 0, 4, 16777220);
+  drop canonical_add(state, 26217, 0, 2, 16777221);
+  drop canonical_add(state, 1702063205, 0, 4, 16777222);
+  drop canonical_add(state, 435610544247, 0, 5, 16777223);
+  drop canonical_add(state, 121437875889522, 0, 6, 16777224);
+
+  drop canonical_add(state, 6579297, 0, 3, 33620496);
+  drop canonical_add(state, 6452595, 0, 3, 33620497);
+  drop canonical_add(state, 7107949, 0, 3, 33620498);
+  drop canonical_add(state, 110425244199266, 0, 6, 33620499);
+  drop canonical_add(state, 491496171874, 0, 5, 33620500);
+  drop canonical_add(state, 125823087831394, 0, 6, 33620501);
+  drop canonical_add(state, 7104627, 0, 3, 33620502);
+  drop canonical_add(state, 7497843, 0, 3, 33620503);
+  drop canonical_add(state, 29029, 0, 2, 33620504);
+  drop canonical_add(state, 29804, 0, 2, 33620505);
+  drop canonical_add(state, 242202275692, 0, 5, 33620256);
+  drop canonical_add(state, 55196308828012, 0, 6, 33620257);
+  drop canonical_add(state, 57408216985452, 0, 6, 33620258);
+  drop canonical_add(state, 62008362759283, 0, 6, 33554979);
+  drop canonical_add(state, 14130259640153203, 0, 7, 33554980);
+  drop canonical_add(state, 14696508128457843, 0, 7, 33554981);
+  drop canonical_add(state, 7018141138174570344, 100, 9, 33620800);
+  drop canonical_add(state, 7598266562733371240, 25972, 10, 33620801);
+  drop canonical_add(state, 7599935621384335208, 116, 9, 33554754);
+  return 0;
+}
+
+fn emit_callable(state, info, address, length) {
+  let id = bitand(info, 255);
+
+  if eq(info, 0) {
+    drop emit_packed(state, 139257995619, 5);
+    drop emit_span(state, address, length);
+  } else {
+    if eq(id, 16) {
+      drop emit_packed(state, 8235, 2);
+    } else {
+      if eq(id, 17) {
+        drop emit_packed(state, 8237, 2);
+      } else {
+        if eq(id, 18) {
+          drop emit_packed(state, 8234, 2);
+        } else {
+          if eq(id, 19) {
+            drop emit_packed(state, 8230, 2);
+          } else {
+            if eq(id, 20) {
+              drop emit_packed(state, 8316, 2);
+            } else {
+              if eq(id, 21) {
+                drop emit_packed(state, 8286, 2);
+              } else {
+                if eq(id, 22) {
+                  drop emit_packed(state, 2112572, 3);
+                } else {
+                  if eq(id, 23) {
+                    drop emit_packed(state, 2113086, 3);
+                  } else {
+                    if eq(id, 24) {
+                      drop emit_packed(state, 8253, 2);
+                    } else {
+                      if eq(id, 25) {
+                        drop emit_packed(state, 8252, 2);
+                      } else {
+                        drop emit_span(state, address, length);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return 0;
+}
+
+fn expression_push(state, address, length, info, arity, outputs, user_entry) {
+  let depth = state_get(state, 120);
+  let frame = add(add(state, 32768), mul(depth, 64));
+
+  if eq(lt(depth, 64), 0) {
+    drop fail(state);
+  }
+
+  store64(address, frame);
+  store64(length, add(frame, 8));
+  store64(info, add(frame, 16));
+  store64(0, add(frame, 24));
+  store64(arity, add(frame, 32));
+  store64(outputs, add(frame, 40));
+  store64(user_entry, add(frame, 48));
+  drop state_set(state, 120, add(depth, 1));
+  return frame;
+}
+
+fn expression_top(state) {
+  let depth = state_get(state, 120);
+  let frame = 0;
+
+  if eq(depth, 0) {
+    drop fail(state);
+  }
+
+  frame = add(add(state, 32768), mul(sub(depth, 1), 64));
+  return frame;
+}
+
+fn expression_pop(state) {
+  let frame = expression_top(state);
+  drop state_set(state, 120, sub(state_get(state, 120), 1));
+  return frame;
+}
+
+fn block_push(state, kind) {
+  let depth = state_get(state, 112);
+
+  if eq(lt(depth, 64), 0) {
+    drop fail(state);
+  }
+
+  store64(kind, add(add(state, 24576), mul(depth, 8)));
+  drop state_set(state, 112, add(depth, 1));
+  return 0;
+}
+
+fn block_top(state) {
+  let depth = state_get(state, 112);
+  let kind = 0;
+
+  if eq(depth, 0) {
+    drop fail(state);
+  }
+
+  kind = load64(add(add(state, 24576), mul(sub(depth, 1), 8)));
+  return kind;
+}
+
+fn block_set(state, kind) {
+  let depth = state_get(state, 112);
+
+  if eq(depth, 0) {
+    drop fail(state);
+  }
+
+  store64(kind, add(add(state, 24576), mul(sub(depth, 1), 8)));
+  return 0;
+}
+
+fn block_pop(state) {
+  let kind = block_top(state);
+  drop state_set(state, 112, sub(state_get(state, 112), 1));
+  return kind;
+}
+
+fn name_available(state, address, length, function_address, function_length) {
+  let available = 1;
+
+  if canonical_find(state, address, length) {
+    available = 0;
+  }
+  if function_find(state, address, length) {
+    available = 0;
+  }
+  if local_find(state, address, length) {
+    available = 0;
+  }
+  if span_equal(address, length, function_address, function_length) {
+    available = 0;
+  }
+
+  return available;
+}
+
+fn parse_expression(state) {
+  let base_depth = state_get(state, 120);
+  let need_value = 1;
+  let done = 0;
+  let result_outputs = 1;
+  let kind = 0;
+  let address = 0;
+  let length = 0;
+  let info = 0;
+  let arity = 0;
+  let outputs = 0;
+  let user_entry = 0;
+  let entry = 0;
+  let frame = 0;
+  let arguments = 0;
+
+  while eq(done, 0) {
+    if need_value {
+      kind = state_get(state, 32);
+
+      if eq(kind, 2) {
+        drop emit_hex(state, state_get(state, 56));
+        drop next_token(state);
+        result_outputs = 1;
+        need_value = 0;
+      } else {
+        if eq(kind, 1) {
+          address = state_get(state, 40);
+          length = state_get(state, 48);
+          drop next_token(state);
+
+          if eq(state_get(state, 32), 3) {
+            info = canonical_find(state, address, length);
+            user_entry = 0;
+
+            if info {
+              if eq(bitand(shr(info, 24), 255), 2) {
+                arity = bitand(shr(info, 8), 255);
+                outputs = bitand(shr(info, 16), 255);
+              } else {
+                drop fail(state);
+              }
+            } else {
+              user_entry = function_find(state, address, length);
+              if eq(user_entry, 0) {
+                drop fail(state);
+              }
+              arity = load64(add(user_entry, 16));
+              outputs = 1;
+            }
+
+            frame = expression_push(state, address, length, info, arity, outputs, user_entry);
+            drop next_token(state);
+
+            if eq(state_get(state, 32), 4) {
+              if arity {
+                drop fail(state);
+              }
+              drop emit_callable(state, info, address, length);
+              result_outputs = outputs;
+              drop expression_pop(state);
+              drop next_token(state);
+              need_value = 0;
+            } else {
+              need_value = 1;
+            }
+          } else {
+            entry = local_find(state, address, length);
+            if eq(entry, 0) {
+              drop fail(state);
+            }
+
+            if eq(load64(add(entry, 16)), 1) {
+              drop emit_slot(state, load64(add(entry, 24)), 64);
+            } else {
+              if eq(load64(add(entry, 16)), 2) {
+                drop emit_memory_base(state, load64(add(entry, 24)));
+              } else {
+                drop fail(state);
+              }
+            }
+
+            result_outputs = 1;
+            need_value = 0;
+          }
+        } else {
+          drop fail(state);
+        }
+      }
+    } else {
+      if eq(state_get(state, 120), base_depth) {
+        done = 1;
+      } else {
+        if eq(result_outputs, 1) {
+          frame = expression_top(state);
+          arguments = add(load64(add(frame, 24)), 1);
+          store64(arguments, add(frame, 24));
+
+          if eq(state_get(state, 32), 7) {
+            drop next_token(state);
+            need_value = 1;
+          } else {
+            if eq(state_get(state, 32), 4) {
+              if eq(eq(arguments, load64(add(frame, 32))), 0) {
+                drop fail(state);
+              }
+
+              info = load64(add(frame, 16));
+              address = load64(frame);
+              length = load64(add(frame, 8));
+              result_outputs = load64(add(frame, 40));
+              drop emit_callable(state, info, address, length);
+              drop expression_pop(state);
+              drop next_token(state);
+              need_value = 0;
+            } else {
+              drop fail(state);
+            }
+          }
+        } else {
+          drop fail(state);
+        }
+      }
+    }
+  }
+
+  return result_outputs;
+}
+
+fn parse_function(state) {
+  let function_address = 0;
+  let function_length = 0;
+  let parameter_count = 0;
+  let slot = 0;
+  let parsing = 1;
+  let info = 0;
+  let id = 0;
+  let expression_outputs = 0;
+  let name_address = 0;
+  let name_length = 0;
+  let entry = 0;
+  let block_kind = 0;
+  let size = 0;
+  let offset = 0;
+  let is_main = 0;
+
+  drop emit_packed(state, 2125414, 3);
+  drop next_token(state);
+
+  if eq(eq(state_get(state, 32), 1), 0) {
+    drop fail(state);
+  }
+
+  function_address = state_get(state, 40);
+  function_length = state_get(state, 48);
+
+  if canonical_find(state, function_address, function_length) {
+    drop fail(state);
+  }
+  if function_find(state, function_address, function_length) {
+    drop fail(state);
+  }
+
+  drop emit_span(state, function_address, function_length);
+
+  if eq(function_length, 4) {
+    if eq(load32(function_address), 1852399981) {
+      is_main = 1;
+    }
+  }
+
+  drop next_token(state);
+  if eq(eq(state_get(state, 32), 3), 0) {
+    drop fail(state);
+  }
+  drop next_token(state);
+
+  drop state_set(state, 72, 0);
+
+  if eq(eq(state_get(state, 32), 4), 0) {
+    parsing = 1;
+    while parsing {
+      if eq(eq(state_get(state, 32), 1), 0) {
+        drop fail(state);
+      }
+
+      name_address = state_get(state, 40);
+      name_length = state_get(state, 48);
+      if eq(name_available(state, name_address, name_length, function_address, function_length), 0) {
+        drop fail(state);
+      }
+      if eq(lt(state_get(state, 80), 256), 0) {
+        drop fail(state);
+      }
+
+      slot = state_get(state, 80);
+      store64(slot, add(add(state, 36864), mul(parameter_count, 8)));
+      drop local_add(state, name_address, name_length, 1, slot);
+      drop state_set(state, 80, add(slot, 1));
+      parameter_count = add(parameter_count, 1);
+
+      drop next_token(state);
+      if eq(state_get(state, 32), 7) {
+        drop next_token(state);
+      } else {
+        parsing = 0;
+      }
+    }
+  }
+
+  if eq(eq(state_get(state, 32), 4), 0) {
+    drop fail(state);
+  }
+  if bitand(is_main, eq(eq(parameter_count, 0), 0)) {
+    drop fail(state);
+  }
+
+  slot = parameter_count;
+  while lt(0, slot) {
+    slot = sub(slot, 1);
+    drop emit_slot(state, load64(add(add(state, 36864), mul(slot, 8))), 33);
+  }
+
+  drop next_token(state);
+  if eq(eq(state_get(state, 32), 5), 0) {
+    drop fail(state);
+  }
+  drop next_token(state);
+  drop state_set(state, 112, 0);
+  parsing = 1;
+
+  while parsing {
+    if eq(state_get(state, 32), 0) {
+      drop fail(state);
+    }
+
+    if eq(state_get(state, 32), 6) {
+      if eq(state_get(state, 112), 0) {
+        drop fail(state);
+      }
+
+      block_kind = block_top(state);
+      if eq(block_kind, 1) {
+        drop next_token(state);
+        info = 0;
+        if eq(state_get(state, 32), 1) {
+          info = canonical_find(state, state_get(state, 40), state_get(state, 48));
+        }
+
+        if eq(bitand(info, 255), 6) {
+          drop emit_packed(state, 139141016677, 5);
+          drop next_token(state);
+          if eq(eq(state_get(state, 32), 5), 0) {
+            drop fail(state);
+          }
+          drop block_set(state, 2);
+          drop next_token(state);
+        } else {
+          drop emit_packed(state, 35624226942565, 6);
+          drop block_pop(state);
+        }
+      } else {
+        if eq(block_kind, 2) {
+          drop emit_packed(state, 35624226942565, 6);
+          drop block_pop(state);
+          drop next_token(state);
+        } else {
+          if eq(block_kind, 3) {
+            drop emit_packed(state, 7308332192716058213, 8);
+            drop put(state, 32);
+            drop block_pop(state);
+            drop next_token(state);
+          } else {
+            drop fail(state);
+          }
+        }
+      }
+    } else {
+      if eq(eq(state_get(state, 32), 1), 0) {
+        drop fail(state);
+      }
+
+      info = canonical_find(state, state_get(state, 40), state_get(state, 48));
+      id = bitand(info, 255);
+
+      if eq(id, 8) {
+        if state_get(state, 112) {
+          drop fail(state);
+        }
+
+        drop next_token(state);
+        expression_outputs = parse_expression(state);
+        if eq(eq(expression_outputs, 1), 0) {
+          drop fail(state);
+        }
+        if eq(eq(state_get(state, 32), 9), 0) {
+          drop fail(state);
+        }
+        drop next_token(state);
+        if eq(eq(state_get(state, 32), 6), 0) {
+          drop fail(state);
+        }
+
+        drop emit_packed(state, 35658536349285, 6);
+        drop next_token(state);
+        drop function_add(state, function_address, function_length, parameter_count);
+        if is_main {
+          drop state_set(state, 104, 1);
+        }
+        parsing = 0;
+      } else {
+        if eq(id, 2) {
+          drop next_token(state);
+          if eq(eq(state_get(state, 32), 1), 0) {
+            drop fail(state);
+          }
+
+          name_address = state_get(state, 40);
+          name_length = state_get(state, 48);
+          if eq(name_available(state, name_address, name_length, function_address, function_length), 0) {
+            drop fail(state);
+          }
+
+          drop next_token(state);
+          if eq(eq(state_get(state, 32), 8), 0) {
+            drop fail(state);
+          }
+          drop next_token(state);
+          expression_outputs = parse_expression(state);
+          if eq(eq(expression_outputs, 1), 0) {
+            drop fail(state);
+          }
+          if eq(lt(state_get(state, 80), 256), 0) {
+            drop fail(state);
+          }
+
+          slot = state_get(state, 80);
+          drop local_add(state, name_address, name_length, 1, slot);
+          drop emit_slot(state, slot, 33);
+          drop state_set(state, 80, add(slot, 1));
+
+          if eq(eq(state_get(state, 32), 9), 0) {
+            drop fail(state);
+          }
+          drop next_token(state);
+        } else {
+          if eq(id, 3) {
+            drop next_token(state);
+            if eq(eq(state_get(state, 32), 1), 0) {
+              drop fail(state);
+            }
+
+            name_address = state_get(state, 40);
+            name_length = state_get(state, 48);
+            if eq(name_available(state, name_address, name_length, function_address, function_length), 0) {
+              drop fail(state);
+            }
+
+            drop next_token(state);
+            if eq(eq(state_get(state, 32), 2), 0) {
+              drop fail(state);
+            }
+            size = state_get(state, 56);
+            if eq(size, 0) {
+              drop fail(state);
+            }
+
+            offset = bitand(add(state_get(state, 88), 7), 18446744073709551608);
+            if lt(sub(917504, offset), size) {
+              drop fail(state);
+            }
+
+            drop local_add(state, name_address, name_length, 2, offset);
+            drop state_set(state, 88, add(offset, size));
+            drop next_token(state);
+            if eq(eq(state_get(state, 32), 9), 0) {
+              drop fail(state);
+            }
+            drop next_token(state);
+          } else {
+            if eq(id, 4) {
+              drop next_token(state);
+              expression_outputs = parse_expression(state);
+              if eq(eq(expression_outputs, 1), 0) {
+                drop fail(state);
+              }
+              drop emit_packed(state, 139325305444, 5);
+              if eq(eq(state_get(state, 32), 9), 0) {
+                drop fail(state);
+              }
+              drop next_token(state);
+            } else {
+              if eq(id, 5) {
+                drop next_token(state);
+                expression_outputs = parse_expression(state);
+                if eq(eq(expression_outputs, 1), 0) {
+                  drop fail(state);
+                }
+                drop emit_packed(state, 2123369, 3);
+                if eq(eq(state_get(state, 32), 5), 0) {
+                  drop fail(state);
+                }
+                drop block_push(state, 1);
+                drop next_token(state);
+              } else {
+                if eq(id, 7) {
+                  drop emit_packed(state, 35619982633079, 6);
+                  drop next_token(state);
+                  expression_outputs = parse_expression(state);
+                  if eq(eq(expression_outputs, 1), 0) {
+                    drop fail(state);
+                  }
+                  drop emit_packed(state, 2125668, 3);
+                  if eq(eq(state_get(state, 32), 5), 0) {
+                    drop fail(state);
+                  }
+                  drop block_push(state, 3);
+                  drop next_token(state);
+                } else {
+                  if eq(bitand(shr(info, 24), 255), 1) {
+                    drop fail(state);
+                  }
+
+                  name_address = state_get(state, 40);
+                  name_length = state_get(state, 48);
+                  drop next_token(state);
+
+                  if eq(state_get(state, 32), 8) {
+                    entry = local_find(state, name_address, name_length);
+                    if eq(entry, 0) {
+                      drop fail(state);
+                    }
+                    if eq(eq(load64(add(entry, 16)), 1), 0) {
+                      drop fail(state);
+                    }
+
+                    drop next_token(state);
+                    expression_outputs = parse_expression(state);
+                    if eq(eq(expression_outputs, 1), 0) {
+                      drop fail(state);
+                    }
+                    drop emit_slot(state, load64(add(entry, 24)), 33);
+                    if eq(eq(state_get(state, 32), 9), 0) {
+                      drop fail(state);
+                    }
+                    drop next_token(state);
+                  } else {
+                    if eq(eq(state_get(state, 32), 3), 0) {
+                      drop fail(state);
+                    }
+
+                    drop state_set(state, 0, name_address);
+                    drop next_token(state);
+                    expression_outputs = parse_expression(state);
+                    if expression_outputs {
+                      drop fail(state);
+                    }
+                    if eq(eq(state_get(state, 32), 9), 0) {
+                      drop fail(state);
+                    }
+                    drop next_token(state);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return 0;
+}
+
+fn main() {
+  memory source 131072;
+  memory output 131072;
+  memory state 65536;
+  let input_size = 0;
+  let info = 0;
+
+  store64(7955925651020013938, add(state, 65000));
+  store64(8030798176169255286, add(state, 65008));
+  store64(44650689141, add(state, 65016));
+
+  input_size = host.read(0, source, 131072);
+  if eq(input_size, 131072) {
+    if host.read(0, add(state, 64992), 1) {
+      drop fail(state);
+    }
+  }
+
+  drop state_set(state, 0, source);
+  drop state_set(state, 8, add(source, input_size));
+  drop state_set(state, 16, output);
+  drop state_set(state, 24, output);
+  drop state_set(state, 64, 0);
+  drop state_set(state, 72, 0);
+  drop state_set(state, 80, 0);
+  drop state_set(state, 88, 0);
+  drop state_set(state, 96, 0);
+  drop state_set(state, 104, 0);
+  drop state_set(state, 112, 0);
+  drop state_set(state, 120, 0);
+  drop state_set(state, 128, add(output, 131072));
+
+  drop init_canonical(state);
+  drop next_token(state);
+
+  while eq(eq(state_get(state, 32), 0), 0) {
+    if eq(eq(state_get(state, 32), 1), 0) {
+      drop fail(state);
+    }
+
+    info = canonical_find(state, state_get(state, 40), state_get(state, 48));
+    if eq(bitand(info, 255), 1) {
+      drop parse_function(state);
+    } else {
+      drop fail(state);
+    }
+  }
+
+  if eq(state_get(state, 104), 0) {
+    drop fail(state);
+  }
+
+  drop host.write(1, state_get(state, 24), sub(state_get(state, 16), state_get(state, 24)));
+  return 0;
+}

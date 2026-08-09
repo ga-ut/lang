@@ -595,7 +595,7 @@ fn parse_function
       v5@ v6@ call name_available $0 = if
         call fail
       endif
-      vA@ $80 >= if
+      vA@ $100 >= if
         call fail
       endif
       vA@ mem $6e000 + v6a@ $8 * + store64
@@ -718,7 +718,7 @@ fn parse_function
           call next
           call parse_expr v6d!
           v6d@ $1 != if call fail endif
-          vA@ $80 >= if call fail endif
+          vA@ $100 >= if call fail endif
           v68@ v69@ $1 vA@ call local_add
           vA@ call emit_slot_set
           vA@ $1 + vA!

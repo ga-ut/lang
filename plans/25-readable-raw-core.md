@@ -33,4 +33,6 @@ grammar while retaining Core-0 as the dependency-free recovery compiler.
 - Gate 1: complete
 - Gate 2: complete
 - Gate 3: complete
-- Gates 4-6: pending
+- Gate 4: complete
+- Gate 5: complete
+- Gate 6: complete

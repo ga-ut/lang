@@ -9,7 +9,7 @@ Environment:
 Build:
 - dist/core0.elf compiled raw0/compiler.core twice
 - both bridge artifacts were byte-identical
-- bridge SHA-256: 6f9ed151589541abc3bbda8224f9c84545f9647805cecf5a50c48d5a8a95ac1f
+- bridge SHA-256: 5dd002d70a6d8615a37d7a4847652251711adac5ce0f9f238dd179e6cfee8f4b
 - the audit constructor independently produced the same bridge hash
 
 Readable-source pipeline:
@@ -23,6 +23,8 @@ Failure behavior:
 - unknown call: status 2, zero output bytes, ASCII diagnostic
 - wrong primitive arity: status 2, zero output bytes, ASCII diagnostic
 - early return in a nested block: status 2, zero output bytes, ASCII diagnostic
+- 130 named values compiled and ran with status 129 after the bridge slot
+  capacity was raised from 128 to the two-hex-digit Core-0 limit of 256
 
 Boundary:
 - This proves the readable frontend bridge, not readable-language self-hosting.

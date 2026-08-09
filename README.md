@@ -34,20 +34,19 @@ Core-0 is the dependency-free recovery language, not the source people should
 use to maintain the OS. The next gate is the readable named Raw Core grammar in
 `RAW-SPEC.md`, followed by a freestanding backend.
 
-## Current readable-language bridge
+## Current readable self-hosted frontend
 
-`raw0/compiler.core` now accepts the Raw Core 0.4 grammar with named values,
+`raw0/compiler.raw` now accepts the Raw Core 0.4 grammar with named values,
 decimal literals, call-shaped expressions, braces, semicolons, functions,
 branches, loops, and fixed-memory declarations. It emits validated Core-0
 source, which the retained native Core-0 compiler lowers to AArch64 ELF.
 
-The bridge and readable examples passed in the offline VM. This is intentionally
-reported as a bridge milestone rather than full readable-language self-hosting:
-the bridge source is still frozen postfix Core-0. The next gate rewrites that
-compiler in readable Raw Core and requires two byte-identical native
-generations.
+The readable compiler rebuilt its own source through two byte-identical native
+generations in the offline VM. The remaining bootstrap boundary is explicit:
+the readable compiler still emits Core-0 source, and the frozen Core-0 compiler
+performs AArch64 lowering.
 
-Use the retained bridge inside the isolated AArch64 VM:
+Use the retained compiler inside the isolated AArch64 VM:
 
 ```sh
 ./raw0.elf < program.raw > program.core
@@ -56,9 +55,9 @@ chmod +x program.elf
 ./program.elf
 ```
 
-`dist/raw0.elf` is the VM-built, verified bridge artifact. It is retained so
-readable programs can be compiled now; it does not change the pending
-readable-self-hosting gate.
+`dist/raw0.elf` is the VM-built, readable self-hosted compiler. The next
+language gate moves the existing AArch64 lowering into readable Raw Core so the
+compiler can emit the final artifact directly.
 
 Compile inside the isolated AArch64 Linux VM:
 
