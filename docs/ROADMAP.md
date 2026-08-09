@@ -1,4 +1,4 @@
-# Core language -> Core OS
+# Gaut language -> Gaut OS
 
 This is the authoritative project boundary. M0 is frozen as a recoverable seed;
 it will not grow into the user-facing language.
@@ -34,17 +34,19 @@ The exact v0 contract is in `LANGUAGE.md`.
 Verified fixed-point SHA-256:
 `be6c623f15602c051fe664289659c1cdd83265506e05f7b5e34d694280fbb293`.
 
-## Gate L3 — readable Gaut and freestanding target (in progress)
+## Gate L3 — readable Gaut and freestanding target (complete)
 
 The readable hosted-compiler sub-gates are complete. `gaut/compiler.gaut`
 directly emits a static AArch64 Linux ELF and rebuilt itself through two
 byte-identical direct native generations in the offline AArch64 VM. Arithmetic,
 functions, branches, loops, fixed memory, rejection tests, and
 whitespace-insensitive parsing passed. Core-0 is no longer in the active build
-path. Freestanding image emission remains open.
+path. `target qemu_virt;` now emits a deterministic raw AArch64 image; its
+Gaut-written PL011 driver booted twice without Linux and printed the exact F0
+transcript.
 
 - Complete: the self-hosted compiler emits the bootstrap-host ELF directly.
-- Next: the same compiler emits a freestanding AArch64 image.
+- Complete: the same compiler emits a freestanding AArch64 image.
 - Target-specific effects live behind explicit target modules.
 - A normal program cannot accidentally issue a Linux syscall or access a
   device register.
@@ -56,11 +58,11 @@ path. Freestanding image emission remains open.
 - Complete: the readable compiler directly emits the hosted platform artifact
   without the frozen Core-0 lowering backend.
 
-## Gate O1 — first Core OS
+## Gate O1 — first Gaut OS (next)
 
 - Boots on QEMU `virt` as AArch64 without Linux, libc, a dynamic loader, or a
   foreign runtime.
-- All executable kernel logic is Core source. The compiler may synthesize the
+- All executable kernel logic is Gaut source. The compiler may synthesize the
   image header, reset entry, and exception-vector layout.
 - Brings up PL011 serial output, a page allocator, synchronous exception
   reporting, the ARM generic timer, and one cooperative task.

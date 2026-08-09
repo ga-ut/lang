@@ -65,7 +65,7 @@ Bootstrap-host I/O and kernel device I/O are different modules:
 ```text
 host.read(input, bytes)       # Linux bootstrap adapter only
 host.write(output, bytes)
-uart.write(device, bytes)     # Core OS target
+uart.write(device, bytes)     # Gaut OS target
 timer.arm(device, deadline)
 ```
 

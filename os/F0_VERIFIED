@@ -1,0 +1,38 @@
+Gaut OS freestanding F0 verification
+Date: 2026-08-10
+
+Source and artifacts:
+- os/boot.gaut, 32 lines
+- source SHA-256: 0350de709810b73304afbb7c01ffe566dae7604b4d7919d159796ccbf28e4a7d
+- dist/gaut.elf SHA-256:
+  413a2e8af4b6267ec3472df68d4d267174b3ae11fa8d19489a49b494fb075649
+- dist/gaut-os.img, 4,096 bytes
+- image SHA-256:
+  9acf90dc49c30e3db79e89b6fbc90faeb6307b0e703d268c5e122ab390e265d1
+
+Build proof:
+1. self-host compiler generations 1 and 2 each compiled boot.gaut
+2. both images were byte-identical
+3. the image begins with compiler-encoded AArch64 entry instructions rather
+   than an ELF header, Linux loader record, or foreign runtime
+
+Machine proof:
+- QEMU emulator 11.0.3
+- machine: virt with virtualization disabled
+- CPU: cortex-a53
+- RAM: 128 MiB
+- console: PL011 serial over stdio
+- network: disabled with `-nic none`
+- direct image load: `-kernel dist/gaut-os.img`
+
+Observed twice from clean QEMU processes:
+
+gaut-os: boot
+
+Boundary:
+- Linux, libc, a dynamic loader, an assembler, a linker, C, Rust, and LLVM are
+  absent from the guest image and boot path
+- the compiler synthesizes stack and Gaut call storage, entry call, and the
+  post-return wait loop
+- the PL011 status poll and writes are Gaut source using load32 and store32
+- F0 is direct boot, not yet an interactive compiler running inside Gaut OS

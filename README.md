@@ -1,4 +1,4 @@
-# Core ARM64 language and OS bootstrap
+# Gaut ARM64 language and OS bootstrap
 
 The project now targets a self-hosted systems language followed by a minimal
 operating system written in that language. See `docs/LANGUAGE.md`,
@@ -21,14 +21,13 @@ Gaut source -> gaut compiler -> AArch64 ELF
 
 It does not invoke Python, Core-0, C, Rust, LLVM, an assembler, a linker, libc,
 or a dynamic loader. In the isolated offline AArch64 VM, the first direct
-compiler built its own source twice; the two direct generations were
-byte-identical:
+compiler rebuilt its F0-capable source through byte-identical generations:
 
 ```text
-19a989e9730b4ff68fc05ae975152cb4bd29d14a7cf49a723c78e1005674f684
+413a2e8af4b6267ec3472df68d4d267174b3ae11fa8d19489a49b494fb075649
 ```
 
-Use the retained 48 KiB compiler inside the isolated AArch64 Linux VM:
+Use the retained 52 KiB compiler inside the isolated AArch64 Linux VM:
 
 ```sh
 ./gaut.elf < program.gaut > program.elf
@@ -40,8 +39,27 @@ Verified readable examples return 42 for arithmetic/functions, 55 for a loop,
 42 for fixed memory, and 42 for `if`/`else`. Invalid calls, arity, and nested
 early returns are rejected with status 2 and zero artifact bytes.
 
-This completes the readable hosted compiler and direct ELF-emission gate. The
-next separate gate is a freestanding AArch64 image target for the first OS.
+The same compiler also supports the explicit freestanding QEMU target.
+
+## Current result: Gaut OS F0 direct boot
+
+`os/boot.gaut` begins with `target qemu_virt;`. The compiler emits a 4 KiB raw
+AArch64 image instead of a Linux ELF:
+
+```sh
+./gaut.elf < boot.gaut > gaut-os.img
+```
+
+The image was built twice to identical bytes and booted twice in clean,
+networkless QEMU `virt` processes. Its Gaut-written PL011 driver produced:
+
+```text
+gaut-os: boot
+```
+
+The image contains no Linux, libc, dynamic loader, foreign runtime, assembler,
+or linker output. F0 proves direct boot and UART MMIO; running the Gaut compiler
+inside Gaut OS is the next F1 gate.
 
 ## Frozen Core-0 recovery compiler
 
@@ -141,6 +159,9 @@ The verified result is `42`.
 - `gaut/compiler.gaut`: maintained readable direct compiler source
 - `dist/gaut.elf`: retained self-hosted direct Gaut compiler
 - `gaut/DIRECT_VERIFIED`: isolated-VM direct fixed-point and test record
+- `os/boot.gaut`: first freestanding Gaut OS source
+- `dist/gaut-os.img`: retained deterministic QEMU `virt` boot image
+- `os/F0_VERIFIED`: direct boot verification record
 
 The Python constructors are not part of the active build path. Keeping them
 allows the original hand-encoded AArch64 instructions to be reviewed.

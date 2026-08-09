@@ -241,6 +241,25 @@ data, never implicit source behavior.
 The freestanding platform adds only an effect demanded by the next boot test.
 It does not predefine UART, timer, task, file, network, rendering, or AI APIs.
 
+An optional first declaration selects the output target:
+
+```text
+target qemu_virt;
+```
+
+`target` is build metadata, not a value or runtime primitive. It may occur
+once, before every function. `qemu_virt` selects the checked AArch64 QEMU
+`virt` board layout, a raw boot image container, and a freestanding entry
+adapter. A source without the declaration retains the bootstrap-host AArch64
+Linux ELF target for compiler self-hosting. Target-specific names are reserved
+and cannot be used as functions, parameters, locals, or memories.
+
+The target declaration does not grant an implicit UART operation. Gaut kernel
+source performs device access through the same ordered `load32` and `store32`
+primitive implementations used for ordinary explicit addresses. Board
+addresses belong in the selected board source and must not leak into portable
+programs.
+
 ## 11. Determinism and failure
 
 Identical source bytes, compiler version, and platform ID must produce
@@ -285,9 +304,10 @@ A compiler conforms only after all of these pass:
 ## 14. Migration from verified Core-0
 
 Core-0 remains the recovery compiler. `gaut/compiler.gaut` implements the
-readable draft 0.4 compiler, directly emits a static AArch64 Linux ELF, and has
-rebuilt itself through two byte-identical direct native generations. The full
-conformance matrix and freestanding platform remain open.
+readable draft 0.4 compiler, directly emits a static AArch64 Linux ELF or an
+explicit QEMU `virt` raw image, and has rebuilt itself through byte-identical
+direct native generations. The full cross-platform conformance matrix remains
+open.
 
 Migration order:
 
@@ -300,9 +320,9 @@ Migration order:
 5. complete: self-host the readable frontend to a byte-identical fixed point;
 6. complete for the bootstrap host: move the existing lowering into readable
    Gaut without changing primitive meaning;
-7. next: add freestanding image construction without changing primitive
-   meaning;
-8. write the first OS in readable Gaut.
+7. complete for F0: add freestanding image construction without changing
+   primitive meaning;
+8. in progress: write the first OS in readable Gaut.
 
 No larger type system or syntactic sugar is required for the first OS. New
 surface area requires a concrete failing program and a spec revision.

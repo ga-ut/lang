@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 *.log
 *.img
+!/dist/gaut-os.img
 
 /lab/runtime/
 /work/

@@ -1,14 +1,31 @@
-# Core OS O1 contract
+# Gaut OS contracts
+
+## F0 — direct boot
+
+F0 proves the smallest machine boundary before O1:
+
+- `os/boot.gaut` explicitly selects `target qemu_virt;`;
+- `dist/gaut.elf` emits a deterministic raw AArch64 image;
+- QEMU `virt` boots it directly without Linux or a foreign runtime;
+- the PL011 driver is Gaut source using ordered memory primitives; and
+- serial output is exactly `gaut-os: boot` followed by one newline.
+
+The compiler may synthesize only the initial stack, evaluation and return
+storage, the call to `main`, and the post-return wait loop. F0 does not include
+an allocator, exception vectors, interrupts, scheduling, storage, or an
+interactive development environment.
+
+## O1 — operating-system nucleus
 
 O1 is a small operating-system nucleus, not a Linux replacement and not a
-browser demo. Its job is to prove that Core can own the machine boundary.
+browser demo. Its job is to prove that Gaut can own the wider machine boundary.
 
 ## Initial machine
 
 - architecture: AArch64
 - reference board: QEMU `virt`
 - privilege at entry: EL1 when QEMU's direct-kernel boot provides it; the boot
-  shim normalizes other supported entry states before Core kernel code runs
+  shim normalizes other supported entry states before Gaut kernel code runs
 - console: PL011 UART
 - interrupt controller: the QEMU `virt` GIC version selected by the launch
   manifest
@@ -18,7 +35,7 @@ browser demo. Its job is to prove that Core can own the machine boundary.
 
 QEMU is a replaceable hardware model. QEMU behavior is not language semantics.
 
-## What must be Core source
+## What must be Gaut source
 
 - kernel entry state machine after the compiler-generated reset shim
 - UART driver
@@ -34,13 +51,13 @@ foreign runtime is linked into the kernel.
 ## Required boot transcript
 
 ```text
-core-os: entry
-core-os: uart ok
-core-os: memory ok
-core-os: exceptions ok
-core-os: timer ok
-core-os: task ok
-core-os: O1 PASS
+gaut-os: entry
+gaut-os: uart ok
+gaut-os: memory ok
+gaut-os: exceptions ok
+gaut-os: timer ok
+gaut-os: task ok
+gaut-os: O1 PASS
 ```
 
 The test harness must also provoke one controlled synchronous exception and
