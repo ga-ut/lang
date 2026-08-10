@@ -43,6 +43,9 @@ bootstrap layers live in Git history, not in the current tree.
 
 - Verify `dist/SHA256SUMS` after copying or changing retained artifacts.
 - Verify at least one identical source through every supported build profile.
+- For resident execution, verify two profile `3` children return in one boot
+  and that each can touch the end of its fixed-memory arena without damaging
+  compiler state.
 - Keep source, the final compiler, concise verification records, and checksum
   manifests. Do not commit VM runtime images, work disks, compiler generations,
   generated examples, caches, traces, or crash dumps.

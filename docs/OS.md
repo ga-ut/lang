@@ -19,6 +19,8 @@ QEMU is a replaceable hardware model, not part of Gaut semantics.
 `2`. `os/run.sh` places consecutive profile `3` child requests in memory and
 terminates the sequence with sixteen zero bytes. Each request still contains
 its profile ID, eight-byte little-endian source length, and exact source bytes.
+The next request begins at the following eight-byte boundary; zero alignment
+bytes are sequence framing and are not part of either request.
 
 The resident compiler:
 

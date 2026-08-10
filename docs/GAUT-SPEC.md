@@ -257,6 +257,11 @@ for the resident compiler, not a standalone boot image. These IDs belong to
 the compiler request protocol, not the language inventory. The source length
 is at most 131055 bytes and one request contains no trailing bytes.
 
+The resident Gaut OS input channel may place multiple requests consecutively.
+Each record begins on an eight-byte boundary, zero bytes pad only the outer
+sequence, and a sixteen-byte zero record terminates the sequence. Alignment and
+termination are supervisor framing rather than Gaut source or build profiles.
+
 A build profile selects the architecture backend, ABI, container, entry
 adapter, and available platform-effect lowering. Adding a new platform changes
 that external profile table and its backend adapter; it must not change the

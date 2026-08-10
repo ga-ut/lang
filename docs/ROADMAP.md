@@ -6,46 +6,49 @@
 - one runtime `word` type and one lowering per canonical primitive
 - hosted compiler rebuilds itself to a byte-identical fixed point
 - freestanding compiler boots without Linux in a networkless AArch64 machine
-- one RAM-resident Gaut source is compiled and executed per boot
 - output platform is selected by an external build profile, never source syntax
-- former platform spellings such as `target` and `qemu_virt` are ordinary names
+- profile `2` keeps one resident compiler alive across profile `3` child calls
+- compiler and child own separate 1 MiB runtime arenas
+- two large-fixed-memory children compile, run, return, and leave the compiler
+  ready in one boot
 
-## Next: resident compiler
+## Next: serial development loop
 
-The current non-returning child transfer and shared arena prevent a second
-compile/run cycle. The next gate is deliberately limited to fixing that exact
-boundary.
+The resident compiler currently consumes a fixed sequence placed in RAM before
+boot. The next gate changes only that input boundary.
 
 Required implementation:
 
-1. extract one callable compiler engine with explicit source, output, state,
-   capacity, and result memory;
-2. keep hosted file I/O and freestanding supervision in separate small entry
-   adapters around that same engine;
-3. assign compiler and child non-overlapping runtime arenas;
-4. add one returnable child-image entry and continuation contract;
-5. compile and run two children in one boot; and
-6. prove that compiler state remains intact after each child returns.
+1. define a framed serial command for source upload and execution;
+2. validate length and command before changing the resident source buffer;
+3. compile, run, and return using the existing profile `3` child contract;
+4. report success or the existing Gaut diagnostic over serial;
+5. accept a second command without rebooting; and
+6. recover to `gaut-os: ready` after every successful child return.
 
 Acceptance transcript:
 
 ```text
+gaut-os: ready
+gaut-os: received 1
 gaut-os: child 1
+gaut-os: ready
+gaut-os: received 2
 gaut-os: child 2
 gaut-os: ready
 ```
 
 ## Then
 
-1. serial command channel for repeated source upload;
-2. minimal source buffer editing and named in-memory files;
+1. exception vectors and checked fault reporting back to the resident loop;
+2. minimal named in-memory source buffers;
 3. explicit persistent workspace;
-4. exception reporting and EL0 process isolation;
-5. physical pages, MMU mappings, timer, and scheduler;
+4. EL0 process isolation and MMU-backed physical pages;
+5. timer and scheduler;
 6. rendering and input;
 7. networking and browser runtime;
 8. CPU-oriented numerical and AI runtime.
 
-Each gate adds only behavior required by its acceptance program. Syntax sugar,
-new types, optimizers, package management, graphics, networking, browser work,
-and AI work do not enter the resident-compiler gate.
+Each gate adds only behavior required by its acceptance program. An editor,
+file system, optimizer, package manager, graphics, networking, browser work,
+and AI work do not enter the serial-loop gate.

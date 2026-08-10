@@ -30,23 +30,25 @@ adapter. Platform, ABI, board, and container names are not Gaut keywords.
 ## Run inside Gaut OS
 
 `dist/gaut-os.img` is the compiler built as a freestanding program. The launcher
-places one readable Gaut source in RAM and boots a networkless AArch64 machine.
-Inside that machine Gaut reads, compiles, and executes the program without
-Linux:
+places two readable Gaut sources in RAM and boots a networkless AArch64
+machine. Inside that machine one resident Gaut compiler reads, compiles, and
+executes both programs without Linux or rebooting between them:
 
 ```sh
-./os/run.sh os/examples/compiled.gaut
+./os/run.sh
 ```
 
 Expected output:
 
 ```text
-gaut-os: compiled
+gaut-os: child 1
+gaut-os: child 2
+gaut-os: ready
 ```
 
 QEMU is a replaceable host-side hardware emulator. The launcher creates only a
-temporary source packet and deletes it on exit. The current machine compiles
-and runs one program per boot.
+temporary request sequence and deletes it on exit. The compiler and child use
+separate 1 MiB runtime arenas, and the compiler survives each child return.
 
 ## Current files
 
@@ -79,6 +81,5 @@ Adding another platform means adding an external profile and its backend
 adapter. It must not add target syntax, reserve a platform name, or create a
 second parser.
 
-The immediate next boundary is making the compiler a resident service that can
-survive a child program and accept another source without rebooting. See
-`docs/ROADMAP.md`.
+The immediate next boundary is replacing the fixed launch sequence with a
+checked serial upload/compile/run/result loop. See `docs/ROADMAP.md`.

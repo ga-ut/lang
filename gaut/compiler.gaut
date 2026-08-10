@@ -176,7 +176,7 @@ fn emit_qemu_read(state) {
   drop emit_pop(state, 2);
   drop emit_pop(state, 1);
   drop emit_pop(state, 0);
-  drop emit_move(state, 9, 1191182336);
+  drop emit_word(state, 2853569513);
   drop emit_word(state, 4181722410);
   drop emit_word(state, 2432713034);
   drop emit_word(state, 3942777183);
@@ -195,6 +195,9 @@ fn emit_qemu_read(state) {
   repeat_branch = emit_word(state, 335544320);
   drop patch_branch(state, repeat_branch, loop_at, 0);
   drop patch_short_branch(state, empty_branch, state_get(state, 136), 3019898890);
+  drop emit_word(state, 2432703785);
+  drop emit_word(state, 2457727273);
+  drop emit_word(state, 2852717558);
   drop emit_word(state, 2852914144);
   drop emit_push(state, 0);
   return 0;
@@ -231,6 +234,21 @@ fn emit_qemu_write(state) {
   drop patch_short_branch(state, empty_branch, state_get(state, 136), 3019898882);
   drop emit_word(state, 2852979680);
   drop emit_push(state, 0);
+  return 0;
+}
+
+fn emit_qemu_run(state) {
+  drop emit_word(state, 2432697336);
+  drop emit_word(state, 2853372921);
+  drop emit_word(state, 2853438458);
+  drop emit_word(state, 2853503995);
+  drop emit_word(state, 2853569532);
+  drop emit_word(state, 3594452992);
+  drop emit_word(state, 2432697119);
+  drop emit_word(state, 2853766131);
+  drop emit_word(state, 2853831668);
+  drop emit_word(state, 2853897205);
+  drop emit_word(state, 2853962742);
   return 0;
 }
 
@@ -275,7 +293,7 @@ fn emit_entry(state, platform) {
   let wait_at = 0;
   let branch = 0;
 
-  if platform {
+  if eq(platform, 1) {
     drop state_set(state, 152, state_get(state, 24));
     drop state_set(state, 16, state_get(state, 24));
     drop emit_move(state, 0, 1207959552);
@@ -284,6 +302,7 @@ fn emit_entry(state, platform) {
     drop emit_word(state, 2432697331);
     drop emit_word(state, 2436892660);
     drop emit_word(state, 2434794485);
+    drop emit_move(state, 22, 1191182336);
     entry_call = emit_word(state, 2483027968);
     drop emit_pop(state, 0);
     wait_at = state_get(state, 136);
@@ -291,17 +310,32 @@ fn emit_entry(state, platform) {
     branch = emit_word(state, 335544320);
     drop patch_branch(state, branch, wait_at, 0);
   } else {
-    drop write_header(state);
-    drop state_set(state, 152, add(state_get(state, 24), 120));
-    drop state_set(state, 16, state_get(state, 152));
-    drop emit_word(state, 3510895615);
-    drop emit_word(state, 2432697331);
-    drop emit_word(state, 2436892660);
-    drop emit_word(state, 2434794485);
-    entry_call = emit_word(state, 2483027968);
-    drop emit_pop(state, 0);
-    drop emit_move(state, 8, 93);
-    drop emit_word(state, 3556769793);
+    if eq(platform, 2) {
+      drop state_set(state, 152, state_get(state, 24));
+      drop state_set(state, 16, state_get(state, 24));
+      drop emit_word(state, 2854093815);
+      drop emit_move(state, 0, 1206910976);
+      drop emit_word(state, 2432696351);
+      drop emit_word(state, 3510895615);
+      drop emit_word(state, 2432697331);
+      drop emit_word(state, 2436892660);
+      drop emit_word(state, 2434794485);
+      entry_call = emit_word(state, 2483027968);
+      drop emit_pop(state, 0);
+      drop emit_word(state, 3592356576);
+    } else {
+      drop write_header(state);
+      drop state_set(state, 152, add(state_get(state, 24), 120));
+      drop state_set(state, 16, state_get(state, 152));
+      drop emit_word(state, 3510895615);
+      drop emit_word(state, 2432697331);
+      drop emit_word(state, 2436892660);
+      drop emit_word(state, 2434794485);
+      entry_call = emit_word(state, 2483027968);
+      drop emit_pop(state, 0);
+      drop emit_move(state, 8, 93);
+      drop emit_word(state, 3556769793);
+    }
   }
 
   return entry_call;
@@ -688,8 +722,12 @@ fn emit_callable(state, info, address, length) {
                                         } else {
                                           if eq(id, 67) {
                                             drop emit_pop(state, 0);
-                                            if state_get(state, 160) {
-                                              drop emit_word(state, 3592355840);
+                                            if eq(state_get(state, 160), 1) {
+                                              drop emit_qemu_run(state);
+                                            } else {
+                                              if state_get(state, 160) {
+                                                drop fail(state);
+                                              }
                                             }
                                           } else {
                                             drop fail(state);
@@ -1310,11 +1348,7 @@ fn parse_function(state) {
   return 0;
 }
 
-fn main() {
-  memory source 131072;
-  memory output 262144;
-  memory state 65536;
-  let input_size = 0;
+fn compile_request(source, input_size, output, state) {
   let info = 0;
   let entry_call = 0;
   let file_size = 0;
@@ -1322,11 +1356,6 @@ fn main() {
   let profile = 0;
   let source_size = 0;
 
-  store64(7955925652160733543, add(state, 65000));
-  store64(8030798176169255286, add(state, 65008));
-  store64(44650689141, add(state, 65016));
-
-  input_size = host.read(0, source, 131072);
   if lt(input_size, 16) {
     drop fail(state);
   }
@@ -1362,7 +1391,11 @@ fn main() {
     if eq(profile, 2) {
       drop state_set(state, 160, 1);
     } else {
-      drop fail(state);
+      if eq(profile, 3) {
+        drop state_set(state, 160, 2);
+      } else {
+        drop fail(state);
+      }
     }
   }
 
@@ -1405,9 +1438,37 @@ fn main() {
     cursor = add(cursor, 1);
   }
 
-  if state_get(state, 160) {
+  if eq(state_get(state, 160), 2) {
     platform.run(output);
+  } else {
+    drop host.write(1, output, file_size);
   }
-  drop host.write(1, output, file_size);
+
+  return file_size;
+}
+
+fn main() {
+  memory source 131072;
+  memory output 262144;
+  memory state 65536;
+  let input_size = 0;
+
+  store64(7955925652160733543, add(state, 65000));
+  store64(8030798176169255286, add(state, 65008));
+  store64(44650689141, add(state, 65016));
+
+  input_size = host.read(0, source, 131072);
+  while input_size {
+    if bitand(eq(input_size, 16), bitand(eq(load64(source), 0), eq(load64(add(source, 8)), 0))) {
+      store64(4211832317539606887, add(state, 64976));
+      store64(2948221804835360, add(state, 64984));
+      drop host.write(1, add(state, 64976), 15);
+      host.exit(0);
+    }
+
+    drop compile_request(source, input_size, output, state);
+    input_size = host.read(0, source, 131072);
+  }
+
   return 0;
 }

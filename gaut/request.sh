@@ -2,7 +2,7 @@
 set -eu
 
 if [ "$#" -ne 3 ]; then
-    echo "usage: $0 <linux|gaut-os> <source.gaut> <request.bin>" >&2
+    echo "usage: $0 <linux|gaut-os|gaut-child> <source.gaut> <request.bin>" >&2
     exit 2
 fi
 
@@ -13,6 +13,7 @@ REQUEST=$3
 case "$PROFILE_NAME" in
     linux) PROFILE=1 ;;
     gaut-os) PROFILE=2 ;;
+    gaut-child) PROFILE=3 ;;
     *)
         echo "unknown Gaut build profile: $PROFILE_NAME" >&2
         exit 2
