@@ -30,9 +30,11 @@ adapter. Platform, ABI, board, and container names are not Gaut keywords.
 ## Run inside Gaut OS
 
 `dist/gaut-os.img` is the compiler built as a freestanding program. The launcher
-places two readable Gaut sources in RAM and boots a networkless AArch64
-machine. Inside that machine one resident Gaut compiler reads, compiles, and
-executes both programs without Linux or rebooting between them:
+sends readable Gaut sources through the emulated PL011 serial device and boots
+a networkless AArch64 machine. Inside that machine one resident Gaut compiler
+reads, compiles, and executes each program without Linux or rebooting between
+them. With no arguments the launcher sends the two acceptance programs; one to
+nine source paths may be supplied explicitly:
 
 ```sh
 ./os/run.sh
@@ -41,16 +43,21 @@ executes both programs without Linux or rebooting between them:
 Expected output:
 
 ```text
+gaut-os: ready
+gaut-os: received 1
 gaut-os: child 1
+gaut-os: ready
+gaut-os: received 2
 gaut-os: child 2
 gaut-os: ready
 ```
 
 QEMU is a replaceable host-side hardware emulator. The launcher creates only a
-temporary request sequence and deletes it on exit. The compiler and child use
-separate 1 MiB runtime arenas, and the compiler survives each child return.
-After the ready marker, Gaut requests PSCI machine shutdown and QEMU exits by
-itself; manual interruption is not part of the run contract.
+temporary unpadded serial request stream and deletes it on exit. The compiler
+and child use separate 1 MiB runtime arenas, and the compiler survives each
+child return. After a sixteen-byte zero terminator, Gaut requests PSCI machine
+shutdown and QEMU exits by itself; manual interruption is not part of the run
+contract.
 
 ## Current files
 
@@ -83,5 +90,8 @@ Adding another platform means adding an external profile and its backend
 adapter. It must not add target syntax, reserve a platform name, or create a
 second parser.
 
-The immediate next boundary is replacing the fixed launch sequence with a
-checked serial upload/compile/run/result loop. See `docs/ROADMAP.md`.
+The current serial session is deliberately bounded: the launcher has all input
+ready before boot. The immediate next boundary is a recoverable,
+interrupt-driven interactive supervisor that can wait without consuming a CPU
+and return to `ready` after malformed input or a child fault. See
+`docs/ROADMAP.md`.

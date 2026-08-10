@@ -11,46 +11,50 @@
 - compiler and child own separate 1 MiB runtime arenas
 - two large-fixed-memory children compile, run, return, and leave the compiler
   ready in one boot
+- the resident compiler receives exact unpadded requests through PL011 serial
+- one bounded session accepts consecutive child requests without rebooting
 - completion requests PSCI machine shutdown; the emulator must not survive the
   verified transcript
 
-## Next: serial development loop
+## Next: recoverable interactive supervisor
 
-The resident compiler currently consumes a fixed sequence placed in RAM before
-boot. The next gate changes only that input boundary.
+The resident compiler currently consumes a bounded serial stream that is ready
+at launch. The next gate changes only waiting and failure recovery.
 
 Required implementation:
 
-1. define a framed serial command for source upload and execution;
-2. validate length and command before changing the resident source buffer;
-3. compile, run, and return using the existing profile `3` child contract;
-4. report success or the existing Gaut diagnostic over serial;
-5. accept a second command without rebooting; and
-6. recover to `gaut-os: ready` after every successful child return.
+1. arm PL011 receive interrupts and use `WFI` while no command is pending;
+2. validate request length and profile before compilation;
+3. report malformed input and compiler failure without shutting down;
+4. install exception vectors that report a child fault and restore the
+   supervisor continuation;
+5. accept a valid request after each rejected request or child fault; and
+6. retain the explicit zero-record shutdown path.
 
 Acceptance transcript:
 
 ```text
 gaut-os: ready
+gaut-os: rejected
+gaut-os: ready
 gaut-os: received 1
 gaut-os: child 1
 gaut-os: ready
-gaut-os: received 2
-gaut-os: child 2
-gaut-os: ready
 ```
+
+While stopped at either ready marker with no serial input, the guest must not
+consume a host CPU core.
 
 ## Then
 
-1. exception vectors and checked fault reporting back to the resident loop;
-2. minimal named in-memory source buffers;
-3. explicit persistent workspace;
-4. EL0 process isolation and MMU-backed physical pages;
-5. timer and scheduler;
-6. rendering and input;
-7. networking and browser runtime;
-8. CPU-oriented numerical and AI runtime.
+1. minimal named in-memory source buffers;
+2. explicit persistent workspace;
+3. EL0 process isolation and MMU-backed physical pages;
+4. timer and scheduler;
+5. rendering and input;
+6. networking and browser runtime;
+7. CPU-oriented numerical and AI runtime.
 
 Each gate adds only behavior required by its acceptance program. An editor,
 file system, optimizer, package manager, graphics, networking, browser work,
-and AI work do not enter the serial-loop gate.
+and AI work do not enter the recoverable-supervisor gate.

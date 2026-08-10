@@ -65,12 +65,17 @@ The two regions prevent ordinary Gaut locals and fixed memory in a child from
 overwriting compiler state. There is still no MMU, fault containment,
 persistent workspace, or malicious-child isolation.
 
-## Next acceptance contract: serial development loop
+## Current limitation and next acceptance contract
 
-The next implementation replaces the fixed launch sequence with a checked
-serial command channel while preserving the resident compiler and memory
-contract. No editor, file system, scheduler, MMU, or optimizer is added before
-repeated serial upload, compile, run, result, and recovery are proven.
+The current launcher supplies a complete bounded serial stream, so polling the
+UART never creates a human-length idle period. An open session with no pending
+input would still busy-wait, and a malformed request, compile failure, or child
+fault does not yet recover to the resident loop.
+
+The next implementation adds an interrupt-driven idle path and recoverable
+supervisor errors while preserving the compiler and memory contract. No editor,
+file system, scheduler, MMU, or optimizer is added before wait, rejection,
+fault reporting, and a following successful request are proven in one boot.
 
 ## Later kernel boundary
 

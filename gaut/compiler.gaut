@@ -171,36 +171,63 @@ fn emit_qemu_halt(state) {
 }
 
 fn emit_qemu_read(state) {
+  let header_loop = 0;
+  let header_done = 0;
+  let header_poll = 0;
+  let header_busy = 0;
+  let header_repeat = 0;
   let valid_branch = 0;
-  let loop_at = 0;
-  let empty_branch = 0;
-  let repeat_branch = 0;
+  let body_loop = 0;
+  let body_done = 0;
+  let body_poll = 0;
+  let body_busy = 0;
+  let body_repeat = 0;
 
   drop emit_pop(state, 2);
   drop emit_pop(state, 1);
   drop emit_pop(state, 0);
-  drop emit_word(state, 2853569513);
-  drop emit_word(state, 4181722410);
-  drop emit_word(state, 2432713034);
-  drop emit_word(state, 3942777183);
+  drop emit_move(state, 9, 150994944);
+  drop emit_move(state, 10, 0);
+  drop emit_move(state, 12, 16);
+  drop emit_move(state, 13, 16);
+
+  header_loop = state_get(state, 136);
+  drop emit_word(state, 3943432543);
+  header_done = emit_word(state, 1409286144);
+  header_poll = state_get(state, 136);
+  drop emit_word(state, 3107985707);
+  drop emit_word(state, 168624491);
+  header_busy = emit_word(state, 889192459);
+  drop patch_short_branch(state, header_busy, header_poll, 889192459);
+  drop emit_word(state, 3107979563);
+  drop emit_word(state, 942303275);
+  drop emit_word(state, 2432697674);
+  header_repeat = emit_word(state, 335544320);
+  drop patch_branch(state, header_repeat, header_loop, 0);
+  drop patch_short_branch(state, header_done, state_get(state, 136), 1409286144);
+
+  drop emit_word(state, 4181722156);
+  drop emit_word(state, 2432713100);
+  drop emit_word(state, 3942777247);
   valid_branch = emit_word(state, 1409286153);
   drop emit_qemu_halt(state);
   drop patch_short_branch(state, valid_branch, state_get(state, 136), 1409286153);
-  drop emit_word(state, 2852783084);
 
-  loop_at = state_get(state, 136);
-  empty_branch = emit_word(state, 3019898890);
-  drop emit_word(state, 960495915);
-  drop emit_word(state, 956301355);
-  drop emit_word(state, 2432697641);
-  drop emit_word(state, 2432697377);
-  drop emit_word(state, 3506439498);
-  repeat_branch = emit_word(state, 335544320);
-  drop patch_branch(state, repeat_branch, loop_at, 0);
-  drop patch_short_branch(state, empty_branch, state_get(state, 136), 3019898890);
-  drop emit_word(state, 2432703785);
-  drop emit_word(state, 2457727273);
-  drop emit_word(state, 2852717558);
+  body_loop = state_get(state, 136);
+  drop emit_word(state, 3943432543);
+  body_done = emit_word(state, 1409286144);
+  body_poll = state_get(state, 136);
+  drop emit_word(state, 3107985707);
+  drop emit_word(state, 168624491);
+  body_busy = emit_word(state, 889192459);
+  drop patch_short_branch(state, body_busy, body_poll, 889192459);
+  drop emit_word(state, 3107979563);
+  drop emit_word(state, 942303275);
+  drop emit_word(state, 2432697674);
+  body_repeat = emit_word(state, 335544320);
+  drop patch_branch(state, body_repeat, body_loop, 0);
+  drop patch_short_branch(state, body_done, state_get(state, 136), 1409286144);
+
   drop emit_word(state, 2852914144);
   drop emit_push(state, 0);
   return 0;
@@ -255,6 +282,40 @@ fn emit_qemu_run(state) {
   return 0;
 }
 
+fn emit_qemu_uart_byte(state, byte) {
+  let poll_at = state_get(state, 136);
+  let busy_branch = 0;
+
+  drop emit_word(state, 3107985707);
+  drop emit_word(state, 168558955);
+  busy_branch = emit_word(state, 889192459);
+  drop patch_short_branch(state, busy_branch, poll_at, 889192459);
+  drop emit_move(state, 11, byte);
+  drop emit_word(state, 3103785259);
+  return 0;
+}
+
+fn emit_qemu_ready(state) {
+  drop emit_move(state, 9, 150994944);
+  drop emit_move(state, 12, 32);
+  drop emit_qemu_uart_byte(state, 103);
+  drop emit_qemu_uart_byte(state, 97);
+  drop emit_qemu_uart_byte(state, 117);
+  drop emit_qemu_uart_byte(state, 116);
+  drop emit_qemu_uart_byte(state, 45);
+  drop emit_qemu_uart_byte(state, 111);
+  drop emit_qemu_uart_byte(state, 115);
+  drop emit_qemu_uart_byte(state, 58);
+  drop emit_qemu_uart_byte(state, 32);
+  drop emit_qemu_uart_byte(state, 114);
+  drop emit_qemu_uart_byte(state, 101);
+  drop emit_qemu_uart_byte(state, 97);
+  drop emit_qemu_uart_byte(state, 100);
+  drop emit_qemu_uart_byte(state, 121);
+  drop emit_qemu_uart_byte(state, 10);
+  return 0;
+}
+
 fn write_header(state) {
   let output = state_get(state, 24);
 
@@ -303,7 +364,6 @@ fn emit_entry(state, platform) {
     drop emit_word(state, 2432697331);
     drop emit_word(state, 2436892660);
     drop emit_word(state, 2434794485);
-    drop emit_move(state, 22, 1191182336);
     entry_call = emit_word(state, 2483027968);
     drop emit_pop(state, 0);
     drop emit_qemu_halt(state);
@@ -630,6 +690,7 @@ fn init_canonical(state) {
   drop canonical_add(state, 7598266562733371240, 25972, 10, 33620801);
   drop canonical_add(state, 7599935621384335208, 116, 9, 33554754);
   drop canonical_add(state, 7886488383309048944, 1853190702, 12, 33554755);
+  drop canonical_add(state, 7886488383309048944, 133472037728814, 14, 33554500);
   return 0;
 }
 
@@ -695,10 +756,14 @@ fn emit_callable(state, info, address, length) {
                                     drop emit_store(state, 4177526816);
                                   } else {
                                     if eq(id, 64) {
-                                      if state_get(state, 160) {
+                                      if eq(state_get(state, 160), 1) {
                                         drop emit_qemu_read(state);
                                       } else {
-                                        drop emit_host_call(state, 63, 1);
+                                        if eq(state_get(state, 160), 2) {
+                                          drop fail(state);
+                                        } else {
+                                          drop emit_host_call(state, 63, 1);
+                                        }
                                       }
                                     } else {
                                       if eq(id, 65) {
@@ -728,7 +793,17 @@ fn emit_callable(state, info, address, length) {
                                               }
                                             }
                                           } else {
-                                            drop fail(state);
+                                            if eq(id, 68) {
+                                              if eq(state_get(state, 160), 1) {
+                                                drop emit_qemu_ready(state);
+                                              } else {
+                                                if eq(state_get(state, 160), 2) {
+                                                  drop fail(state);
+                                                }
+                                              }
+                                            } else {
+                                              drop fail(state);
+                                            }
                                           }
                                         }
                                       }
@@ -1450,21 +1525,32 @@ fn main() {
   memory output 262144;
   memory state 65536;
   let input_size = 0;
+  let received = 49;
 
   store64(7955925652160733543, add(state, 65000));
   store64(8030798176169255286, add(state, 65008));
   store64(44650689141, add(state, 65016));
 
+  platform.ready();
   input_size = host.read(0, source, 131072);
   while input_size {
     if bitand(eq(input_size, 16), bitand(eq(load64(source), 0), eq(load64(add(source, 8)), 0))) {
-      store64(4211832317539606887, add(state, 64976));
-      store64(2948221804835360, add(state, 64984));
-      drop host.write(1, add(state, 64976), 15);
       host.exit(0);
     }
 
+    if eq(load64(source), 3) {
+      store64(4211832317539606887, add(state, 64944));
+      store64(7311146929262785056, add(state, 64952));
+      store8(100, add(state, 64960));
+      store8(32, add(state, 64961));
+      store8(received, add(state, 64962));
+      store8(10, add(state, 64963));
+      drop host.write(1, add(state, 64944), 20);
+      received = add(received, 1);
+    }
+
     drop compile_request(source, input_size, output, state);
+    platform.ready();
     input_size = host.read(0, source, 131072);
   }
 

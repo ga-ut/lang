@@ -2,43 +2,52 @@ Gaut current verification
 Date: 2026-08-11
 
 Retained source and artifacts:
-- gaut/compiler.gaut, 1,472 lines, 42,552 bytes
+- gaut/compiler.gaut, 1,558 lines, 45,758 bytes
 - compiler source SHA-256:
-  3ee19461f4523483dafc51d327873bc38b9a3e5341e50eefb0494f1a3938d314
+  3d0387035724b9f2c7750f883e1b5fbebce1173a7d8db1663c19523b907ab486
 - os/examples/child1.gaut, 792 bytes, SHA-256:
   beae4a0687c8ab9bee67409e7f90d9784ab1b98a774ced2085a318c245e261fa
 - os/examples/child2.gaut, 793 bytes, SHA-256:
   7ce5d3e709a92b413720d0070f9b00380406c7da060fa7d1aaefa6ffea0a6193
-- dist/gaut.elf, 57,344-byte static AArch64 Linux bootstrap compiler
+- dist/gaut.elf, 61,440-byte static AArch64 Linux bootstrap compiler
 - hosted compiler SHA-256:
-  497828a14f1337990f88407d769a6833fa76dbe9ccec7068d1d44c96ddb2753d
-- dist/gaut-os.img, 57,344-byte raw AArch64 resident compiler
+  588e547001d0d7ea2102172fdbc0e03d1e712905d44df954345a3db6e673c0c0
+- dist/gaut-os.img, 61,440-byte raw AArch64 resident compiler
 - freestanding compiler SHA-256:
-  39b1ddb039e137584a85111b1a461b6196577d7e42a5d2abf5a340762801b7dd
+  9fafeaa6bc67214bd3caa13bfe7da9c02ac791d5cf77e39ab570edcff2735038
 
 Self-host proof:
-1. the retained previous compiler built the readable shutdown-capable compiler
-2. that compiler and its following generation built the same source
-3. all three outputs were byte-identical at 57,344 bytes with SHA-256:
-   497828a14f1337990f88407d769a6833fa76dbe9ccec7068d1d44c96ddb2753d
-4. the byte-identical hosted compiler generation emitted the retained profile 2
-   Gaut OS image
+1. the retained previous compiler built a transition compiler that recognized
+   the new platform.ready effect without invoking it
+2. the transition compiler built the final readable source, and that compiler
+   rebuilt the same source twice
+3. the transition, first, second, and third hosted generations were
+   byte-identical at 61,440 bytes with SHA-256:
+   588e547001d0d7ea2102172fdbc0e03d1e712905d44df954345a3db6e673c0c0
+4. the byte-identical second hosted generation emitted the retained profile 2
+   serial Gaut OS image
 5. loop, fixed-memory, and branch regressions returned 55, 42, and 42
 6. unknown call, wrong arity, and nested early return each returned status 2,
    emitted zero artifact bytes, and wrote the 21-byte Gaut diagnostic
 
 Resident execution proof:
-1. profile 2 initialized the compiler arena at 0x47f00000 and retained a
-   request cursor across child calls
+1. profile 2 initialized the compiler arena at 0x47f00000 and read exact
+   unpadded request records from the QEMU PL011 serial channel
 2. profile 3 initialized each child arena at 0x47e00000 and returned through
    the preserved supervisor continuation
 3. each child declared the maximum 917,504-byte fixed region and successfully
    wrote and read its final eight bytes at 0x47eefff8
 4. the second child compiled only after the first child returned
-5. the zero sequence terminator made the same compiler emit its ready marker
-6. the exact 49-byte serial transcript was:
+5. the same compiler emitted ready before the first request and after every
+   successful child return
+6. a sixteen-byte zero record shut down the bounded session
+7. the exact 119-byte serial transcript was:
 
+gaut-os: ready
+gaut-os: received 1
 gaut-os: child 1
+gaut-os: ready
+gaut-os: received 2
 gaut-os: child 2
 gaut-os: ready
 
@@ -58,8 +67,14 @@ Machine:
 Boundary:
 - the guest contains no Linux, libc, dynamic loader, Python, C, Rust, LLVM,
   assembler, linker, or foreign runtime
-- the host shell only frames aligned requests and QEMU emulates the machine
+- the host shell only frames and streams exact requests and QEMU emulates the
+  machine
 - compiler and child ordinary Gaut memory are separated, but there is no MMU
   or malicious-child fault containment
-- input remains a fixed pre-boot request sequence
-- the next verified gate is the serial development loop in docs/ROADMAP.md
+- input is a bounded serial stream that is fully available at launch
+- UART receive still polls; an open idle session is not supported because it
+  would consume a host CPU core
+- malformed requests, compile failures, and child faults do not yet recover to
+  ready
+- the next verified gate is the recoverable interactive supervisor in
+  docs/ROADMAP.md
