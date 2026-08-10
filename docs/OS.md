@@ -29,7 +29,8 @@ The resident compiler:
 3. emits a raw AArch64 child image into its output region; and
 4. uses `platform.run(address)` to call the child entry;
 5. restores its own runtime after the child returns; and
-6. repeats until the zero terminator, then emits `gaut-os: ready`.
+6. repeats until the zero terminator, emits `gaut-os: ready`, and requests
+   machine shutdown through PSCI `SYSTEM_OFF`.
 
 The child acceptance programs are `os/examples/child1.gaut` and
 `os/examples/child2.gaut`. A complete boot must emit exactly:
@@ -42,6 +43,10 @@ gaut-os: ready
 
 The guest path contains no Linux, libc, dynamic loader, Python, C, Rust, LLVM,
 assembler, linker, or foreign runtime.
+
+The QEMU process must exit by itself with status zero after the ready marker.
+Manual interruption, a surviving emulator process, or measurable idle CPU use
+after completion fails this contract.
 
 ## Resident memory contract
 

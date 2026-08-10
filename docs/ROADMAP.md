@@ -11,6 +11,8 @@
 - compiler and child own separate 1 MiB runtime arenas
 - two large-fixed-memory children compile, run, return, and leave the compiler
   ready in one boot
+- completion requests PSCI machine shutdown; the emulator must not survive the
+  verified transcript
 
 ## Next: serial development loop
 
