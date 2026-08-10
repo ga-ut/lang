@@ -48,7 +48,6 @@ append_request "$REQUEST_TWO"
 /bin/dd if=/dev/zero bs=16 count=1 >> "$PACKET" 2>/dev/null
 
 echo "Gaut OS is compiling and running two children."
-echo "Press Control-C after the program finishes."
 qemu-system-aarch64 \
     -machine virt,virtualization=off \
     -cpu cortex-a53 \
@@ -60,3 +59,4 @@ qemu-system-aarch64 \
     -no-reboot \
     -kernel "$COMPILER" \
     -device "loader,file=$PACKET,addr=0x47000000,force-raw=on"
+echo "Gaut OS shut down cleanly."

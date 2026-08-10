@@ -1,26 +1,26 @@
 Gaut current verification
-Date: 2026-08-10
+Date: 2026-08-11
 
 Retained source and artifacts:
-- gaut/compiler.gaut, 1,474 lines, 42,633 bytes
+- gaut/compiler.gaut, 1,472 lines, 42,552 bytes
 - compiler source SHA-256:
-  ac01a09b1c55c4d317b2ff0148428d627f6ee6035e805c122b9afa706db63016
+  3ee19461f4523483dafc51d327873bc38b9a3e5341e50eefb0494f1a3938d314
 - os/examples/child1.gaut, 792 bytes, SHA-256:
   beae4a0687c8ab9bee67409e7f90d9784ab1b98a774ced2085a318c245e261fa
 - os/examples/child2.gaut, 793 bytes, SHA-256:
   7ce5d3e709a92b413720d0070f9b00380406c7da060fa7d1aaefa6ffea0a6193
 - dist/gaut.elf, 57,344-byte static AArch64 Linux bootstrap compiler
 - hosted compiler SHA-256:
-  414795a3bb9c106ca6b34786614bdf3c49287a00084a0a0b0caa7af2161b9fb2
+  497828a14f1337990f88407d769a6833fa76dbe9ccec7068d1d44c96ddb2753d
 - dist/gaut-os.img, 57,344-byte raw AArch64 resident compiler
 - freestanding compiler SHA-256:
-  4934cb02aae40f8a7a74df283845fd432fa27ba029580e58fc0b4faaa4330772
+  39b1ddb039e137584a85111b1a461b6196577d7e42a5d2abf5a340762801b7dd
 
 Self-host proof:
-1. the retained previous compiler built the readable resident compiler
+1. the retained previous compiler built the readable shutdown-capable compiler
 2. that compiler and its following generation built the same source
 3. all three outputs were byte-identical at 57,344 bytes with SHA-256:
-   414795a3bb9c106ca6b34786614bdf3c49287a00084a0a0b0caa7af2161b9fb2
+   497828a14f1337990f88407d769a6833fa76dbe9ccec7068d1d44c96ddb2753d
 4. the byte-identical hosted compiler generation emitted the retained profile 2
    Gaut OS image
 5. loop, fixed-memory, and branch regressions returned 55, 42, and 42
@@ -42,11 +42,18 @@ gaut-os: child 1
 gaut-os: child 2
 gaut-os: ready
 
+Shutdown proof:
+1. the QEMU virt machine declared the HVC PSCI conduit
+2. Gaut placed PSCI SYSTEM_OFF function ID 0x84000008 in x0 and executed hvc 0
+3. the direct serial-file QEMU process exited with status zero
+4. the retained os/run.sh path also exited with status zero without Control-C
+5. no QEMU process using dist/gaut-os.img remained after either run
+6. macOS reported no thermal or performance warning after verification
+
 Machine:
 - QEMU 11.0.3, virt board, Cortex-A53, 128 MiB RAM
 - no network device
 - compiler loaded directly with -kernel dist/gaut-os.img
-- one direct serial-file run and one retained os/run.sh run matched
 
 Boundary:
 - the guest contains no Linux, libc, dynamic loader, Python, C, Rust, LLVM,

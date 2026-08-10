@@ -158,9 +158,12 @@ fn emit_host_call(state, number, outputs) {
 }
 
 fn emit_qemu_halt(state) {
-  let wait_at = state_get(state, 136);
+  let wait_at = 0;
   let branch = 0;
 
+  drop emit_move(state, 0, 2214592520);
+  drop emit_word(state, 3556769794);
+  wait_at = state_get(state, 136);
   drop emit_word(state, 3573751903);
   branch = emit_word(state, 335544320);
   drop patch_branch(state, branch, wait_at, 0);
@@ -290,8 +293,6 @@ fn write_header(state) {
 
 fn emit_entry(state, platform) {
   let entry_call = 0;
-  let wait_at = 0;
-  let branch = 0;
 
   if eq(platform, 1) {
     drop state_set(state, 152, state_get(state, 24));
@@ -305,10 +306,7 @@ fn emit_entry(state, platform) {
     drop emit_move(state, 22, 1191182336);
     entry_call = emit_word(state, 2483027968);
     drop emit_pop(state, 0);
-    wait_at = state_get(state, 136);
-    drop emit_word(state, 3573751903);
-    branch = emit_word(state, 335544320);
-    drop patch_branch(state, branch, wait_at, 0);
+    drop emit_qemu_halt(state);
   } else {
     if eq(platform, 2) {
       drop state_set(state, 152, state_get(state, 24));

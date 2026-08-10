@@ -49,6 +49,8 @@ gaut-os: ready
 QEMU is a replaceable host-side hardware emulator. The launcher creates only a
 temporary request sequence and deletes it on exit. The compiler and child use
 separate 1 MiB runtime arenas, and the compiler survives each child return.
+After the ready marker, Gaut requests PSCI machine shutdown and QEMU exits by
+itself; manual interruption is not part of the run contract.
 
 ## Current files
 

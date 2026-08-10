@@ -46,6 +46,8 @@ bootstrap layers live in Git history, not in the current tree.
 - For resident execution, verify two profile `3` children return in one boot
   and that each can touch the end of its fixed-memory arena without damaging
   compiler state.
+- A QEMU verification is complete only when the guest requests shutdown, the
+  emulator exits with status zero, and no Gaut QEMU process remains.
 - Keep source, the final compiler, concise verification records, and checksum
   manifests. Do not commit VM runtime images, work disks, compiler generations,
   generated examples, caches, traces, or crash dumps.
