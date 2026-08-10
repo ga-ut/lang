@@ -48,6 +48,8 @@ bootstrap layers live in Git history, not in the current tree.
   compiler state.
 - Verify that the resident compiler receives requests through serial rather
   than a preloaded RAM packet and emits the exact documented transcript.
+- For a serial-wait change, delay input after the first ready marker and verify
+  both negligible QEMU CPU use and successful wake-up before accepting it.
 - A QEMU verification is complete only when the guest requests shutdown, the
   emulator exits with status zero, and no Gaut QEMU process remains.
 - Keep source, the final compiler, concise verification records, and checksum

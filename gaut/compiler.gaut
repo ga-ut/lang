@@ -170,17 +170,60 @@ fn emit_qemu_halt(state) {
   return 0;
 }
 
+fn emit_qemu_wait_setup(state) {
+  drop emit_move(state, 9, 134217728);
+  drop emit_move(state, 10, 1);
+  drop emit_word(state, 958432554);
+  drop emit_move(state, 10, 128);
+  drop emit_word(state, 957383978);
+  drop emit_move(state, 10, 2);
+  drop emit_word(state, 3103851818);
+  drop emit_move(state, 10, 1);
+  drop emit_word(state, 3103785258);
+
+  drop emit_move(state, 9, 134283264);
+  drop emit_move(state, 10, 255);
+  drop emit_word(state, 3103786282);
+  drop emit_move(state, 10, 1);
+  drop emit_word(state, 3103785258);
+
+  drop emit_move(state, 9, 150994944);
+  drop emit_move(state, 10, 2047);
+  drop emit_word(state, 3103802666);
+  drop emit_move(state, 10, 80);
+  drop emit_word(state, 3103799594);
+  return 0;
+}
+
+fn emit_qemu_uart_read_byte(state) {
+  let poll_at = state_get(state, 136);
+  let ready_branch = 0;
+  let arrived_branch = 0;
+  let repeat_branch = 0;
+
+  drop emit_word(state, 3107985707);
+  drop emit_word(state, 168624491);
+  ready_branch = emit_word(state, 872415243);
+  drop emit_word(state, 3103802670);
+  drop emit_word(state, 3107985707);
+  drop emit_word(state, 168624491);
+  arrived_branch = emit_word(state, 872415243);
+  drop emit_word(state, 3573751935);
+  repeat_branch = emit_word(state, 335544320);
+  drop patch_branch(state, repeat_branch, poll_at, 0);
+  drop patch_short_branch(state, ready_branch, state_get(state, 136), 872415243);
+  drop patch_short_branch(state, arrived_branch, state_get(state, 136), 872415243);
+  drop emit_word(state, 3107979563);
+  return 0;
+}
+
 fn emit_qemu_read(state) {
   let header_loop = 0;
   let header_done = 0;
-  let header_poll = 0;
-  let header_busy = 0;
   let header_repeat = 0;
   let valid_branch = 0;
   let body_loop = 0;
   let body_done = 0;
-  let body_poll = 0;
-  let body_busy = 0;
   let body_repeat = 0;
 
   drop emit_pop(state, 2);
@@ -190,16 +233,12 @@ fn emit_qemu_read(state) {
   drop emit_move(state, 10, 0);
   drop emit_move(state, 12, 16);
   drop emit_move(state, 13, 16);
+  drop emit_move(state, 14, 80);
 
   header_loop = state_get(state, 136);
   drop emit_word(state, 3943432543);
   header_done = emit_word(state, 1409286144);
-  header_poll = state_get(state, 136);
-  drop emit_word(state, 3107985707);
-  drop emit_word(state, 168624491);
-  header_busy = emit_word(state, 889192459);
-  drop patch_short_branch(state, header_busy, header_poll, 889192459);
-  drop emit_word(state, 3107979563);
+  drop emit_qemu_uart_read_byte(state);
   drop emit_word(state, 942303275);
   drop emit_word(state, 2432697674);
   header_repeat = emit_word(state, 335544320);
@@ -216,12 +255,7 @@ fn emit_qemu_read(state) {
   body_loop = state_get(state, 136);
   drop emit_word(state, 3943432543);
   body_done = emit_word(state, 1409286144);
-  body_poll = state_get(state, 136);
-  drop emit_word(state, 3107985707);
-  drop emit_word(state, 168624491);
-  body_busy = emit_word(state, 889192459);
-  drop patch_short_branch(state, body_busy, body_poll, 889192459);
-  drop emit_word(state, 3107979563);
+  drop emit_qemu_uart_read_byte(state);
   drop emit_word(state, 942303275);
   drop emit_word(state, 2432697674);
   body_repeat = emit_word(state, 335544320);
@@ -364,6 +398,7 @@ fn emit_entry(state, platform) {
     drop emit_word(state, 2432697331);
     drop emit_word(state, 2436892660);
     drop emit_word(state, 2434794485);
+    drop emit_qemu_wait_setup(state);
     entry_call = emit_word(state, 2483027968);
     drop emit_pop(state, 0);
     drop emit_qemu_halt(state);

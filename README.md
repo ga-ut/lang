@@ -90,8 +90,8 @@ Adding another platform means adding an external profile and its backend
 adapter. It must not add target syntax, reserve a platform name, or create a
 second parser.
 
-The current serial session is deliberately bounded: the launcher has all input
-ready before boot. The immediate next boundary is a recoverable,
-interrupt-driven interactive supervisor that can wait without consuming a CPU
-and return to `ready` after malformed input or a child fault. See
-`docs/ROADMAP.md`.
+The launcher still supplies a deliberately bounded session, but the resident
+compiler can now wait for delayed serial input through `WFI` without consuming
+a host CPU core. The immediate next boundary is recoverable supervisor failure:
+returning to `ready` after malformed input, a compile error, or a child fault.
+See `docs/ROADMAP.md`.

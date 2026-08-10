@@ -279,9 +279,10 @@ may differ only where the selected machine boundary requires it:
 - `host.read(descriptor, address, count)` reads platform input bytes and
   returns the number copied. On bootstrap Linux it is the direct descriptor
   read. In the QEMU `virt` compiler image, it reads one complete build request
-  from the PL011 serial receive channel. The descriptor is accepted for source
-  compatibility but is not interpreted, and the request length must not exceed
-  `count`.
+  from the PL011 serial receive channel. When no byte is available, the adapter
+  waits through a PL011/GIC wake event and `WFI` rather than polling
+  continuously. The descriptor is accepted for source compatibility but is not
+  interpreted, and the request length must not exceed `count`.
 - `host.write(descriptor, address, count)` writes platform output bytes and
   returns the number written. On bootstrap Linux it is the direct descriptor
   write. Under profile `2`, the machine has one polled PL011 serial output

@@ -13,23 +13,24 @@
   ready in one boot
 - the resident compiler receives exact unpadded requests through PL011 serial
 - one bounded session accepts consecutive child requests without rebooting
+- PL011/GIC wake events and `WFI` let the resident compiler wait for delayed
+  input without consuming a host CPU core
 - completion requests PSCI machine shutdown; the emulator must not survive the
   verified transcript
 
-## Next: recoverable interactive supervisor
+## Next: recoverable supervisor errors
 
-The resident compiler currently consumes a bounded serial stream that is ready
-at launch. The next gate changes only waiting and failure recovery.
+The resident compiler can now wait for serial input without polling. The next
+gate changes only failure recovery.
 
 Required implementation:
 
-1. arm PL011 receive interrupts and use `WFI` while no command is pending;
-2. validate request length and profile before compilation;
-3. report malformed input and compiler failure without shutting down;
-4. install exception vectors that report a child fault and restore the
+1. validate request length and profile before compilation;
+2. report malformed input and compiler failure without shutting down;
+3. install exception vectors that report a child fault and restore the
    supervisor continuation;
-5. accept a valid request after each rejected request or child fault; and
-6. retain the explicit zero-record shutdown path.
+4. accept a valid request after each rejected request or child fault; and
+5. retain the explicit zero-record shutdown path.
 
 Acceptance transcript:
 
@@ -42,8 +43,7 @@ gaut-os: child 1
 gaut-os: ready
 ```
 
-While stopped at either ready marker with no serial input, the guest must not
-consume a host CPU core.
+The already verified low-power wait must remain active at both ready markers.
 
 ## Then
 

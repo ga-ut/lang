@@ -2,28 +2,26 @@ Gaut current verification
 Date: 2026-08-11
 
 Retained source and artifacts:
-- gaut/compiler.gaut, 1,558 lines, 45,758 bytes
+- gaut/compiler.gaut, 1,593 lines, 46,810 bytes
 - compiler source SHA-256:
-  3d0387035724b9f2c7750f883e1b5fbebce1173a7d8db1663c19523b907ab486
+  5d90865c137d3195ad24ea375928cf7f0fea244f4bed92994d3e6c61ba071804
 - os/examples/child1.gaut, 792 bytes, SHA-256:
   beae4a0687c8ab9bee67409e7f90d9784ab1b98a774ced2085a318c245e261fa
 - os/examples/child2.gaut, 793 bytes, SHA-256:
   7ce5d3e709a92b413720d0070f9b00380406c7da060fa7d1aaefa6ffea0a6193
 - dist/gaut.elf, 61,440-byte static AArch64 Linux bootstrap compiler
 - hosted compiler SHA-256:
-  588e547001d0d7ea2102172fdbc0e03d1e712905d44df954345a3db6e673c0c0
-- dist/gaut-os.img, 61,440-byte raw AArch64 resident compiler
+  e7c7f1eb87318dd4d9132021185fc079c98365006e2eb224a7aac2b55049dc3d
+- dist/gaut-os.img, 65,536-byte raw AArch64 resident compiler
 - freestanding compiler SHA-256:
-  9fafeaa6bc67214bd3caa13bfe7da9c02ac791d5cf77e39ab570edcff2735038
+  1ae40936c9222f308911e120f30552c093c4b8b1c81bd3904d2409e14263e249
 
 Self-host proof:
-1. the retained previous compiler built a transition compiler that recognized
-   the new platform.ready effect without invoking it
-2. the transition compiler built the final readable source, and that compiler
-   rebuilt the same source twice
-3. the transition, first, second, and third hosted generations were
+1. the retained previous compiler built the readable low-power-wait compiler
+2. that compiler rebuilt the same source twice
+3. the first, second, and third hosted generations were
    byte-identical at 61,440 bytes with SHA-256:
-   588e547001d0d7ea2102172fdbc0e03d1e712905d44df954345a3db6e673c0c0
+   e7c7f1eb87318dd4d9132021185fc079c98365006e2eb224a7aac2b55049dc3d
 4. the byte-identical second hosted generation emitted the retained profile 2
    serial Gaut OS image
 5. loop, fixed-memory, and branch regressions returned 55, 42, and 42
@@ -51,6 +49,18 @@ gaut-os: received 2
 gaut-os: child 2
 gaut-os: ready
 
+Low-power wait proof:
+1. profile 2 enabled PL011 receive and receive-timeout wake events through the
+   QEMU virt GICv2 distributor and CPU interface
+2. host.read cleared stale wake state, rechecked the receive FIFO, and executed
+   WFI only while it remained empty
+3. after the first ready marker, QEMU remained at 0.0 percent CPU for five
+   one-second samples with no serial input
+4. a request delivered after that delay woke the same machine, which emitted
+   the exact 67-byte one-child transcript and exited with status zero after the
+   zero terminator
+5. no Gaut QEMU process remained after the delayed-input run
+
 Shutdown proof:
 1. the QEMU virt machine declared the HVC PSCI conduit
 2. Gaut placed PSCI SYSTEM_OFF function ID 0x84000008 in x0 and executed hvc 0
@@ -71,10 +81,9 @@ Boundary:
   machine
 - compiler and child ordinary Gaut memory are separated, but there is no MMU
   or malicious-child fault containment
-- input is a bounded serial stream that is fully available at launch
-- UART receive still polls; an open idle session is not supported because it
-  would consume a host CPU core
+- the retained launcher supplies a bounded serial stream, while the resident
+  host.read path can wait for delayed input without consuming a host CPU core
 - malformed requests, compile failures, and child faults do not yet recover to
   ready
-- the next verified gate is the recoverable interactive supervisor in
+- the next verified gate is recoverable supervisor errors in
   docs/ROADMAP.md

@@ -65,17 +65,25 @@ The two regions prevent ordinary Gaut locals and fixed memory in a child from
 overwriting compiler state. There is still no MMU, fault containment,
 persistent workspace, or malicious-child isolation.
 
+## Low-power wait contract
+
+Profile `2` configures the PL011 receive and receive-timeout interrupts through
+the QEMU `virt` GICv2 interface. `host.read` checks for a byte, clears a stale
+interrupt, checks again, and executes `WFI` only while the receive FIFO remains
+empty. Serial arrival wakes the CPU and the same canonical read continues.
+
+A delayed-input acceptance run must remain at `gaut-os: ready` with no
+measurable QEMU CPU use, then accept a request, run its child, return to ready,
+and shut down through the existing zero terminator.
+
 ## Current limitation and next acceptance contract
 
-The current launcher supplies a complete bounded serial stream, so polling the
-UART never creates a human-length idle period. An open session with no pending
-input would still busy-wait, and a malformed request, compile failure, or child
-fault does not yet recover to the resident loop.
-
-The next implementation adds an interrupt-driven idle path and recoverable
-supervisor errors while preserving the compiler and memory contract. No editor,
-file system, scheduler, MMU, or optimizer is added before wait, rejection,
-fault reporting, and a following successful request are proven in one boot.
+A malformed request, compile failure, or child fault still does not recover to
+the resident loop. The next implementation adds recoverable supervisor errors
+and child exception reporting while preserving the low-power wait and memory
+contracts. No editor, file system, scheduler, MMU, or optimizer is added before
+rejection, fault reporting, and a following successful request are proven in
+one boot.
 
 ## Later kernel boundary
 
