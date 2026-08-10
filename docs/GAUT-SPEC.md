@@ -258,9 +258,9 @@ the compiler request protocol, not the language inventory. The source length
 is at most 131055 bytes and one request contains no trailing bytes.
 
 The resident Gaut OS input channel may place multiple requests consecutively.
-Each record begins on an eight-byte boundary, zero bytes pad only the outer
-sequence, and a sixteen-byte zero record terminates the sequence. Alignment and
-termination are supervisor framing rather than Gaut source or build profiles.
+Serial requests have no padding because `host.read` consumes the exact declared
+record length. A sixteen-byte zero record terminates a bounded session.
+Termination is supervisor framing rather than Gaut source or a build profile.
 
 A build profile selects the architecture backend, ABI, container, entry
 adapter, and available platform-effect lowering. Adding a new platform changes
@@ -278,10 +278,10 @@ may differ only where the selected machine boundary requires it:
 
 - `host.read(descriptor, address, count)` reads platform input bytes and
   returns the number copied. On bootstrap Linux it is the direct descriptor
-  read. In the QEMU `virt` compiler image, the machine has one input channel:
-  a complete build request at physical address `0x47000000`. The descriptor is
-  accepted for source compatibility but is not interpreted, and the request
-  length must not exceed `count`.
+  read. In the QEMU `virt` compiler image, it reads one complete build request
+  from the PL011 serial receive channel. The descriptor is accepted for source
+  compatibility but is not interpreted, and the request length must not exceed
+  `count`.
 - `host.write(descriptor, address, count)` writes platform output bytes and
   returns the number written. On bootstrap Linux it is the direct descriptor
   write. Under profile `2`, the machine has one polled PL011 serial output
@@ -297,11 +297,14 @@ may differ only where the selected machine boundary requires it:
   returns so the same compiler source remains self-hostable. Profile `3`
   source cannot invoke `platform.run`; nested child execution is not part of
   this contract.
+- `platform.ready()` emits `gaut-os: ready` on the resident command channel.
+  It is a no-op for a non-resident hosted compiler. Profile `3` source cannot
+  invoke it.
 
 The complete effect IDs and arities are in `EFFECTS.tsv`. These are ordered,
 observable effects, not value primitives. The current freestanding adapter
-permits one RAM input packet and one generated-image transfer per boot; it is
-not a file system or an interactive command protocol.
+accepts a bounded serial request stream and one generated-image transfer at a
+time; it is not a file system.
 
 ## 11. Determinism and failure
 

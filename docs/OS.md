@@ -7,7 +7,7 @@
 - entry privilege: EL1 from QEMU direct-kernel boot
 - RAM: 128 MiB beginning at `0x40000000`
 - console: PL011 UART at `0x09000000`
-- build input: one checked request sequence at `0x47000000`
+- build input: checked request records over the PL011 serial channel
 - network device: absent
 - persistent disk: absent
 
@@ -16,27 +16,31 @@ QEMU is a replaceable hardware model, not part of Gaut semantics.
 ## Current compile-and-run flow
 
 `dist/gaut-os.img` is the readable Gaut compiler built with external profile
-`2`. `os/run.sh` places consecutive profile `3` child requests in memory and
-terminates the sequence with sixteen zero bytes. Each request still contains
-its profile ID, eight-byte little-endian source length, and exact source bytes.
-The next request begins at the following eight-byte boundary; zero alignment
-bytes are sequence framing and are not part of either request.
+`2`. `os/run.sh` sends consecutive profile `3` child requests through PL011
+serial input and terminates the bounded session with sixteen zero bytes. Each
+request contains its profile ID, eight-byte little-endian source length, and
+exact source bytes, with no inter-record padding.
 
 The resident compiler:
 
-1. copies one request into its fixed source region;
-2. parses and validates Gaut;
-3. emits a raw AArch64 child image into its output region; and
-4. uses `platform.run(address)` to call the child entry;
-5. restores its own runtime after the child returns; and
-6. repeats until the zero terminator, emits `gaut-os: ready`, and requests
+1. emits `gaut-os: ready`;
+2. receives one complete serial request into its fixed source region;
+3. reports the accepted request number;
+4. parses Gaut and emits a raw AArch64 child image into its output region;
+5. uses `platform.run(address)` to call the child entry;
+6. restores its own runtime and repeats from the ready marker; and
+7. on the zero terminator, requests
    machine shutdown through PSCI `SYSTEM_OFF`.
 
 The child acceptance programs are `os/examples/child1.gaut` and
 `os/examples/child2.gaut`. A complete boot must emit exactly:
 
 ```text
+gaut-os: ready
+gaut-os: received 1
 gaut-os: child 1
+gaut-os: ready
+gaut-os: received 2
 gaut-os: child 2
 gaut-os: ready
 ```

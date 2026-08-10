@@ -3,3 +3,4 @@ id	canonical_name	inputs	outputs	meaning
 41	host.write	3	1	write bytes to the selected platform output descriptor
 42	host.exit	1	0	terminate or halt the selected platform program
 43	platform.run	1	0	transfer control to a generated image when the target supports it
+44	platform.ready	0	0	announce that the resident supervisor can accept one request
