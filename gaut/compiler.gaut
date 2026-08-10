@@ -177,12 +177,12 @@ fn emit_qemu_read(state) {
   drop emit_pop(state, 1);
   drop emit_pop(state, 0);
   drop emit_move(state, 9, 1191182336);
-  drop emit_word(state, 4181721386);
+  drop emit_word(state, 4181722410);
+  drop emit_word(state, 2432713034);
   drop emit_word(state, 3942777183);
   valid_branch = emit_word(state, 1409286153);
   drop emit_qemu_halt(state);
   drop patch_short_branch(state, valid_branch, state_get(state, 136), 1409286153);
-  drop emit_word(state, 2432704809);
   drop emit_word(state, 2852783084);
 
   loop_at = state_get(state, 136);
@@ -577,8 +577,6 @@ fn init_canonical(state) {
   drop canonical_add(state, 1702063205, 0, 4, 16777222);
   drop canonical_add(state, 435610544247, 0, 5, 16777223);
   drop canonical_add(state, 121437875889522, 0, 6, 16777224);
-  drop canonical_add(state, 127978876068212, 0, 6, 16777225);
-  drop canonical_add(state, 8244250745242477937, 116, 9, 50331649);
 
   drop canonical_add(state, 6579297, 0, 3, 33620496);
   drop canonical_add(state, 6452595, 0, 3, 33620497);
@@ -1321,20 +1319,28 @@ fn main() {
   let entry_call = 0;
   let file_size = 0;
   let cursor = 0;
+  let profile = 0;
+  let source_size = 0;
 
   store64(7955925652160733543, add(state, 65000));
   store64(8030798176169255286, add(state, 65008));
   store64(44650689141, add(state, 65016));
 
   input_size = host.read(0, source, 131072);
-  if eq(input_size, 131072) {
-    if host.read(0, add(state, 64992), 1) {
-      drop fail(state);
-    }
+  if lt(input_size, 16) {
+    drop fail(state);
+  }
+  profile = load64(source);
+  source_size = load64(add(source, 8));
+  if lt(131055, source_size) {
+    drop fail(state);
+  }
+  if eq(eq(input_size, add(source_size, 16)), 0) {
+    drop fail(state);
   }
 
-  drop state_set(state, 0, source);
-  drop state_set(state, 8, add(source, input_size));
+  drop state_set(state, 0, add(source, 16));
+  drop state_set(state, 8, add(add(source, 16), source_size));
   drop state_set(state, 24, output);
   drop state_set(state, 64, 0);
   drop state_set(state, 72, 0);
@@ -1350,25 +1356,18 @@ fn main() {
   drop state_set(state, 152, 0);
   drop state_set(state, 160, 0);
 
+  if eq(profile, 1) {
+    drop state_set(state, 160, 0);
+  } else {
+    if eq(profile, 2) {
+      drop state_set(state, 160, 1);
+    } else {
+      drop fail(state);
+    }
+  }
+
   drop init_canonical(state);
   drop next_token(state);
-
-  if eq(bitand(canonical_find(state, state_get(state, 40), state_get(state, 48)), 255), 9) {
-    drop next_token(state);
-    if eq(eq(state_get(state, 32), 1), 0) {
-      drop fail(state);
-    }
-    info = canonical_find(state, state_get(state, 40), state_get(state, 48));
-    if eq(eq(info, 50331649), 0) {
-      drop fail(state);
-    }
-    drop state_set(state, 160, 1);
-    drop next_token(state);
-    if eq(eq(state_get(state, 32), 9), 0) {
-      drop fail(state);
-    }
-    drop next_token(state);
-  }
 
   entry_call = emit_entry(state, state_get(state, 160));
 
@@ -1406,7 +1405,9 @@ fn main() {
     cursor = add(cursor, 1);
   }
 
-  platform.run(output);
+  if state_get(state, 160) {
+    platform.run(output);
+  }
   drop host.write(1, output, file_size);
   return 0;
 }

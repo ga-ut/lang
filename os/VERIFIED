@@ -2,46 +2,61 @@ Gaut current verification
 Date: 2026-08-10
 
 Retained source and artifacts:
-- gaut/compiler.gaut, 1,412 lines
+- gaut/compiler.gaut, 1,413 lines, 40,594 bytes
 - compiler source SHA-256:
-  83d4e088c8b0ba57b2026c87f408ff217f194d45af29b462f362a9baf197cdf1
-- os/examples/compiled.gaut, 687 bytes
+  fcd667c828a9cd359c2b8758066fb46ac29459c010f57fd47f3ede1a63be15a9
+- os/examples/compiled.gaut, 668 bytes
 - child source SHA-256:
-  ba173ceacc8349508358070ec2f672802fc2b73d08cde157d38a81fa3ab61488
+  838122e5993e9e7ccf5b948348a96a39ef7e5ea3d02946eeab1f713d40fd638d
 - dist/gaut.elf, 57,344-byte static AArch64 Linux bootstrap compiler
 - hosted compiler SHA-256:
-  29e7f54267ed20aaf8fed32493cbf4b62e2b920d672da78a1505f80e316866cc
+  b5e6ff26901d5c28af95a598fb7f9ad7ae5e130f8801c0276fb136e59eabaf3d
 - dist/gaut-os.img, 57,344-byte raw AArch64 freestanding compiler
 - freestanding compiler SHA-256:
-  29affdd1da677c6dd5300da69f78716789959b544209ffbaf3394a0399fac590
+  6e4e507e95f225c699e0f853cccfc6567a9e0576851785507c7853d880a5abb6
+
+External build-profile proof:
+1. Gaut source contains no target declaration, platform name, ABI, container,
+   or board selection
+2. the compiler request carries a profile ID, source length, and exact source
+3. profile 1 emits the current AArch64 Linux static ELF
+4. profile 2 emits the current AArch64 QEMU virt raw image
+5. the identical 35-byte return42.gaut source produced both profiles; the ELF
+   returned 42 and the raw image was 4,096 bytes
+6. functions named target and qemu_virt compiled and returned 42, proving both
+   spellings are ordinary source names
+7. an unknown profile and a headerless source were rejected with status 2 and
+   zero artifact bytes
 
 Self-host proof:
-1. the retained compiler built the readable compiler source
-2. two following generations built the same source
-3. all three outputs were byte-identical at 57,344 bytes
-4. arithmetic, loop, fixed-memory, and branch regressions returned 42, 55, 42,
-   and 42
-5. unknown call, wrong arity, and nested early return each returned status 2,
+1. the retained previous compiler built the readable compiler transition
+2. the transition compiler and its following generation built the same source
+3. all three new outputs were byte-identical at 57,344 bytes with SHA-256:
+   b5e6ff26901d5c28af95a598fb7f9ad7ae5e130f8801c0276fb136e59eabaf3d
+4. a second profile-2 rebuild reproduced the retained Gaut OS image byte for
+   byte
+5. loop, fixed-memory, branch, and former-name regressions returned 55, 42,
+   42, and 42
+6. unknown call, wrong arity, and nested early return each returned status 2,
    emitted zero artifact bytes, and wrote the 21-byte Gaut diagnostic
 
 Freestanding proof:
-1. the readable compiler was built for `qemu_virt` without a second compiler
-   implementation
-2. two hosted generations emitted byte-identical freestanding images
-3. QEMU loaded an eight-byte length and the exact source bytes at `0x47000000`
-4. two clean networkless QEMU processes emitted exactly:
+1. the same readable compiler was built with external profile 2; no target
+   declaration or second compiler implementation exists
+2. QEMU loaded the checked profile request at 0x47000000
+3. two clean networkless QEMU processes emitted exactly:
 
 gaut-os: compiled
 
 Machine:
-- QEMU 11.0.3, `virt`, Cortex-A53, 128 MiB RAM
+- QEMU 11.0.3, virt board, Cortex-A53, 128 MiB RAM
 - no network device
-- compiler loaded directly with `-kernel dist/gaut-os.img`
-- second run used the retained `os/run.sh` launcher
+- compiler loaded directly with -kernel dist/gaut-os.img
+- second run used the retained os/run.sh launcher
 
 Boundary:
 - the guest contains no Linux, libc, dynamic loader, Python, C, Rust, LLVM,
   assembler, linker, or foreign runtime
-- the host shell and QEMU only frame source and emulate the checked machine
+- the host shell and QEMU only frame the request and emulate the checked machine
 - the compiler executes one child per boot and does not survive the transfer
-- the next verified gate is the resident compiler contract in `docs/OS.md`
+- the next verified gate is the resident compiler contract in docs/OS.md

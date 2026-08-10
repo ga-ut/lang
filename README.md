@@ -13,8 +13,19 @@ Gaut source -> Gaut compiler -> AArch64 program
 ```
 
 The compiler directly writes either a static AArch64 Linux bootstrap ELF or a
-raw QEMU `virt` image. It does not invoke C, Rust, LLVM, an assembler, a linker,
-libc, or a dynamic loader.
+raw QEMU `virt` image. The source does not name either target. A small external
+build request selects the output profile, so the same Gaut bytes can be built
+for both without changing the language or parser. The compiler does not invoke
+C, Rust, LLVM, an assembler, a linker, libc, or a dynamic loader.
+
+```sh
+./gaut/request.sh linux program.gaut program.request
+./dist/gaut.elf < program.request > program.elf
+```
+
+`gaut/request.sh` is only a host-side request framer. Profile `1` means the
+current Linux ELF adapter and profile `2` means the current Gaut OS raw-image
+adapter. Platform, ABI, board, and container names are not Gaut keywords.
 
 ## Run inside Gaut OS
 
@@ -40,6 +51,7 @@ and runs one program per boot.
 ## Current files
 
 - `gaut/compiler.gaut`: readable self-hosted compiler
+- `gaut/request.sh`: external build-profile request framer
 - `gaut/examples/`: language regression programs
 - `dist/gaut.elf`: retained hosted AArch64 compiler for fixed-point rebuilds
 - `dist/gaut-os.img`: retained freestanding compiler image
@@ -62,6 +74,10 @@ the readable compiler twice to byte-identical generations in the offline ARM64
 lab. A freestanding change additionally requires a clean networkless QEMU boot.
 Source implementation, fixed point, boot proof, commit, and remote push remain
 separate gates.
+
+Adding another platform means adding an external profile and its backend
+adapter. It must not add target syntax, reserve a platform name, or create a
+second parser.
 
 The immediate next boundary is making the compiler a resident service that can
 survive a child program and accept another source without rebooting. See

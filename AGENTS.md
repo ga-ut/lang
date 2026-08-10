@@ -22,6 +22,9 @@ bootstrap layers live in Git history, not in the current tree.
   the compiler source twice to byte-identical generations in the offline
   AArch64 VM.
 - Keep platform effects separate from canonical language primitives.
+- Select architecture, ABI, container, board, and effect adapter through the
+  external build request. Adding a platform must not change Gaut grammar or
+  reserve a source name.
 
 ## Language discipline
 
@@ -39,6 +42,7 @@ bootstrap layers live in Git history, not in the current tree.
 ## Verification
 
 - Verify `dist/SHA256SUMS` after copying or changing retained artifacts.
+- Verify at least one identical source through every supported build profile.
 - Keep source, the final compiler, concise verification records, and checksum
   manifests. Do not commit VM runtime images, work disks, compiler generations,
   generated examples, caches, traces, or crash dumps.

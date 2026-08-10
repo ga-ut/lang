@@ -15,8 +15,8 @@ QEMU is a replaceable hardware model, not part of Gaut semantics.
 
 ## Current compile-and-run flow
 
-`dist/gaut-os.img` is the readable Gaut compiler built for `qemu_virt`.
-`os/run.sh` places external profile `2`, an eight-byte little-endian source
+`dist/gaut-os.img` is the readable Gaut compiler built with external profile
+`2`. `os/run.sh` places that profile ID, an eight-byte little-endian source
 length, and the exact source bytes in the input packet and boots the compiler.
 
 The compiler:

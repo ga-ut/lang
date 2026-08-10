@@ -1,7 +1,5 @@
 # Gaut OS compile-and-run acceptance child.
 
-target qemu_virt;
-
 fn uart_write(byte) {
   let uart = 150994944;
   let transmit_full = 32;

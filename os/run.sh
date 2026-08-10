@@ -18,12 +18,6 @@ if ! command -v qemu-system-aarch64 >/dev/null 2>&1; then
     exit 2
 fi
 
-SIZE=$(/usr/bin/wc -c < "$SOURCE" | /usr/bin/tr -d ' ')
-if [ "$SIZE" -gt 131072 ]; then
-    echo "Gaut source exceeds the 131072-byte input limit." >&2
-    exit 2
-fi
-
 RUN_TEMP=$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/gaut-run.XXXXXX")
 PACKET="$RUN_TEMP/source.packet"
 cleanup() {
@@ -31,16 +25,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-O0=$(/usr/bin/printf '%03o' $((SIZE & 255)))
-O1=$(/usr/bin/printf '%03o' $(((SIZE >> 8) & 255)))
-O2=$(/usr/bin/printf '%03o' $(((SIZE >> 16) & 255)))
-O3=$(/usr/bin/printf '%03o' $(((SIZE >> 24) & 255)))
-O4=$(/usr/bin/printf '%03o' $(((SIZE >> 32) & 255)))
-O5=$(/usr/bin/printf '%03o' $(((SIZE >> 40) & 255)))
-O6=$(/usr/bin/printf '%03o' $(((SIZE >> 48) & 255)))
-O7=$(/usr/bin/printf '%03o' $(((SIZE >> 56) & 255)))
-/usr/bin/printf "\\$O0\\$O1\\$O2\\$O3\\$O4\\$O5\\$O6\\$O7" > "$PACKET"
-/bin/dd if="$SOURCE" of="$PACKET" bs=1 seek=8 conv=notrunc 2>/dev/null
+"$ROOT/gaut/request.sh" gaut-os "$SOURCE" "$PACKET"
 
 echo "Gaut OS is compiling and running: $SOURCE"
 echo "Press Control-C after the program finishes."

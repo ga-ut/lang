@@ -12,7 +12,8 @@ semantic definition, and one lowering function per target.
 - No hidden macro expansion or compiler-known library helpers.
 - No alternative fast path outside the same primitive lowering.
 - Derived behavior is ordinary Gaut source.
-- Each target has one adapter implementation for each supported target effect.
+- Each build profile has one adapter implementation for each supported
+  platform effect.
 
 ## 2. Not built yet
 
@@ -250,7 +251,7 @@ offset  size  meaning
 ```
 
 Profile `1` selects the current AArch64 Linux static ELF adapter. Profile `2`
-selects the current AArch64 QEMU `virt` raw-image adapter. These IDs belong to
+selects the current AArch64 QEMU virt raw-image adapter. These IDs belong to
 the compiler request protocol, not the language inventory. The source length
 is at most 131055 bytes and the request contains no trailing bytes.
 
@@ -276,14 +277,14 @@ may differ only where the selected machine boundary requires it:
   length must not exceed `count`.
 - `host.write(descriptor, address, count)` writes platform output bytes and
   returns the number written. On bootstrap Linux it is the direct descriptor
-  write. On `qemu_virt`, the machine has one polled PL011 serial output channel,
-  so every descriptor maps to that channel.
+  write. Under profile `2`, the machine has one polled PL011 serial output
+  channel, so every descriptor maps to that channel.
 - `host.exit(status)` terminates the bootstrap process or enters the
   freestanding target's wait loop. It does not return.
-- `platform.run(address)` transfers control to the entry word at `address` on
-  `qemu_virt`. The bootstrap-host adapter consumes the address and returns so
-  the same compiler source remains self-hostable; ordinary hosted programs
-  must not use it as an execution facility.
+- `platform.run(address)` transfers control to the entry word at `address`
+  under profile `2`. The bootstrap-host adapter consumes the address and
+  returns so the same compiler source remains self-hostable; ordinary hosted
+  programs must not use it as an execution facility.
 
 The complete effect IDs and arities are in `EFFECTS.tsv`. These are ordered,
 observable effects, not value primitives. The current freestanding adapter
@@ -292,7 +293,7 @@ not a file system or an interactive command protocol.
 
 ## 11. Determinism and failure
 
-Identical source bytes, compiler version, and platform ID must produce
+Identical source bytes, compiler version, and build profile ID must produce
 identical artifact bytes.
 
 - Output contains no timestamps, machine paths, locale, or randomness.

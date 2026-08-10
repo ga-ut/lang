@@ -8,6 +8,7 @@
 - freestanding compiler boots without Linux in a networkless AArch64 machine
 - one RAM-resident Gaut source is compiled and executed per boot
 - output platform is selected by an external build profile, never source syntax
+- former platform spellings such as `target` and `qemu_virt` are ordinary names
 
 ## Next: resident compiler
 
