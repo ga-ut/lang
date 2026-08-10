@@ -251,9 +251,11 @@ offset  size  meaning
 ```
 
 Profile `1` selects the current AArch64 Linux static ELF adapter. Profile `2`
-selects the current AArch64 QEMU virt raw-image adapter. These IDs belong to
+selects the current AArch64 QEMU virt boot-image adapter. Profile `3` selects
+the returnable Gaut OS child-image adapter. Profile `3` is an execution request
+for the resident compiler, not a standalone boot image. These IDs belong to
 the compiler request protocol, not the language inventory. The source length
-is at most 131055 bytes and the request contains no trailing bytes.
+is at most 131055 bytes and one request contains no trailing bytes.
 
 A build profile selects the architecture backend, ABI, container, entry
 adapter, and available platform-effect lowering. Adding a new platform changes
@@ -282,9 +284,12 @@ may differ only where the selected machine boundary requires it:
 - `host.exit(status)` terminates the bootstrap process or enters the
   freestanding target's wait loop. It does not return.
 - `platform.run(address)` transfers control to the entry word at `address`
-  under profile `2`. The bootstrap-host adapter consumes the address and
-  returns so the same compiler source remains self-hostable; ordinary hosted
-  programs must not use it as an execution facility.
+  from the profile `2` resident supervisor. It preserves the supervisor
+  continuation and runtime registers, and the profile `3` child returns to
+  that continuation. The bootstrap-host adapter consumes the address and
+  returns so the same compiler source remains self-hostable. Profile `3`
+  source cannot invoke `platform.run`; nested child execution is not part of
+  this contract.
 
 The complete effect IDs and arities are in `EFFECTS.tsv`. These are ordered,
 observable effects, not value primitives. The current freestanding adapter

@@ -7,7 +7,7 @@
 - entry privilege: EL1 from QEMU direct-kernel boot
 - RAM: 128 MiB beginning at `0x40000000`
 - console: PL011 UART at `0x09000000`
-- build input: one checked request packet at `0x47000000`
+- build input: one checked request sequence at `0x47000000`
 - network device: absent
 - persistent disk: absent
 
@@ -16,53 +16,50 @@ QEMU is a replaceable hardware model, not part of Gaut semantics.
 ## Current compile-and-run flow
 
 `dist/gaut-os.img` is the readable Gaut compiler built with external profile
-`2`. `os/run.sh` places that profile ID, an eight-byte little-endian source
-length, and the exact source bytes in the input packet and boots the compiler.
+`2`. `os/run.sh` places consecutive profile `3` child requests in memory and
+terminates the sequence with sixteen zero bytes. Each request still contains
+its profile ID, eight-byte little-endian source length, and exact source bytes.
 
-The compiler:
+The resident compiler:
 
-1. copies the packet into its fixed source region;
+1. copies one request into its fixed source region;
 2. parses and validates Gaut;
 3. emits a raw AArch64 child image into its output region; and
-4. uses `platform.run(address)` to transfer control to the child entry.
+4. uses `platform.run(address)` to call the child entry;
+5. restores its own runtime after the child returns; and
+6. repeats until the zero terminator, then emits `gaut-os: ready`.
 
-The child acceptance program is `os/examples/compiled.gaut` and must emit:
+The child acceptance programs are `os/examples/child1.gaut` and
+`os/examples/child2.gaut`. A complete boot must emit exactly:
 
 ```text
-gaut-os: compiled
+gaut-os: child 1
+gaut-os: child 2
+gaut-os: ready
 ```
 
 The guest path contains no Linux, libc, dynamic loader, Python, C, Rust, LLVM,
 assembler, linker, or foreign runtime.
 
-## Current hard boundary
+## Resident memory contract
 
-The compiler is not yet a resident service:
+- the profile `2` supervisor owns `0x47f00000` through `0x47ffffff`;
+- a profile `3` child owns `0x47e00000` through `0x47efffff`;
+- the supervisor output image remains in the supervisor region while executing;
+- `platform.run` preserves the supervisor stack, local base, evaluation stack,
+  return stack, and request cursor across the child call; and
+- one child finishes before the next image replaces the output buffer.
 
-- `platform.run` performs a non-returning branch;
-- the child entry establishes the same fixed stack and Gaut arenas used by the
-  compiler;
-- a child with fixed memory can overwrite compiler state;
-- input is one launch packet rather than a command channel; and
-- there is no persistent workspace or fault isolation.
+The two regions prevent ordinary Gaut locals and fixed memory in a child from
+overwriting compiler state. There is still no MMU, fault containment,
+persistent workspace, or malicious-child isolation.
 
-Therefore the current machine truthfully compiles and executes one program per
-boot, but cannot safely perform a second edit/build/run cycle.
+## Next acceptance contract: serial development loop
 
-## Next acceptance contract: resident compiler
-
-The next implementation must keep one compiler alive across child execution:
-
-1. compiler and child receive non-overlapping stack, evaluation, return, and
-   fixed-memory regions;
-2. the compiler engine receives explicit buffers instead of owning platform
-   input, output, and process lifetime in its `main` function;
-3. a returnable child entry preserves and restores the compiler continuation;
-4. the compiler compiles and runs two child programs without rebooting; and
-5. serial output ends with one `gaut-os: ready` marker after both returns.
-
-No editor, file system, scheduler, MMU, or optimizer is added to satisfy this
-gate. Serial source input follows only after resident execution is proven.
+The next implementation replaces the fixed launch sequence with a checked
+serial command channel while preserving the resident compiler and memory
+contract. No editor, file system, scheduler, MMU, or optimizer is added before
+repeated serial upload, compile, run, result, and recovery are proven.
 
 ## Later kernel boundary
 
