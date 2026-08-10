@@ -25,12 +25,18 @@ The resident compiler:
 
 1. emits `gaut-os: ready`;
 2. receives one complete serial request into its fixed source region;
-3. reports the accepted request number;
+3. reports the received request number;
 4. parses Gaut and emits a raw AArch64 child image into its output region;
 5. uses `platform.run(address)` to call the child entry;
 6. restores its own runtime and repeats from the ready marker; and
 7. on the zero terminator, requests
    machine shutdown through PSCI `SYSTEM_OFF`.
+
+For a complete but invalid Gaut source request, `fail` writes the same canonical
+21-byte diagnostic used by the hosted compiler and calls `host.exit(2)`. The
+profile `2` adapter abandons the current call stack, branches to its preserved
+entry anchor, rebuilds the compiler runtime registers, and emits `ready` again.
+No second parser or diagnostic path exists for resident compilation.
 
 The child acceptance programs are `os/examples/child1.gaut` and
 `os/examples/child2.gaut`. A complete boot must emit exactly:
@@ -78,12 +84,15 @@ and shut down through the existing zero terminator.
 
 ## Current limitation and next acceptance contract
 
-A malformed request, compile failure, or child fault still does not recover to
-the resident loop. The next implementation adds recoverable supervisor errors
-and child exception reporting while preserving the low-power wait and memory
-contracts. No editor, file system, scheduler, MMU, or optimizer is added before
-rejection, fault reporting, and a following successful request are proven in
-one boot.
+Each accepted serial request still contains source and immediately runs it.
+There is no OS-owned named source buffer or persistent workspace. A malformed
+length that cannot be safely framed and a child hardware fault also do not yet
+recover.
+
+The next implementation adds a fixed-capacity named in-memory source workspace
+while preserving the low-power wait, compile rejection, and memory contracts.
+No editor, file system, scheduler, MMU, or optimizer is added before storing,
+replacing, and running a named source are proven in one boot.
 
 ## Later kernel boundary
 

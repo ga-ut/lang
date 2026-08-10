@@ -287,10 +287,12 @@ may differ only where the selected machine boundary requires it:
   returns the number written. On bootstrap Linux it is the direct descriptor
   write. Under profile `2`, the machine has one polled PL011 serial output
   channel, so every descriptor maps to that channel.
-- `host.exit(status)` terminates the bootstrap process. Under profiles `2` and
-  `3`, the QEMU virt adapter invokes PSCI `SYSTEM_OFF` through the configured
-  HVC conduit. It does not return. A wait loop exists only as a fallback when
-  the machine does not implement that declared shutdown contract.
+- `host.exit(status)` terminates the current hosted process. Under profile `2`,
+  status zero invokes PSCI `SYSTEM_OFF` through the configured HVC conduit,
+  while a nonzero status abandons the current build request, restores the
+  resident compiler entry state, and accepts another request. Under profile
+  `3`, it invokes PSCI `SYSTEM_OFF` for every status. A wait loop exists only as
+  a fallback when the machine does not implement the shutdown contract.
 - `platform.run(address)` transfers control to the entry word at `address`
   from the profile `2` resident supervisor. It preserves the supervisor
   continuation and runtime registers, and the profile `3` child returns to

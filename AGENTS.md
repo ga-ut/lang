@@ -50,6 +50,9 @@ bootstrap layers live in Git history, not in the current tree.
   than a preloaded RAM packet and emits the exact documented transcript.
 - For a serial-wait change, delay input after the first ready marker and verify
   both negligible QEMU CPU use and successful wake-up before accepting it.
+- For resident compiler recovery, send an invalid Gaut source followed by a
+  valid source in one boot and verify diagnostic, ready, execution, and clean
+  shutdown order exactly.
 - A QEMU verification is complete only when the guest requests shutdown, the
   emulator exits with status zero, and no Gaut QEMU process remains.
 - Keep source, the final compiler, concise verification records, and checksum

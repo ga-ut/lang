@@ -2,26 +2,26 @@ Gaut current verification
 Date: 2026-08-11
 
 Retained source and artifacts:
-- gaut/compiler.gaut, 1,593 lines, 46,810 bytes
+- gaut/compiler.gaut, 1,615 lines, 47,574 bytes
 - compiler source SHA-256:
-  5d90865c137d3195ad24ea375928cf7f0fea244f4bed92994d3e6c61ba071804
+  c402f291bab58fa41f8f5ea7b29ebcc6199479428a0d8897373f80a5d433a4ac
 - os/examples/child1.gaut, 792 bytes, SHA-256:
   beae4a0687c8ab9bee67409e7f90d9784ab1b98a774ced2085a318c245e261fa
 - os/examples/child2.gaut, 793 bytes, SHA-256:
   7ce5d3e709a92b413720d0070f9b00380406c7da060fa7d1aaefa6ffea0a6193
 - dist/gaut.elf, 61,440-byte static AArch64 Linux bootstrap compiler
 - hosted compiler SHA-256:
-  e7c7f1eb87318dd4d9132021185fc079c98365006e2eb224a7aac2b55049dc3d
+  df2c03b958a30d64f84280831a2fbda6618ea3630eb6e9ee6d7330e52ce7283e
 - dist/gaut-os.img, 65,536-byte raw AArch64 resident compiler
 - freestanding compiler SHA-256:
-  1ae40936c9222f308911e120f30552c093c4b8b1c81bd3904d2409e14263e249
+  0de91198ab83631a472c8b99121d503981b09a197c4131213799f2bb3cf2cfdb
 
 Self-host proof:
-1. the retained previous compiler built the readable low-power-wait compiler
+1. the retained previous compiler built the readable request-recovery compiler
 2. that compiler rebuilt the same source twice
 3. the first, second, and third hosted generations were
    byte-identical at 61,440 bytes with SHA-256:
-   e7c7f1eb87318dd4d9132021185fc079c98365006e2eb224a7aac2b55049dc3d
+   df2c03b958a30d64f84280831a2fbda6618ea3630eb6e9ee6d7330e52ce7283e
 4. the byte-identical second hosted generation emitted the retained profile 2
    serial Gaut OS image
 5. loop, fixed-memory, and branch regressions returned 55, 42, and 42
@@ -54,12 +54,32 @@ Low-power wait proof:
    QEMU virt GICv2 distributor and CPU interface
 2. host.read cleared stale wake state, rechecked the receive FIFO, and executed
    WFI only while it remained empty
-3. after the first ready marker, QEMU remained at 0.0 percent CPU for five
-   one-second samples with no serial input
-4. a request delivered after that delay woke the same machine, which emitted
-   the exact 67-byte one-child transcript and exited with status zero after the
-   zero terminator
+3. after the compile-rejection ready marker, QEMU remained at 0.0 percent CPU
+   for four one-second samples with no serial input
+4. a valid request delivered after that delay woke the same machine, which ran
+   the child and exited with status zero after the zero terminator
 5. no Gaut QEMU process remained after the delayed-input run
+
+Compile rejection recovery proof:
+1. profile 2 retained its entry address in x22 before entering the compiler
+2. host.exit with status zero retained the PSCI shutdown path, while a nonzero
+   status discarded the failed compiler call stack and branched to that entry
+3. one serial stream delivered invalid.gaut, paused after recovery, delivered
+   child1.gaut, and ended with the zero terminator
+4. the exact 123-byte transcript was:
+
+gaut-os: ready
+gaut-os: received 1
+gaut: invalid source
+gaut-os: ready
+gaut-os: received 1
+gaut-os: child 1
+gaut-os: ready
+
+5. QEMU reported 0.0 percent CPU during four one-second samples after the
+   rejection ready marker
+6. the following valid source compiled and ran in the same boot, QEMU exited
+   with status zero, and no Gaut QEMU process remained
 
 Shutdown proof:
 1. the QEMU virt machine declared the HVC PSCI conduit
@@ -83,7 +103,7 @@ Boundary:
   or malicious-child fault containment
 - the retained launcher supplies a bounded serial stream, while the resident
   host.read path can wait for delayed input without consuming a host CPU core
-- malformed requests, compile failures, and child faults do not yet recover to
-  ready
-- the next verified gate is recoverable supervisor errors in
+- complete invalid Gaut source requests recover to ready, but malformed lengths
+  and child hardware faults do not yet recover
+- the next verified gate is a named in-memory source workspace in
   docs/ROADMAP.md

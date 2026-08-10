@@ -92,6 +92,7 @@ second parser.
 
 The launcher still supplies a deliberately bounded session, but the resident
 compiler can now wait for delayed serial input through `WFI` without consuming
-a host CPU core. The immediate next boundary is recoverable supervisor failure:
-returning to `ready` after malformed input, a compile error, or a child fault.
-See `docs/ROADMAP.md`.
+a host CPU core. A rejected Gaut source emits the canonical compiler diagnostic
+and returns to `ready` without rebooting. The immediate next boundary is a
+minimal named in-memory source workspace, so upload and execution no longer
+have to be the same command. See `docs/ROADMAP.md`.

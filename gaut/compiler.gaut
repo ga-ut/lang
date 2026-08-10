@@ -170,6 +170,23 @@ fn emit_qemu_halt(state) {
   return 0;
 }
 
+fn emit_branch_register(state, register) {
+  drop emit_word(state, bitor(3592355840, shl(register, 5)));
+  return 0;
+}
+
+fn emit_qemu_exit(state) {
+  let shutdown_branch = 0;
+
+  drop emit_pop(state, 0);
+  drop emit_word(state, 4043309087);
+  shutdown_branch = emit_word(state, 1409286144);
+  drop emit_branch_register(state, 22);
+  drop patch_short_branch(state, shutdown_branch, state_get(state, 136), 1409286144);
+  drop emit_qemu_halt(state);
+  return 0;
+}
+
 fn emit_qemu_wait_setup(state) {
   drop emit_move(state, 9, 134217728);
   drop emit_move(state, 10, 1);
@@ -392,6 +409,7 @@ fn emit_entry(state, platform) {
   if eq(platform, 1) {
     drop state_set(state, 152, state_get(state, 24));
     drop state_set(state, 16, state_get(state, 24));
+    drop emit_word(state, 268435478);
     drop emit_move(state, 0, 1207959552);
     drop emit_word(state, 2432696351);
     drop emit_word(state, 3510895615);
@@ -809,13 +827,17 @@ fn emit_callable(state, info, address, length) {
                                         }
                                       } else {
                                         if eq(id, 66) {
-                                          if state_get(state, 160) {
-                                            drop emit_pop(state, 0);
-                                            drop emit_qemu_halt(state);
+                                          if eq(state_get(state, 160), 1) {
+                                            drop emit_qemu_exit(state);
                                           } else {
-                                            drop emit_pop(state, 0);
-                                            drop emit_move(state, 8, 93);
-                                            drop emit_word(state, 3556769793);
+                                            if eq(state_get(state, 160), 2) {
+                                              drop emit_pop(state, 0);
+                                              drop emit_qemu_halt(state);
+                                            } else {
+                                              drop emit_pop(state, 0);
+                                              drop emit_move(state, 8, 93);
+                                              drop emit_word(state, 3556769793);
+                                            }
                                           }
                                         } else {
                                           if eq(id, 67) {
