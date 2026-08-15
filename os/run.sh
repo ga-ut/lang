@@ -8,12 +8,12 @@ if [ "$#" -eq 0 ]; then
     set -- "$ROOT/os/examples/child1.gaut" "$ROOT/os/examples/child2.gaut"
 fi
 if [ "$#" -gt 9 ]; then
-    echo "A bounded Gaut session accepts at most 9 source files." >&2
+    echo "A bounded Gaut session accepts at most 9 source inputs." >&2
     exit 2
 fi
 
 for SOURCE in "$@"; do
-    if [ ! -f "$SOURCE" ]; then
+    if [ ! -f "$SOURCE" ] && [ ! -d "$SOURCE" ]; then
         echo "Gaut source not found: $SOURCE" >&2
         exit 2
     fi

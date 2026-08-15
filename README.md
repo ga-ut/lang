@@ -26,6 +26,9 @@ C, Rust, LLVM, an assembler, a linker, libc, or a dynamic loader.
 `gaut/request.sh` is only a host-side request framer. Profile `1` means the
 current Linux ELF adapter and profile `2` means the current Gaut OS raw-image
 adapter. Platform, ABI, board, and container names are not Gaut keywords.
+Passing a directory frames every `.gaut` file below it as one named source
+unit. A relative path such as `math/vector.gaut` becomes module `math.vector`;
+source still contains no `module` or `import` declaration.
 
 ## Run inside Gaut OS
 
@@ -34,7 +37,7 @@ sends readable Gaut sources through the emulated PL011 serial device and boots
 a networkless AArch64 machine. Inside that machine one resident Gaut compiler
 reads, compiles, and executes each program without Linux or rebooting between
 them. With no arguments the launcher sends the two acceptance programs; one to
-nine source paths may be supplied explicitly:
+nine source files or source roots may be supplied explicitly:
 
 ```sh
 ./os/run.sh

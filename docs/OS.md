@@ -18,8 +18,10 @@ QEMU is a replaceable hardware model, not part of Gaut semantics.
 `dist/gaut-os.img` is the readable Gaut compiler built with external profile
 `2`. `os/run.sh` sends consecutive profile `3` child requests through PL011
 serial input and terminates the bounded session with sixteen zero bytes. Each
-request contains its profile ID, eight-byte little-endian source length, and
-exact source bytes, with no inter-record padding.
+request contains its profile ID, remaining payload length, source-unit count,
+and unpadded records of module-name length, source length, name bytes, and
+source bytes. The retained sixteen-byte serial header therefore still tells
+the low-power receiver exactly how many additional bytes to read.
 
 The resident compiler:
 

@@ -1,4 +1,4 @@
-# Gaut specification - draft 0.4
+# Gaut specification - draft 0.5
 
 Gaut is the one semantic layer shared by the compiler, future kernel, and
 later frontends. It is deliberately small, unsafe, and direct.
@@ -99,7 +99,7 @@ compiler or kernel failure that it prevents.
 
 ## 6. Canonical grammar and small-parser boundary
 
-The grammar below is the entire maintained source surface for draft 0.4.
+The grammar below is the entire maintained source surface for draft 0.5.
 
 ```text
 program    := function+
@@ -136,14 +136,36 @@ assignment before declaration are errors.
 Every function ends with exactly one `return` and returns one word. `return`
 is not a general statement and therefore cannot occur inside `if`, `while`, or
 another nested block. Early return, void functions, and recursion are outside
-draft 0.4. Functions must be defined before calls and calls must match
-parameter count.
+draft 0.5. Calls may name functions declared later in the same build request.
+Every call must resolve after all source units are parsed and must match
+parameter count. A direct or indirect call cycle is rejected.
 
 Arguments evaluate left to right exactly once. A call whose inventory entry
 has zero outputs is legal only as a `call ";"` statement and cannot appear
 inside an expression. A call with one output must be consumed by an expression,
 assignment, return, condition, or explicit `drop`; it is an error to use it as
 a bare statement.
+
+### 6.1 Named source units
+
+A build request contains one or more externally named source units. Each unit
+uses the grammar above and contains one or more function declarations. Source
+does not contain `module` or `import` declarations.
+
+- A module name is one or more ordinary name segments separated by dots.
+- A function declaration name contains no dot.
+- An unqualified call such as `answer()` resolves in the current module.
+- A qualified call such as `math.vector.answer()` resolves `answer` in module
+  `math.vector`; the last dot separates module and function.
+- Equal function names in different modules are distinct.
+- Duplicate module names, duplicate functions within one module, unresolved
+  calls, and more than one `main()` are errors.
+- One parameterless `main()` across the whole build request is required.
+
+A filesystem adapter may remove the final `.gaut` suffix from a path relative
+to its source root and replace path separators with dots. Therefore
+`browser/render/html.gaut` becomes module `browser.render.html`. Filesystem
+paths are adapter input, not Gaut syntax or compiler behavior.
 
 ## 7. Canonical value primitives
 
@@ -241,21 +263,34 @@ container names, and board names are never keywords or canonical source names.
 Identical source bytes may be submitted with different external build profiles
 without changing the source or parser.
 
-The compiler consumes one binary build request:
+The compiler consumes one binary build request. The first twenty-four bytes
+are:
 
 ```text
 offset  size  meaning
 0       8     little-endian build profile ID
+8       8     little-endian bytes following this sixteen-byte serial header
+16      8     little-endian source-unit count
+```
+
+They are followed by that many unpadded source-unit records. The payload length
+includes the eight-byte source-unit count and every record:
+
+```text
+offset  size  meaning
+0       8     little-endian module-name byte length
 8       8     little-endian source byte length
-16      N     exact Gaut source bytes
+16      N     exact ASCII module-name bytes
+16+N    M     exact Gaut source bytes
 ```
 
 Profile `1` selects the current AArch64 Linux static ELF adapter. Profile `2`
 selects the current AArch64 QEMU virt boot-image adapter. Profile `3` selects
 the returnable Gaut OS child-image adapter. Profile `3` is an execution request
 for the resident compiler, not a standalone boot image. These IDs belong to
-the compiler request protocol, not the language inventory. The source length
-is at most 131055 bytes and one request contains no trailing bytes.
+the compiler request protocol, not the language inventory. A request contains
+between one and 64 units, occupies at most 131072 bytes in total, and contains
+no trailing bytes.
 
 The resident Gaut OS input channel may place multiple requests consecutively.
 Serial requests have no padding because `host.read` consumes the exact declared
@@ -311,8 +346,8 @@ time; it is not a file system.
 
 ## 11. Determinism and failure
 
-Identical source bytes, compiler version, and build profile ID must produce
-identical artifact bytes.
+Identical request bytes and compiler version must produce identical artifact
+bytes.
 
 - Output contains no timestamps, machine paths, locale, or randomness.
 - Unknown forms, wrong arity, malformed names, duplicate bindings, bad literal
@@ -335,7 +370,7 @@ entry setup, and image metadata remain separate platform construction.
 
 Each platform owns exactly one lowering function for each supported primitive.
 An unsupported primitive is a compile error. Optimizations are absent in draft
-0.4.
+0.5.
 
 ## 13. Conformance gate
 
@@ -354,11 +389,6 @@ A compiler conforms only after all of these pass:
 
 `gaut/compiler.gaut` implements this grammar and directly emits a static
 AArch64 Linux ELF or an explicit QEMU `virt` raw image selected by the external
-build profile. It has rebuilt itself through byte-identical native generations.
-The current freestanding adapter compiles and transfers control to one child
-per boot.
-
-The next implementation boundary is a returnable child ABI with non-overlapping
-compiler and child memory. It does not require a larger type system or syntax
-sugar. New language surface still requires a concrete failing program and a
-spec revision.
+build profile. The resident compiler accepts consecutive returnable children
+with non-overlapping compiler and child arenas. Draft 0.5 adds externally named
+source units without adding module or import syntax.

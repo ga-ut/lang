@@ -2,7 +2,7 @@
 set -eu
 
 if [ "$#" -ne 3 ]; then
-    echo "usage: $0 <linux|gaut-os|gaut-child> <source.gaut> <request.bin>" >&2
+    echo "usage: $0 <linux|gaut-os|gaut-child> <source.gaut|source-root> <request.bin>" >&2
     exit 2
 fi
 
@@ -20,27 +20,74 @@ case "$PROFILE_NAME" in
         ;;
 esac
 
-if [ ! -f "$SOURCE" ]; then
+if [ ! -f "$SOURCE" ] && [ ! -d "$SOURCE" ]; then
     echo "Gaut source not found: $SOURCE" >&2
     exit 2
 fi
 
-SIZE=$(/usr/bin/wc -c < "$SOURCE" | /usr/bin/tr -d ' ')
-if [ "$SIZE" -gt 131055 ]; then
-    echo "Gaut source exceeds the 131055-byte request limit." >&2
+REQUEST_TEMP=$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/gaut-request.XXXXXX")
+cleanup() {
+    /bin/rm -rf "$REQUEST_TEMP"
+}
+trap cleanup EXIT INT TERM
+
+append_u64() {
+    VALUE=$1
+    DESTINATION=$2
+    O0=$(/usr/bin/printf '%03o' $((VALUE & 255)))
+    O1=$(/usr/bin/printf '%03o' $(((VALUE >> 8) & 255)))
+    O2=$(/usr/bin/printf '%03o' $(((VALUE >> 16) & 255)))
+    O3=$(/usr/bin/printf '%03o' $(((VALUE >> 24) & 255)))
+    O4=$(/usr/bin/printf '%03o' $(((VALUE >> 32) & 255)))
+    O5=$(/usr/bin/printf '%03o' $(((VALUE >> 40) & 255)))
+    O6=$(/usr/bin/printf '%03o' $(((VALUE >> 48) & 255)))
+    O7=$(/usr/bin/printf '%03o' $(((VALUE >> 56) & 255)))
+    /usr/bin/printf "\\$O0\\$O1\\$O2\\$O3\\$O4\\$O5\\$O6\\$O7" >> "$DESTINATION"
+}
+
+FILES="$REQUEST_TEMP/files"
+if [ -d "$SOURCE" ]; then
+    /usr/bin/find "$SOURCE" -type f -name '*.gaut' ! -name '._*' -print \
+        | LC_ALL=C /usr/bin/sort > "$FILES"
+else
+    /usr/bin/printf '%s\n' "$SOURCE" > "$FILES"
+fi
+
+UNIT_COUNT=$(/usr/bin/wc -l < "$FILES" | /usr/bin/tr -d ' ')
+if [ "$UNIT_COUNT" -eq 0 ] || [ "$UNIT_COUNT" -gt 64 ]; then
+    echo "A Gaut request needs between 1 and 64 source units." >&2
     exit 2
 fi
 
-PROFILE_OCTAL=$(/usr/bin/printf '%03o' "$PROFILE")
-O0=$(/usr/bin/printf '%03o' $((SIZE & 255)))
-O1=$(/usr/bin/printf '%03o' $(((SIZE >> 8) & 255)))
-O2=$(/usr/bin/printf '%03o' $(((SIZE >> 16) & 255)))
-O3=$(/usr/bin/printf '%03o' $(((SIZE >> 24) & 255)))
-O4=$(/usr/bin/printf '%03o' $(((SIZE >> 32) & 255)))
-O5=$(/usr/bin/printf '%03o' $(((SIZE >> 40) & 255)))
-O6=$(/usr/bin/printf '%03o' $(((SIZE >> 48) & 255)))
-O7=$(/usr/bin/printf '%03o' $(((SIZE >> 56) & 255)))
+BODY="$REQUEST_TEMP/body"
+: > "$BODY"
+append_u64 "$UNIT_COUNT" "$BODY"
 
-/usr/bin/printf "\\$PROFILE_OCTAL\\000\\000\\000\\000\\000\\000\\000" > "$REQUEST"
-/usr/bin/printf "\\$O0\\$O1\\$O2\\$O3\\$O4\\$O5\\$O6\\$O7" >> "$REQUEST"
-/bin/dd if="$SOURCE" of="$REQUEST" bs=1 seek=16 conv=notrunc 2>/dev/null
+while IFS= read -r FILE; do
+    if [ -d "$SOURCE" ]; then
+        RELATIVE=${FILE#"$SOURCE"/}
+    else
+        RELATIVE=${FILE##*/}
+    fi
+    NAME=${RELATIVE%.gaut}
+    NAME=$(/usr/bin/printf '%s' "$NAME" | /usr/bin/tr '/' '.')
+    NAME_SIZE=$(/usr/bin/printf '%s' "$NAME" | /usr/bin/wc -c | /usr/bin/tr -d ' ')
+    SOURCE_SIZE=$(/usr/bin/wc -c < "$FILE" | /usr/bin/tr -d ' ')
+
+    append_u64 "$NAME_SIZE" "$BODY"
+    append_u64 "$SOURCE_SIZE" "$BODY"
+    /usr/bin/printf '%s' "$NAME" >> "$BODY"
+    /bin/cat "$FILE" >> "$BODY"
+done < "$FILES"
+
+: > "$REQUEST"
+append_u64 "$PROFILE" "$REQUEST"
+BODY_SIZE=$(/usr/bin/wc -c < "$BODY" | /usr/bin/tr -d ' ')
+append_u64 "$BODY_SIZE" "$REQUEST"
+/bin/cat "$BODY" >> "$REQUEST"
+
+REQUEST_SIZE=$(/usr/bin/wc -c < "$REQUEST" | /usr/bin/tr -d ' ')
+if [ "$REQUEST_SIZE" -gt 131072 ]; then
+    echo "Gaut request exceeds the 131072-byte limit." >&2
+    exit 2
+fi

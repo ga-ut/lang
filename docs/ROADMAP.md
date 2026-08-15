@@ -20,8 +20,26 @@
 - a valid request following that rejection compiles, runs, and returns to ready
 - completion requests PSCI machine shutdown; the emulator must not survive the
   verified transcript
+- one request may contain named source units; filesystem paths become dotted
+  module names only in the host adapter
+- qualified cross-module calls link without `module` or `import` syntax
+- Module v0 is byte-identical across three self-hosted compiler generations
+  and runs as a returnable Gaut OS child
 
-## Next: named in-memory source workspace
+## Next: split the compiler across Module v0
+
+Split `gaut/compiler.gaut` along its existing lexer, symbol, parser, emitter,
+and request boundaries. The split must not add `module`, `import`, manifests,
+aliases, or automatic dependency search.
+
+Required acceptance:
+
+1. the split source rebuilds to the same compiler behavior;
+2. Module v0 and existing language regressions remain green;
+3. two following self-host generations are byte-identical; and
+4. the freestanding compiler retains the current QEMU transcript and shutdown.
+
+## Then: named in-memory source storage
 
 The resident compiler currently receives source and immediately runs it. The
 next gate separates source storage from execution without adding persistence.
@@ -51,7 +69,7 @@ The same source name must also be replaceable and runnable again in the same
 boot. Names and commands remain host protocol data; they do not enter the Gaut
 grammar.
 
-## Then
+## Later
 
 1. explicit persistent workspace;
 2. malformed-frame recovery;
