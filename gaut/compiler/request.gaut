@@ -185,4 +185,3 @@ fn compile_request(source, input_size, output, state) {
 
   return file_size;
 }
-

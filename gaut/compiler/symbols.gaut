@@ -376,4 +376,3 @@ fn reject_call_cycles(state) {
 
   return 0;
 }
-

@@ -2,9 +2,9 @@ Gaut current verification
 Date: 2026-08-15
 
 Retained source and artifacts:
-- gaut/compiler/, 6 source units, 1,959 lines, 60,056 bytes
-- profile 2 compiler request, 60,216 bytes, SHA-256:
-  8838b5c26d80af6feb22dbee97cfabd372b61a0fed7e652c0d3dabe1a3f0e350
+- gaut/compiler/, 6 source units, 1,954 lines, 60,051 bytes
+- profile 2 compiler request, 60,211 bytes, SHA-256:
+  45d6326e6a4d81c1ac58b882986d9d431875c121161a7a9b17a81ee0b4ccacb7
 - os/examples/child1.gaut, 792 bytes, SHA-256:
   beae4a0687c8ab9bee67409e7f90d9784ab1b98a774ced2085a318c245e261fa
 - os/examples/child2.gaut, 793 bytes, SHA-256:

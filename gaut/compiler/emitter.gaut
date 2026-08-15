@@ -431,4 +431,3 @@ fn emit_entry(state, platform) {
 
   return entry_call;
 }
-

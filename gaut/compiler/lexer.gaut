@@ -151,4 +151,3 @@ fn next_token(state) {
 
   return 0;
 }
-
