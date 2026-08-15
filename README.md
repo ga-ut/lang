@@ -3,7 +3,7 @@
 Gaut is a small readable systems language that directly emits AArch64 machine
 code, followed by an operating system written in the same language.
 
-The maintained compiler is the six readable source units in
+The maintained compiler is the seven readable source units in
 [`gaut/compiler/`](gaut/compiler/). It has
 one runtime value type (`word`), named functions and values, structured
 conditions and loops, fixed memory, explicit platform effects, and no hidden
@@ -30,6 +30,12 @@ adapter. Platform, ABI, board, and container names are not Gaut keywords.
 Passing a directory frames every `.gaut` file below it as one named source
 unit. A relative path such as `math/vector.gaut` becomes module `math.vector`;
 source still contains no `module` or `import` declaration.
+
+Gaut OS also accepts external `store` and `run` commands. They keep a named
+source in fixed supervisor memory, replace the same name deterministically,
+and compile it only when requested. These commands are host protocol data and
+do not add Gaut keywords. `tests/source-storage.sh` demonstrates the complete
+store, replace, rejection recovery, and run session.
 
 ## Run inside Gaut OS
 
@@ -98,6 +104,6 @@ second parser.
 The launcher still supplies a deliberately bounded session, but the resident
 compiler can now wait for delayed serial input through `WFI` without consuming
 a host CPU core. A rejected Gaut source emits the canonical compiler diagnostic
-and returns to `ready` without rebooting. The immediate next boundary is a
-minimal named in-memory source workspace, so upload and execution no longer
-have to be the same command. See `docs/ROADMAP.md`.
+and returns to `ready` without rebooting. Named in-memory sources survive that
+rejection but not a machine restart. See `docs/ROADMAP.md` for the next
+boundary.

@@ -53,6 +53,8 @@ bootstrap layers live in Git history, not in the current tree.
 - For resident compiler recovery, send an invalid Gaut source followed by a
   valid source in one boot and verify diagnostic, ready, execution, and clean
   shutdown order exactly.
+- For named source storage, verify store, run, same-name replacement, compile
+  rejection, retained-source execution, and clean shutdown in one boot.
 - A QEMU verification is complete only when the guest requests shutdown, the
   emulator exits with status zero, and no Gaut QEMU process remains.
 - Keep source, the final compiler, concise verification records, and checksum

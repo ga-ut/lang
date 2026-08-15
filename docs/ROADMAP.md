@@ -26,50 +26,37 @@
 - Module v0 is byte-identical across three self-hosted compiler generations
   and runs as a returnable Gaut OS child
 - the maintained compiler is split into compiler, emitter, lexer, parser,
-  request, and symbol units without changing Gaut syntax
+  request, storage, and symbol units without changing Gaut syntax
 - Gaut OS rebuilds those units through a byte-identical fixed point in QEMU
   without a Linux guest
+- external command IDs store and run one named source without adding keywords
+- eight fixed source slots support deterministic replacement and survive a
+  compile rejection within the same boot
 
-## Next: named in-memory source storage
+## Next: persistent source storage
 
-The resident compiler currently receives source and immediately runs it. The
-next gate separates source storage from execution without adding persistence.
+The resident named table currently disappears at machine shutdown. The next
+gate preserves explicitly stored sources across boots without changing Gaut
+syntax or adding hidden allocation.
 
 Required implementation:
 
-1. add external command IDs for storing and running source; these are protocol
-   fields, not Gaut syntax or reserved names;
-2. keep a fixed-capacity table of source name, exact byte length, and source
-   bytes in supervisor-owned memory;
-3. replace an existing name deterministically without an allocator;
-4. compile and run only when a named source is requested;
-5. retain the stored source after a compile rejection; and
-6. retain the low-power ready wait and explicit zero-record shutdown path.
-
-Acceptance transcript:
-
-```text
-gaut-os: ready
-gaut-os: stored work
-gaut-os: ready
-gaut-os: child 1
-gaut-os: ready
-```
-
-The same source name must also be replaceable and runnable again in the same
-boot. Names and commands remain host protocol data; they do not enter the Gaut
-grammar.
+1. define one explicit block-storage adapter outside Gaut syntax;
+2. retain exact name, length, source bytes, and replacement behavior;
+3. recover a complete stored table after a clean reboot;
+4. reject torn or malformed stored data without losing the last valid table;
+5. keep compilation and execution separate from persistence; and
+6. retain the networkless, low-power, and clean-shutdown contracts.
 
 ## Later
 
-1. explicit persistent workspace;
-2. malformed-frame recovery;
-3. EL0 process isolation, exception recovery, and MMU-backed physical pages;
-4. timer and scheduler;
-5. rendering and input;
-6. networking and browser runtime;
-7. CPU-oriented numerical and AI runtime.
+1. malformed-frame recovery;
+2. EL0 process isolation, exception recovery, and MMU-backed physical pages;
+3. timer and scheduler;
+4. rendering and input;
+5. networking and browser runtime;
+6. CPU-oriented numerical and AI runtime.
 
 Each gate adds only behavior required by its acceptance program. An editor,
 file system, optimizer, package manager, graphics, networking, browser work,
-and AI work do not enter the in-memory-workspace gate.
+and AI work do not enter the persistent-storage gate.

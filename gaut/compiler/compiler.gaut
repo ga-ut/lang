@@ -22,8 +22,11 @@ fn main() {
   memory source 131072;
   memory output 262144;
   memory state 65536;
+  memory storage_memory 262144;
   let input_size = 0;
   let received = 49;
+  let command = 0;
+  let named_run = 0;
 
   store64(7955925652160733543, add(state, 65000));
   store64(8030798176169255286, add(state, 65008));
@@ -36,18 +39,33 @@ fn main() {
       host.exit(0);
     }
 
-    if eq(load64(source), 3) {
-      store64(4211832317539606887, add(state, 64944));
-      store64(7311146929262785056, add(state, 64952));
-      store8(100, add(state, 64960));
-      store8(32, add(state, 64961));
-      store8(received, add(state, 64962));
-      store8(10, add(state, 64963));
-      drop host.write(1, add(state, 64944), 20);
-      received = add(received, 1);
+    if lt(input_size, 24) {
+      drop fail(state);
     }
+    command = load64(add(source, 16));
+    named_run = 0;
 
-    drop request.compile_request(source, input_size, output, state);
+    if eq(command, 2) {
+      drop storage.store_request(source, input_size, storage_memory, state);
+    } else {
+      if eq(command, 3) {
+        input_size = storage.restore_request(source, input_size, storage_memory, state);
+        named_run = 1;
+      }
+
+      if bitand(eq(load64(source), 3), eq(named_run, 0)) {
+        store64(4211832317539606887, add(state, 64944));
+        store64(7311146929262785056, add(state, 64952));
+        store8(100, add(state, 64960));
+        store8(32, add(state, 64961));
+        store8(received, add(state, 64962));
+        store8(10, add(state, 64963));
+        drop host.write(1, add(state, 64944), 20);
+        received = add(received, 1);
+      }
+
+      drop request.compile_request(source, input_size, output, state);
+    }
     platform.ready();
     input_size = host.read(0, source, 131072);
   }

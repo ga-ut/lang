@@ -263,18 +263,18 @@ container names, and board names are never keywords or canonical source names.
 Identical source bytes may be submitted with different external build profiles
 without changing the source or parser.
 
-The compiler consumes one binary build request. The first twenty-four bytes
-are:
+The compiler consumes one binary request. The first twenty-four bytes are:
 
 ```text
 offset  size  meaning
 0       8     little-endian build profile ID
 8       8     little-endian bytes following this sixteen-byte serial header
-16      8     little-endian source-unit count
+16      8     little-endian command ID
 ```
 
-They are followed by that many unpadded source-unit records. The payload length
-includes the eight-byte source-unit count and every record:
+Command `1` builds immediately. It is followed by an eight-byte source-unit
+count and that many unpadded source-unit records. The payload length includes
+the command, source-unit count, and every record:
 
 ```text
 offset  size  meaning
@@ -284,13 +284,24 @@ offset  size  meaning
 16+N    M     exact Gaut source bytes
 ```
 
+Command `2` is valid only for profile `3` and stores exactly one source-unit
+record without compiling it. Command `3` is valid only for profile `3` and is
+followed by an eight-byte module-name length and the exact name bytes. It finds
+that stored source, reconstructs one command `1` request, and runs it. Command
+IDs, names, and storage are supervisor protocol data, not Gaut syntax.
+
 Profile `1` selects the current AArch64 Linux static ELF adapter. Profile `2`
 selects the current AArch64 QEMU virt boot-image adapter. Profile `3` selects
-the returnable Gaut OS child-image adapter. Profile `3` is an execution request
-for the resident compiler, not a standalone boot image. These IDs belong to
-the compiler request protocol, not the language inventory. A request contains
-between one and 64 units, occupies at most 131072 bytes in total, and contains
-no trailing bytes.
+the returnable Gaut OS child-image adapter when a stored or immediate source is
+run; it is not a standalone boot image. These IDs belong to the compiler
+request protocol, not the language inventory. A command `1` request contains
+between one and 64 units. Every request occupies at most 131072 bytes and
+contains no trailing bytes.
+
+The current resident table has eight fixed 32768-byte slots. Each slot holds
+an occupied word, exact name and source lengths, up to 64 name bytes, and up to
+32680 source bytes. Storing an existing name replaces that slot. No allocator
+or implicit growth exists, and the table disappears at machine shutdown.
 
 The resident Gaut OS input channel may place multiple requests consecutively.
 Serial requests have no padding because `host.read` consumes the exact declared

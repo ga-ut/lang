@@ -1,0 +1,165 @@
+fn copy_bytes(source, destination, length) {
+  let index = 0;
+
+  while lt(index, length) {
+    store8(load8(add(source, index)), add(destination, index));
+    index = add(index, 1);
+  }
+
+  return 0;
+}
+
+fn slot_at(storage_memory, index) {
+  return add(storage_memory, mul(index, 32768));
+}
+
+fn find(storage_memory, name, name_length) {
+  let index = 0;
+  let slot = 0;
+  let result = 0;
+
+  while bitand(eq(result, 0), lt(index, 8)) {
+    slot = slot_at(storage_memory, index);
+    if bitand(load64(slot), eq(load64(add(slot, 8)), name_length)) {
+      if symbols.span_equal(add(slot, 24), name_length, name, name_length) {
+        result = slot;
+      }
+    }
+    index = add(index, 1);
+  }
+
+  return result;
+}
+
+fn empty(storage_memory) {
+  let index = 0;
+  let slot = 0;
+  let result = 0;
+
+  while bitand(eq(result, 0), lt(index, 8)) {
+    slot = slot_at(storage_memory, index);
+    if eq(load64(slot), 0) {
+      result = slot;
+    }
+    index = add(index, 1);
+  }
+
+  return result;
+}
+
+fn store_request(source, input_size, storage_memory, state) {
+  let name_length = 0;
+  let source_length = 0;
+  let name = 0;
+  let source_bytes = 0;
+  let slot = 0;
+
+  if lt(input_size, 50) {
+    drop compiler.fail(state);
+  }
+  if eq(eq(input_size, add(load64(add(source, 8)), 16)), 0) {
+    drop compiler.fail(state);
+  }
+  if eq(eq(load64(source), 3), 0) {
+    drop compiler.fail(state);
+  }
+  if eq(eq(load64(add(source, 16)), 2), 0) {
+    drop compiler.fail(state);
+  }
+  if eq(eq(load64(add(source, 24)), 1), 0) {
+    drop compiler.fail(state);
+  }
+
+  name_length = request.request_u64(add(source, 32));
+  source_length = request.request_u64(add(source, 40));
+  if bitand(lt(0, name_length), lt(name_length, 65)) {
+  } else {
+    drop compiler.fail(state);
+  }
+  if bitand(lt(0, source_length), lt(source_length, 32681)) {
+  } else {
+    drop compiler.fail(state);
+  }
+  if eq(eq(input_size, add(add(48, name_length), source_length)), 0) {
+    drop compiler.fail(state);
+  }
+
+  name = add(source, 48);
+  source_bytes = add(name, name_length);
+  if eq(symbols.module_name_valid(name, name_length), 0) {
+    drop compiler.fail(state);
+  }
+
+  slot = find(storage_memory, name, name_length);
+  if eq(slot, 0) {
+    slot = empty(storage_memory);
+  }
+  if eq(slot, 0) {
+    drop compiler.fail(state);
+  }
+
+  store64(1, slot);
+  store64(name_length, add(slot, 8));
+  store64(source_length, add(slot, 16));
+  drop copy_bytes(name, add(slot, 24), name_length);
+  drop copy_bytes(source_bytes, add(slot, 88), source_length);
+
+  store64(4211832317539606887, add(state, 64912));
+  store64(2334102049055339296, add(state, 64920));
+  store8(10, add(state, 64928));
+  drop host.write(1, add(state, 64912), 16);
+  drop host.write(1, name, name_length);
+  drop host.write(1, add(state, 64928), 1);
+  return 0;
+}
+
+fn restore_request(source, input_size, storage_memory, state) {
+  let name_length = 0;
+  let name = 0;
+  let slot = 0;
+  let source_length = 0;
+  let restored_size = 0;
+
+  if lt(input_size, 33) {
+    drop compiler.fail(state);
+  }
+  if eq(eq(input_size, add(load64(add(source, 8)), 16)), 0) {
+    drop compiler.fail(state);
+  }
+  if eq(eq(load64(source), 3), 0) {
+    drop compiler.fail(state);
+  }
+  if eq(eq(load64(add(source, 16)), 3), 0) {
+    drop compiler.fail(state);
+  }
+
+  name_length = request.request_u64(add(source, 24));
+  if bitand(lt(0, name_length), lt(name_length, 65)) {
+  } else {
+    drop compiler.fail(state);
+  }
+  if eq(eq(input_size, add(32, name_length)), 0) {
+    drop compiler.fail(state);
+  }
+
+  name = add(source, 32);
+  if eq(symbols.module_name_valid(name, name_length), 0) {
+    drop compiler.fail(state);
+  }
+  slot = find(storage_memory, name, name_length);
+  if eq(slot, 0) {
+    drop compiler.fail(state);
+  }
+
+  source_length = load64(add(slot, 16));
+  restored_size = add(add(48, name_length), source_length);
+  store64(3, source);
+  store64(sub(restored_size, 16), add(source, 8));
+  store64(1, add(source, 16));
+  store64(1, add(source, 24));
+  store64(name_length, add(source, 32));
+  store64(source_length, add(source, 40));
+  drop copy_bytes(add(slot, 24), add(source, 48), name_length);
+  drop copy_bytes(add(slot, 88), add(add(source, 48), name_length), source_length);
+  return restored_size;
+}

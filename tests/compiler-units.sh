@@ -9,7 +9,7 @@ if [ ! -d "$SOURCE_ROOT" ]; then
     exit 1
 fi
 
-for UNIT in compiler emitter lexer parser request symbols; do
+for UNIT in compiler emitter lexer parser request storage symbols; do
     if [ ! -f "$SOURCE_ROOT/$UNIT.gaut" ]; then
         echo "Missing compiler source unit: $UNIT.gaut" >&2
         exit 1
@@ -25,9 +25,9 @@ trap cleanup EXIT INT TERM
 REQUEST="$TEST_TEMP/compiler.request"
 "$ROOT/gaut/request.sh" gaut-os "$SOURCE_ROOT" "$REQUEST"
 
-UNIT_COUNT=$(/usr/bin/od -An -tu8 -j16 -N8 "$REQUEST" | /usr/bin/tr -d ' ')
-if [ "$UNIT_COUNT" -ne 6 ]; then
-    echo "Expected 6 compiler source units, got $UNIT_COUNT." >&2
+UNIT_COUNT=$(/usr/bin/od -An -tu8 -j24 -N8 "$REQUEST" | /usr/bin/tr -d ' ')
+if [ "$UNIT_COUNT" -ne 7 ]; then
+    echo "Expected 7 compiler source units, got $UNIT_COUNT." >&2
     exit 1
 fi
 

@@ -18,10 +18,11 @@ QEMU is a replaceable hardware model, not part of Gaut semantics.
 `dist/gaut-os.img` is the readable Gaut compiler built with external profile
 `2`. `os/run.sh` sends consecutive profile `3` child requests through PL011
 serial input and terminates the bounded session with sixteen zero bytes. Each
-request contains its profile ID, remaining payload length, source-unit count,
-and unpadded records of module-name length, source length, name bytes, and
-source bytes. The retained sixteen-byte serial header therefore still tells
-the low-power receiver exactly how many additional bytes to read.
+request contains its profile ID, remaining payload length, command ID, and
+command payload. An immediate build payload contains the source-unit count and
+unpadded records of module-name length, source length, name bytes, and source
+bytes. The retained sixteen-byte serial header therefore still tells the
+low-power receiver exactly how many additional bytes to read.
 
 The resident compiler:
 
@@ -76,7 +77,21 @@ after completion fails this contract.
 
 The two regions prevent ordinary Gaut locals and fixed memory in a child from
 overwriting compiler state. There is still no MMU, fault containment,
-persistent workspace, or malicious-child isolation.
+persistent source storage, or malicious-child isolation.
+
+## Named source storage contract
+
+The supervisor owns eight fixed 32768-byte source slots inside its existing
+1 MiB runtime arena. A slot stores one name of at most 64 bytes and one source
+of at most 32680 bytes. `store` fills the first empty slot or replaces the slot
+with the same name; `run` reconstructs one ordinary profile `3` build request
+and uses the same parser and emitter as immediate execution.
+
+The table is not cleared when compile rejection returns to the resident entry,
+so another stored source remains runnable after an invalid stored source is
+rejected. The table is volatile and disappears when QEMU shuts down. There is
+no allocator, disk format, automatic dependency search, or second compiler
+path.
 
 ## Low-power wait contract
 
@@ -91,15 +106,13 @@ and shut down through the existing zero terminator.
 
 ## Current limitation and next acceptance contract
 
-Each accepted serial request still contains source and immediately runs it.
-There is no OS-owned named source buffer or persistent workspace. A malformed
-length that cannot be safely framed and a child hardware fault also do not yet
-recover.
+Named sources do not survive shutdown, and one stored name currently contains
+one source unit. A malformed length that cannot be safely framed and a child
+hardware fault also do not yet recover.
 
-The next implementation adds a fixed-capacity named in-memory source workspace
-while preserving the low-power wait, compile rejection, and memory contracts.
-No editor, file system, scheduler, MMU, or optimizer is added before storing,
-replacing, and running a named source are proven in one boot.
+The next implementation adds explicit persistent source storage while
+preserving the low-power wait, compile rejection, and memory contracts. No
+editor, scheduler, MMU, or optimizer enters that gate.
 
 ## Later kernel boundary
 

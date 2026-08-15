@@ -30,7 +30,7 @@ fn compile_request(source, input_size, output, state) {
   let clear_index = 0;
 
 
-  if lt(input_size, 24) {
+  if lt(input_size, 32) {
     drop compiler.fail(state);
   }
   if lt(131072, input_size) {
@@ -41,7 +41,10 @@ fn compile_request(source, input_size, output, state) {
   if eq(eq(input_size, add(payload_size, 16)), 0) {
     drop compiler.fail(state);
   }
-  unit_count = load64(add(source, 16));
+  if eq(eq(load64(add(source, 16)), 1), 0) {
+    drop compiler.fail(state);
+  }
+  unit_count = load64(add(source, 24));
   if eq(unit_count, 0) {
     drop compiler.fail(state);
   }
@@ -93,7 +96,7 @@ fn compile_request(source, input_size, output, state) {
   drop symbols.init_canonical(state);
   entry_call = emitter.emit_entry(state, compiler.state_get(state, 160));
 
-  request_cursor = add(source, 24);
+  request_cursor = add(source, 32);
   request_end = add(source, input_size);
   while lt(unit_index, unit_count) {
     if lt(request_end, request_cursor) {
