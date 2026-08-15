@@ -1,34 +1,34 @@
 Gaut current verification
-Date: 2026-08-14
+Date: 2026-08-15
 
 Retained source and artifacts:
-- gaut/compiler.gaut, 1,959 lines, 56,309 bytes
-- compiler source SHA-256:
-  ee5880e7073d3bdc8b626b3cd84af55194a14cd7a96bed90d2bc95cf5e19060c
+- gaut/compiler/, 6 source units, 1,959 lines, 60,056 bytes
+- profile 2 compiler request, 60,216 bytes, SHA-256:
+  8838b5c26d80af6feb22dbee97cfabd372b61a0fed7e652c0d3dabe1a3f0e350
 - os/examples/child1.gaut, 792 bytes, SHA-256:
   beae4a0687c8ab9bee67409e7f90d9784ab1b98a774ced2085a318c245e261fa
 - os/examples/child2.gaut, 793 bytes, SHA-256:
   7ce5d3e709a92b413720d0070f9b00380406c7da060fa7d1aaefa6ffea0a6193
 - dist/gaut.elf, 77,824-byte static AArch64 Linux bootstrap compiler
 - hosted compiler SHA-256:
-  3df15590562af6f1d73c83f91986498f49831dcad303e7b86b2aa7bb4841dbc7
+  6f67a428130ae2b4b4f40e4ecbeba2015b4b926f7aa94c98237be68f42c8a37d
 - dist/gaut-os.img, 77,824-byte raw AArch64 resident compiler
 - freestanding compiler SHA-256:
-  a6b91543da48c4d0e54628cedc86635f18d72dae702f944815dcdb3646520265
+  31e16b1c847cb0dc553f2df6ddd2f047ba25f9560be7304d655566e7c305e99a
 
 Self-host proof:
-1. a one-use bridge widened only the compiler's local-slot boundary and moved
-   its already reserved return and expression stacks; it was not retained
-2. that bridge built the readable Module v0 compiler
-3. that compiler rebuilt the same source twice
-4. the first, second, and third hosted generations were byte-identical at
+1. the retained Module v0 Gaut OS compiler built the six compiler source units
+   as a new profile 2 image through its PL011 build channel
+2. that first split compiler built the same six units again, and the second
+   split compiler built them a third time
+3. all three split generations were byte-identical at 77,824 bytes with
+   SHA-256:
+   31e16b1c847cb0dc553f2df6ddd2f047ba25f9560be7304d655566e7c305e99a
+4. the byte-identical compiler emitted the retained profile 1 static ELF at
    77,824 bytes with SHA-256:
-   3df15590562af6f1d73c83f91986498f49831dcad303e7b86b2aa7bb4841dbc7
-5. the byte-identical second hosted generation emitted the retained profile 2
-   serial Gaut OS image
-6. loop, fixed-memory, and branch regressions returned 55, 42, and 42
-7. unknown call, wrong arity, and nested early return each returned status 2,
-   emitted zero artifact bytes, and wrote the 21-byte Gaut diagnostic
+   6f67a428130ae2b4b4f40e4ecbeba2015b4b926f7aa94c98237be68f42c8a37d
+5. this fixed-point path used QEMU and Gaut OS without a Linux guest or foreign
+   compiler
 
 Module v0 proof:
 1. `app.gaut` called `math.vector.answer()` from
@@ -118,5 +118,5 @@ Boundary:
   host.read path can wait for delayed input without consuming a host CPU core
 - complete invalid Gaut source requests recover to ready, but malformed lengths
   and child hardware faults do not yet recover
-- the next verified gate is splitting the compiler across Module v0 units,
-  followed by named in-memory source storage in docs/ROADMAP.md
+- the next verified gate is named in-memory source storage in
+  docs/ROADMAP.md

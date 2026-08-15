@@ -3,7 +3,8 @@
 Gaut is a small readable systems language that directly emits AArch64 machine
 code, followed by an operating system written in the same language.
 
-The maintained compiler is [`gaut/compiler.gaut`](gaut/compiler.gaut). It has
+The maintained compiler is the six readable source units in
+[`gaut/compiler/`](gaut/compiler/). It has
 one runtime value type (`word`), named functions and values, structured
 conditions and loops, fixed memory, explicit platform effects, and no hidden
 allocation or foreign runtime.
@@ -64,7 +65,7 @@ contract.
 
 ## Current files
 
-- `gaut/compiler.gaut`: readable self-hosted compiler
+- `gaut/compiler/`: readable self-hosted compiler source units
 - `gaut/request.sh`: external build-profile request framer
 - `gaut/examples/`: language regression programs
 - `dist/gaut.elf`: retained hosted AArch64 compiler for fixed-point rebuilds
@@ -75,17 +76,18 @@ contract.
 - `docs/OS.md`: current machine and runtime boundary
 - `docs/ROADMAP.md`: next implementation gates
 - `os/run.sh`: disposable QEMU launcher
+- `os/build.sh`: QEMU and Gaut OS artifact builder
 - `os/VERIFIED`: current fixed-point and machine verification
-- `lab/`: on-demand offline ARM64 rebuild environment for compiler changes
 
 Completed bootstrap implementations, transitional compilers, and phase plans
 remain available through Git history but are not part of the current tree.
 
 ## Development rule
 
-A compiler change is complete only when the retained native compiler builds
-the readable compiler twice to byte-identical generations in the offline ARM64
-lab. A freestanding change additionally requires a clean networkless QEMU boot.
+A compiler change is complete only when the retained Gaut OS compiler builds
+the readable compiler through two following byte-identical generations in
+QEMU. This fixed-point path contains no Linux guest. A freestanding change
+additionally requires a clean networkless QEMU boot.
 Source implementation, fixed point, boot proof, commit, and remote push remain
 separate gates.
 

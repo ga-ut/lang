@@ -1,0 +1,56 @@
+# Gaut 0.5 compiler, written in readable Gaut.
+#
+# This compiler validates Gaut source and directly emits either a static
+# AArch64 Linux ELF or a freestanding raw image.
+
+fn state_get(state, offset) {
+  return load64(add(state, offset));
+}
+
+fn state_set(state, offset, value) {
+  store64(value, add(state, offset));
+  return 0;
+}
+
+fn fail(state) {
+  drop host.write(2, add(state, 65000), 21);
+  host.exit(2);
+  return 0;
+}
+
+fn main() {
+  memory source 131072;
+  memory output 262144;
+  memory state 65536;
+  let input_size = 0;
+  let received = 49;
+
+  store64(7955925652160733543, add(state, 65000));
+  store64(8030798176169255286, add(state, 65008));
+  store64(44650689141, add(state, 65016));
+
+  platform.ready();
+  input_size = host.read(0, source, 131072);
+  while input_size {
+    if bitand(eq(input_size, 16), bitand(eq(load64(source), 0), eq(load64(add(source, 8)), 0))) {
+      host.exit(0);
+    }
+
+    if eq(load64(source), 3) {
+      store64(4211832317539606887, add(state, 64944));
+      store64(7311146929262785056, add(state, 64952));
+      store8(100, add(state, 64960));
+      store8(32, add(state, 64961));
+      store8(received, add(state, 64962));
+      store8(10, add(state, 64963));
+      drop host.write(1, add(state, 64944), 20);
+      received = add(received, 1);
+    }
+
+    drop request.compile_request(source, input_size, output, state);
+    platform.ready();
+    input_size = host.read(0, source, 131072);
+  }
+
+  return 0;
+}

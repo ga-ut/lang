@@ -387,8 +387,8 @@ A compiler conforms only after all of these pass:
 
 ## 14. Current implementation boundary
 
-`gaut/compiler.gaut` implements this grammar and directly emits a static
-AArch64 Linux ELF or an explicit QEMU `virt` raw image selected by the external
-build profile. The resident compiler accepts consecutive returnable children
-with non-overlapping compiler and child arenas. Draft 0.5 adds externally named
-source units without adding module or import syntax.
+The source units in `gaut/compiler/` implement this grammar and directly emit
+a static AArch64 Linux ELF or an explicit QEMU `virt` raw image selected by the
+external build profile. The resident compiler accepts consecutive returnable
+children with non-overlapping compiler and child arenas. Draft 0.5 adds
+externally named source units without adding module or import syntax.

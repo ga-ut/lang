@@ -1,0 +1,154 @@
+fn is_name_start(byte) {
+  let result = 0;
+
+  if bitand(lt(64, byte), lt(byte, 91)) {
+    result = 1;
+  }
+  if bitand(lt(96, byte), lt(byte, 123)) {
+    result = 1;
+  }
+  if eq(byte, 95) {
+    result = 1;
+  }
+
+  return result;
+}
+
+fn is_name_continue(byte) {
+  let result = is_name_start(byte);
+
+  if bitand(lt(47, byte), lt(byte, 58)) {
+    result = 1;
+  }
+  if eq(byte, 46) {
+    result = 1;
+  }
+
+  return result;
+}
+
+fn next_token(state) {
+  let skipping = 1;
+  let cursor = 0;
+  let end = 0;
+  let byte = 0;
+  let scanning = 0;
+  let digit = 0;
+  let value = 0;
+
+  while skipping {
+    cursor = compiler.state_get(state, 0);
+    end = compiler.state_get(state, 8);
+
+    if eq(lt(cursor, end), 0) {
+      drop compiler.state_set(state, 32, 0);
+      skipping = 0;
+    } else {
+      byte = load8(cursor);
+
+      if bitor(bitor(eq(byte, 32), eq(byte, 9)), bitor(eq(byte, 10), eq(byte, 13))) {
+        drop compiler.state_set(state, 0, add(cursor, 1));
+      } else {
+        if eq(byte, 35) {
+          scanning = 1;
+          while bitand(scanning, lt(compiler.state_get(state, 0), end)) {
+            cursor = compiler.state_get(state, 0);
+            if eq(load8(cursor), 10) {
+              drop compiler.state_set(state, 0, add(cursor, 1));
+              scanning = 0;
+            } else {
+              drop compiler.state_set(state, 0, add(cursor, 1));
+            }
+          }
+        } else {
+          skipping = 0;
+        }
+      }
+    }
+  }
+
+  cursor = compiler.state_get(state, 0);
+  end = compiler.state_get(state, 8);
+
+  if lt(cursor, end) {
+    byte = load8(cursor);
+    drop compiler.state_set(state, 40, cursor);
+
+    if is_name_start(byte) {
+      cursor = add(cursor, 1);
+      scanning = 1;
+
+      while bitand(scanning, lt(cursor, end)) {
+        if is_name_continue(load8(cursor)) {
+          cursor = add(cursor, 1);
+        } else {
+          scanning = 0;
+        }
+      }
+
+      drop compiler.state_set(state, 0, cursor);
+      drop compiler.state_set(state, 48, sub(cursor, compiler.state_get(state, 40)));
+      drop compiler.state_set(state, 32, 1);
+    } else {
+      if bitand(lt(47, byte), lt(byte, 58)) {
+        value = 0;
+        scanning = 1;
+
+        while bitand(scanning, lt(cursor, end)) {
+          byte = load8(cursor);
+          if bitand(lt(47, byte), lt(byte, 58)) {
+            digit = sub(byte, 48);
+            if bitor(lt(1844674407370955161, value), bitand(eq(value, 1844674407370955161), lt(5, digit))) {
+              drop compiler.fail(state);
+            }
+            value = add(mul(value, 10), digit);
+            cursor = add(cursor, 1);
+          } else {
+            scanning = 0;
+          }
+        }
+
+        drop compiler.state_set(state, 0, cursor);
+        drop compiler.state_set(state, 48, sub(cursor, compiler.state_get(state, 40)));
+        drop compiler.state_set(state, 56, value);
+        drop compiler.state_set(state, 32, 2);
+      } else {
+        drop compiler.state_set(state, 0, add(cursor, 1));
+        drop compiler.state_set(state, 48, 0);
+
+        if eq(byte, 40) {
+          drop compiler.state_set(state, 32, 3);
+        } else {
+          if eq(byte, 41) {
+            drop compiler.state_set(state, 32, 4);
+          } else {
+            if eq(byte, 123) {
+              drop compiler.state_set(state, 32, 5);
+            } else {
+              if eq(byte, 125) {
+                drop compiler.state_set(state, 32, 6);
+              } else {
+                if eq(byte, 44) {
+                  drop compiler.state_set(state, 32, 7);
+                } else {
+                  if eq(byte, 61) {
+                    drop compiler.state_set(state, 32, 8);
+                  } else {
+                    if eq(byte, 59) {
+                      drop compiler.state_set(state, 32, 9);
+                    } else {
+                      drop compiler.fail(state);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return 0;
+}
+

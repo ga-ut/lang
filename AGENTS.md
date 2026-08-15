@@ -18,9 +18,9 @@ bootstrap layers live in Git history, not in the current tree.
 
 - The active compiler path must not require Rust, C, LLVM, an assembler, a
   linker, libc, or a dynamic loader.
-- A language change is complete only after the retained native compiler builds
-  the compiler source twice to byte-identical generations in the offline
-  AArch64 VM.
+- A language change is complete only after the retained Gaut OS compiler builds
+  the compiler source through two following byte-identical generations in the
+  networkless QEMU AArch64 machine.
 - Keep platform effects separate from canonical language primitives.
 - Select architecture, ABI, container, board, and effect adapter through the
   external build request. Adding a platform must not change Gaut grammar or

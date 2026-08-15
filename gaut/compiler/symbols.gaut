@@ -1,0 +1,379 @@
+fn span_equal(left, left_length, right, right_length) {
+  let index = 0;
+  let equal = eq(left_length, right_length);
+
+  while bitand(equal, lt(index, left_length)) {
+    if eq(eq(load8(add(left, index)), load8(add(right, index))), 0) {
+      equal = 0;
+    }
+    index = add(index, 1);
+  }
+
+  return equal;
+}
+
+fn span_has_dot(address, length) {
+  let index = 0;
+  let found = 0;
+
+  while bitand(eq(found, 0), lt(index, length)) {
+    if eq(load8(add(address, index)), 46) {
+      found = 1;
+    }
+    index = add(index, 1);
+  }
+
+  return found;
+}
+
+fn module_name_valid(address, length) {
+  let index = 0;
+  let expect_start = 1;
+  let valid = lt(0, length);
+  let byte = 0;
+
+  while bitand(valid, lt(index, length)) {
+    byte = load8(add(address, index));
+    if expect_start {
+      if lexer.is_name_start(byte) {
+        expect_start = 0;
+      } else {
+        valid = 0;
+      }
+    } else {
+      if eq(byte, 46) {
+        expect_start = 1;
+      } else {
+        if eq(lexer.is_name_continue(byte), 0) {
+          valid = 0;
+        }
+      }
+    }
+    index = add(index, 1);
+  }
+
+  if expect_start {
+    valid = 0;
+  }
+  return valid;
+}
+
+fn module_find(state, address, length) {
+  let index = 0;
+  let result = 0;
+  let entry = 0;
+
+  while bitand(lt(index, compiler.state_get(state, 168)), eq(result, 0)) {
+    entry = add(add(state, 49152), mul(index, 16));
+    if span_equal(address, length, load64(entry), load64(add(entry, 8))) {
+      result = add(index, 1);
+    }
+    index = add(index, 1);
+  }
+
+  return result;
+}
+
+fn module_add(state, address, length) {
+  let index = compiler.state_get(state, 168);
+  let entry = 0;
+
+  if eq(module_name_valid(address, length), 0) {
+    drop compiler.fail(state);
+  }
+  if module_find(state, address, length) {
+    drop compiler.fail(state);
+  }
+  if eq(lt(index, 64), 0) {
+    drop compiler.fail(state);
+  }
+
+  entry = add(add(state, 49152), mul(index, 16));
+  store64(address, entry);
+  store64(length, add(entry, 8));
+  drop compiler.state_set(state, 168, add(index, 1));
+  return index;
+}
+
+fn canonical_add(state, first, second, length, info) {
+  let entry = add(add(state, 4096), mul(compiler.state_get(state, 96), 32));
+
+  store64(first, entry);
+  store64(second, add(entry, 8));
+  store64(length, add(entry, 16));
+  store64(info, add(entry, 24));
+  drop compiler.state_set(state, 96, add(compiler.state_get(state, 96), 1));
+  return 0;
+}
+
+fn canonical_find(state, address, length) {
+  let index = 0;
+  let result = 0;
+  let entry = 0;
+
+  while bitand(lt(index, compiler.state_get(state, 96)), eq(result, 0)) {
+    entry = add(add(state, 4096), mul(index, 32));
+    if span_equal(address, length, entry, load64(add(entry, 16))) {
+      result = load64(add(entry, 24));
+    }
+    index = add(index, 1);
+  }
+
+  return result;
+}
+
+fn function_add(state, address, length, arity, code_index, module_index) {
+  let entry = 0;
+  let index = compiler.state_get(state, 64);
+
+  if eq(lt(index, 256), 0) {
+    drop compiler.fail(state);
+  }
+
+  entry = add(add(state, 8192), mul(index, 32));
+  store64(address, entry);
+  store64(add(length, mul(module_index, 4294967296)), add(entry, 8));
+  store64(arity, add(entry, 16));
+  store64(code_index, add(entry, 24));
+  drop compiler.state_set(state, 64, add(index, 1));
+  return index;
+}
+
+fn function_find_in_module(state, address, length, module_index) {
+  let index = 0;
+  let result = 0;
+  let entry = 0;
+  let packed = 0;
+
+  while bitand(lt(index, compiler.state_get(state, 64)), eq(result, 0)) {
+    entry = add(add(state, 8192), mul(index, 32));
+    packed = load64(add(entry, 8));
+    if eq(shr(packed, 32), module_index) {
+      if span_equal(address, length, load64(entry), bitand(packed, 4294967295)) {
+        result = entry;
+      }
+    }
+    index = add(index, 1);
+  }
+
+  return result;
+}
+
+fn function_find(state, address, length) {
+  return function_find_in_module(state, address, length, compiler.state_get(state, 176));
+}
+
+fn function_resolve(state, address, length, current_module) {
+  let index = 0;
+  let split = 0;
+  let module = 0;
+  let result = 0;
+
+  while lt(index, length) {
+    if eq(load8(add(address, index)), 46) {
+      split = add(index, 1);
+    }
+    index = add(index, 1);
+  }
+
+  if split {
+    if lt(split, length) {
+      module = module_find(state, address, sub(split, 1));
+      if module {
+        result = function_find_in_module(
+          state,
+          add(address, split),
+          sub(length, split),
+          sub(module, 1)
+        );
+      }
+    }
+  } else {
+    result = function_find_in_module(state, address, length, current_module);
+  }
+
+  return result;
+}
+
+fn local_add(state, address, length, kind, value) {
+  let entry = 0;
+
+  if eq(lt(compiler.state_get(state, 72), 256), 0) {
+    drop compiler.fail(state);
+  }
+
+  entry = add(add(state, 16384), mul(compiler.state_get(state, 72), 32));
+  store64(address, entry);
+  store64(length, add(entry, 8));
+  store64(kind, add(entry, 16));
+  store64(value, add(entry, 24));
+  drop compiler.state_set(state, 72, add(compiler.state_get(state, 72), 1));
+  return 0;
+}
+
+fn local_find(state, address, length) {
+  let index = 0;
+  let result = 0;
+  let entry = 0;
+
+  while bitand(lt(index, compiler.state_get(state, 72)), eq(result, 0)) {
+    entry = add(add(state, 16384), mul(index, 32));
+    if span_equal(address, length, load64(entry), load64(add(entry, 8))) {
+      result = entry;
+    }
+    index = add(index, 1);
+  }
+
+  return result;
+}
+
+fn init_canonical(state) {
+  drop compiler.state_set(state, 96, 0);
+
+  drop canonical_add(state, 28262, 0, 2, 16777217);
+  drop canonical_add(state, 7628140, 0, 3, 16777218);
+  drop canonical_add(state, 133532402673005, 0, 6, 16777219);
+  drop canonical_add(state, 1886351972, 0, 4, 16777220);
+  drop canonical_add(state, 26217, 0, 2, 16777221);
+  drop canonical_add(state, 1702063205, 0, 4, 16777222);
+  drop canonical_add(state, 435610544247, 0, 5, 16777223);
+  drop canonical_add(state, 121437875889522, 0, 6, 16777224);
+
+  drop canonical_add(state, 6579297, 0, 3, 33620496);
+  drop canonical_add(state, 6452595, 0, 3, 33620497);
+  drop canonical_add(state, 7107949, 0, 3, 33620498);
+  drop canonical_add(state, 110425244199266, 0, 6, 33620499);
+  drop canonical_add(state, 491496171874, 0, 5, 33620500);
+  drop canonical_add(state, 125823087831394, 0, 6, 33620501);
+  drop canonical_add(state, 7104627, 0, 3, 33620502);
+  drop canonical_add(state, 7497843, 0, 3, 33620503);
+  drop canonical_add(state, 29029, 0, 2, 33620504);
+  drop canonical_add(state, 29804, 0, 2, 33620505);
+  drop canonical_add(state, 242202275692, 0, 5, 33620256);
+  drop canonical_add(state, 55196308828012, 0, 6, 33620257);
+  drop canonical_add(state, 57408216985452, 0, 6, 33620258);
+  drop canonical_add(state, 62008362759283, 0, 6, 33554979);
+  drop canonical_add(state, 14130259640153203, 0, 7, 33554980);
+  drop canonical_add(state, 14696508128457843, 0, 7, 33554981);
+  drop canonical_add(state, 7018141138174570344, 100, 9, 33620800);
+  drop canonical_add(state, 7598266562733371240, 25972, 10, 33620801);
+  drop canonical_add(state, 7599935621384335208, 116, 9, 33554754);
+  drop canonical_add(state, 7886488383309048944, 1853190702, 12, 33554755);
+  drop canonical_add(state, 7886488383309048944, 133472037728814, 14, 33554500);
+  return 0;
+}
+
+fn call_edge(state, caller, callee) {
+  let edge = add(add(state, 52736), add(mul(caller, 32), mul(shr(callee, 6), 8)));
+  let mask = shl(1, bitand(callee, 63));
+  let indegree = add(add(state, 60928), mul(callee, 8));
+
+  if eq(bitand(load64(edge), mask), 0) {
+    store64(bitor(load64(edge), mask), edge);
+    store64(add(load64(indegree), 1), indegree);
+  }
+  return 0;
+}
+
+fn call_add(state, address, length, module_index, arguments, branch, callee) {
+  let index = compiler.state_get(state, 192);
+  let entry = 0;
+  let callee_index = 0;
+
+  if callee {
+    callee_index = shr(sub(callee, add(state, 8192)), 5);
+    drop call_edge(state, compiler.state_get(state, 184), callee_index);
+  } else {
+    if eq(lt(index, 64), 0) {
+      drop compiler.fail(state);
+    }
+    entry = add(add(state, 50176), mul(index, 32));
+    store64(address, entry);
+    store64(length, add(entry, 8));
+    store64(
+      add(module_index, add(shl(compiler.state_get(state, 184), 8), shl(arguments, 16))),
+      add(entry, 16)
+    );
+    store64(branch, add(entry, 24));
+    drop compiler.state_set(state, 192, add(index, 1));
+  }
+  return 0;
+}
+
+fn resolve_calls(state) {
+  let index = 0;
+  let entry = 0;
+  let callee = 0;
+  let metadata = 0;
+
+  while lt(index, compiler.state_get(state, 192)) {
+    entry = add(add(state, 50176), mul(index, 32));
+    metadata = load64(add(entry, 16));
+    callee = function_resolve(
+      state,
+      load64(entry),
+      load64(add(entry, 8)),
+      bitand(metadata, 255)
+    );
+    if eq(callee, 0) {
+      drop compiler.fail(state);
+    }
+    if eq(eq(load64(add(callee, 16)), bitand(shr(metadata, 16), 255)), 0) {
+      drop compiler.fail(state);
+    }
+    drop emitter.patch_branch(state, load64(add(entry, 24)), load64(add(callee, 24)), 1);
+    drop call_edge(
+      state,
+      bitand(shr(metadata, 8), 255),
+      shr(sub(callee, add(state, 8192)), 5)
+    );
+    index = add(index, 1);
+  }
+
+  return 0;
+}
+
+fn reject_call_cycles(state) {
+  let function_count = compiler.state_get(state, 64);
+  let callee = 0;
+  let processed = 0;
+  let candidate = 0;
+  let found = 0;
+  let edge = 0;
+  let mask = 0;
+
+  while lt(processed, function_count) {
+    candidate = 0;
+    found = 0;
+    while bitand(eq(found, 0), lt(candidate, function_count)) {
+      if eq(load64(add(add(state, 60928), mul(candidate, 8))), 0) {
+        found = 1;
+      } else {
+        candidate = add(candidate, 1);
+      }
+    }
+    if eq(found, 0) {
+      drop compiler.fail(state);
+    }
+
+    store64(18446744073709551615, add(add(state, 60928), mul(candidate, 8)));
+    processed = add(processed, 1);
+    callee = 0;
+    while lt(callee, function_count) {
+      edge = add(add(state, 52736), add(mul(candidate, 32), mul(shr(callee, 6), 8)));
+      mask = shl(1, bitand(callee, 63));
+      if bitand(load64(edge), mask) {
+        if eq(eq(load64(add(add(state, 60928), mul(callee, 8))), 18446744073709551615), 0) {
+          store64(
+            sub(load64(add(add(state, 60928), mul(callee, 8))), 1),
+            add(add(state, 60928), mul(callee, 8))
+          );
+        }
+      }
+      callee = add(callee, 1);
+    }
+  }
+
+  return 0;
+}
+

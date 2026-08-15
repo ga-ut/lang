@@ -56,6 +56,11 @@ gaut-os: ready
 The guest path contains no Linux, libc, dynamic loader, Python, C, Rust, LLVM,
 assembler, linker, or foreign runtime.
 
+`os/build.sh` sends a profile `1` or `2` compiler request to the resident Gaut
+compiler and retains the artifact framed between its two ready markers. This
+lets Gaut OS rebuild the split compiler through a byte-identical fixed point
+using QEMU without booting a Linux guest.
+
 The QEMU process must exit by itself with status zero after the ready marker.
 Manual interruption, a surviving emulator process, or measurable idle CPU use
 after completion fails this contract.
