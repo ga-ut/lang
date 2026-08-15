@@ -1,0 +1,7 @@
+fn run(address) {
+  return 0;
+}
+
+fn ready() {
+  return 0;
+}

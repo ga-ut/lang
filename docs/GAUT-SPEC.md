@@ -12,8 +12,8 @@ semantic definition, and one lowering function per target.
 - No hidden macro expansion or compiler-known library helpers.
 - No alternative fast path outside the same primitive lowering.
 - Derived behavior is ordinary Gaut source.
-- Each build profile has one adapter implementation for each supported
-  platform effect.
+- A build profile may supply ordinary Gaut source modules that adapt the
+  selected machine boundary.
 
 ## 2. Not built yet
 
@@ -90,7 +90,7 @@ second value type to select.
 - Allocation and conversion never happen implicitly.
 
 The compiler still distinguishes name categories at compile time. A value
-name, fixed-memory name, function name, primitive name, and target-effect name
+name, fixed-memory name, function name, primitive name, and effect name
 cannot be redeclared or used in a position that requires another category.
 This is name and arity validation, not a source-visible type system.
 
@@ -309,9 +309,11 @@ record length. A sixteen-byte zero record terminates a bounded session.
 Termination is supervisor framing rather than Gaut source or a build profile.
 
 A build profile selects the architecture backend, ABI, container, entry
-adapter, and available platform-effect lowering. Adding a new platform changes
-that external profile table and its backend adapter; it must not change the
-Gaut grammar or reserve a source name.
+adapter, available effect lowering, and any profile-supplied source units.
+Profiles `1` and `2` append one ordinary source unit externally named
+`platform`; this does not add syntax, perform an import search, or reserve the
+name for other profiles. Adding a new platform changes that external profile
+table and its adapters; it must not change the Gaut grammar.
 
 Profile selection does not grant an implicit UART operation. Gaut board source
 performs device access through the same ordered `load32` and `store32`
@@ -319,8 +321,8 @@ primitive implementations used for ordinary explicit addresses. Board
 addresses belong in board-specific source and must not leak into portable
 programs.
 
-Target effects retain one spelling and arity across targets. Their adapters
-may differ only where the selected machine boundary requires it:
+Compiler-known effects retain one spelling and arity across targets. Their
+lowerings may differ only where the selected machine boundary requires it:
 
 - `host.read(descriptor, address, count)` reads platform input bytes and
   returns the number copied. On bootstrap Linux it is the direct descriptor
@@ -339,16 +341,18 @@ may differ only where the selected machine boundary requires it:
   resident compiler entry state, and accepts another request. Under profile
   `3`, it invokes PSCI `SYSTEM_OFF` for every status. A wait loop exists only as
   a fallback when the machine does not implement the shutdown contract.
-- `platform.run(address)` transfers control to the entry word at `address`
-  from the profile `2` resident supervisor. It preserves the supervisor
-  continuation and runtime registers, and the profile `3` child returns to
-  that continuation. The bootstrap-host adapter consumes the address and
-  returns so the same compiler source remains self-hostable. Profile `3`
-  source cannot invoke `platform.run`; nested child execution is not part of
-  this contract.
-- `platform.ready()` emits `gaut-os: ready` on the resident command channel.
-  It is a no-op for a non-resident hosted compiler. Profile `3` source cannot
-  invoke it.
+- `call_image(address)` is the irreducible profile `2` control-transfer
+  operation. It preserves the resident supervisor continuation and runtime
+  registers, calls the generated profile `3` entry, and returns that child's
+  `main()` word. Other profiles currently reject this effect.
+
+`platform.run(address)` and `platform.ready()` are not effects. They are
+ordinary functions in the profile-supplied `platform` module. The profile `2`
+module implements `run` by returning `call_image(address)` and implements
+`ready` in Gaut with ordered PL011 `load32` and `store32` operations. The
+profile `1` module supplies hosted no-op implementations. A profile `3`
+request receives no implicit `platform` module, so a program may provide its
+own module with that name and ordinary module resolution applies.
 
 The complete effect IDs and arities are in `EFFECTS.tsv`. These are ordered,
 observable effects, not value primitives. The current freestanding adapter

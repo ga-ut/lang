@@ -9,12 +9,14 @@ fi
 PROFILE_NAME=$1
 SOURCE=$2
 REQUEST=$3
+GAUT_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 COMMAND=1
 INPUT_KIND=source
+ADAPTER_FILE=
 case "$PROFILE_NAME" in
-    linux) PROFILE=1 ;;
-    gaut-os) PROFILE=2 ;;
+    linux) PROFILE=1; ADAPTER_FILE="$GAUT_ROOT/adapters/linux/platform.gaut" ;;
+    gaut-os) PROFILE=2; ADAPTER_FILE="$GAUT_ROOT/adapters/gaut-os/platform.gaut" ;;
     gaut-child) PROFILE=3 ;;
     store) PROFILE=3; COMMAND=2 ;;
     run) PROFILE=3; COMMAND=3; INPUT_KIND=name ;;
@@ -76,6 +78,9 @@ else
     fi
 
     UNIT_COUNT=$(/usr/bin/wc -l < "$FILES" | /usr/bin/tr -d ' ')
+    if [ -n "$ADAPTER_FILE" ]; then
+        UNIT_COUNT=$((UNIT_COUNT + 1))
+    fi
     if [ "$UNIT_COUNT" -eq 0 ] || [ "$UNIT_COUNT" -gt 64 ]; then
         echo "A Gaut request needs between 1 and 64 source units." >&2
         exit 2
@@ -102,6 +107,16 @@ else
         /usr/bin/printf '%s' "$NAME" >> "$BODY"
         /bin/cat "$FILE" >> "$BODY"
     done < "$FILES"
+
+    if [ -n "$ADAPTER_FILE" ]; then
+        NAME=platform
+        NAME_SIZE=8
+        SOURCE_SIZE=$(/usr/bin/wc -c < "$ADAPTER_FILE" | /usr/bin/tr -d ' ')
+        append_u64 "$NAME_SIZE" "$BODY"
+        append_u64 "$SOURCE_SIZE" "$BODY"
+        /usr/bin/printf '%s' "$NAME" >> "$BODY"
+        /bin/cat "$ADAPTER_FILE" >> "$BODY"
+    fi
 fi
 
 : > "$REQUEST"

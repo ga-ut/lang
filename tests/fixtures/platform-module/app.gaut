@@ -1,0 +1,29 @@
+fn main() {
+  memory message 19;
+  let result = platform.run();
+
+  if eq(result, 42) {
+    store8(112, message);
+    store8(108, add(message, 1));
+    store8(97, add(message, 2));
+    store8(116, add(message, 3));
+    store8(102, add(message, 4));
+    store8(111, add(message, 5));
+    store8(114, add(message, 6));
+    store8(109, add(message, 7));
+    store8(32, add(message, 8));
+    store8(109, add(message, 9));
+    store8(111, add(message, 10));
+    store8(100, add(message, 11));
+    store8(117, add(message, 12));
+    store8(108, add(message, 13));
+    store8(101, add(message, 14));
+    store8(32, add(message, 15));
+    store8(111, add(message, 16));
+    store8(107, add(message, 17));
+    store8(10, add(message, 18));
+    drop host.write(1, message, 19);
+  }
+
+  return result;
+}

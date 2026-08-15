@@ -16,6 +16,13 @@ for UNIT in compiler emitter lexer parser request storage symbols; do
     fi
 done
 
+for ADAPTER in linux gaut-os; do
+    if [ ! -f "$ROOT/gaut/adapters/$ADAPTER/platform.gaut" ]; then
+        echo "Missing platform adapter: $ADAPTER" >&2
+        exit 1
+    fi
+done
+
 TEST_TEMP=$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/gaut-compiler-units.XXXXXX")
 cleanup() {
     /bin/rm -rf "$TEST_TEMP"
@@ -26,8 +33,8 @@ REQUEST="$TEST_TEMP/compiler.request"
 "$ROOT/gaut/request.sh" gaut-os "$SOURCE_ROOT" "$REQUEST"
 
 UNIT_COUNT=$(/usr/bin/od -An -tu8 -j24 -N8 "$REQUEST" | /usr/bin/tr -d ' ')
-if [ "$UNIT_COUNT" -ne 7 ]; then
-    echo "Expected 7 compiler source units, got $UNIT_COUNT." >&2
+if [ "$UNIT_COUNT" -ne 8 ]; then
+    echo "Expected 7 compiler units and 1 platform adapter, got $UNIT_COUNT." >&2
     exit 1
 fi
 

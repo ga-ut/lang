@@ -298,7 +298,7 @@ fn emit_qemu_write(state) {
   return 0;
 }
 
-fn emit_qemu_run(state) {
+fn emit_call_image(state) {
   drop emit_word(state, 2432697336);
   drop emit_word(state, 2853372921);
   drop emit_word(state, 2853438458);
@@ -310,40 +310,7 @@ fn emit_qemu_run(state) {
   drop emit_word(state, 2853831668);
   drop emit_word(state, 2853897205);
   drop emit_word(state, 2853962742);
-  return 0;
-}
-
-fn emit_qemu_uart_byte(state, byte) {
-  let poll_at = compiler.state_get(state, 136);
-  let busy_branch = 0;
-
-  drop emit_word(state, 3107985707);
-  drop emit_word(state, 168558955);
-  busy_branch = emit_word(state, 889192459);
-  drop patch_short_branch(state, busy_branch, poll_at, 889192459);
-  drop emit_move(state, 11, byte);
-  drop emit_word(state, 3103785259);
-  return 0;
-}
-
-fn emit_qemu_ready(state) {
-  drop emit_move(state, 9, 150994944);
-  drop emit_move(state, 12, 32);
-  drop emit_qemu_uart_byte(state, 103);
-  drop emit_qemu_uart_byte(state, 97);
-  drop emit_qemu_uart_byte(state, 117);
-  drop emit_qemu_uart_byte(state, 116);
-  drop emit_qemu_uart_byte(state, 45);
-  drop emit_qemu_uart_byte(state, 111);
-  drop emit_qemu_uart_byte(state, 115);
-  drop emit_qemu_uart_byte(state, 58);
-  drop emit_qemu_uart_byte(state, 32);
-  drop emit_qemu_uart_byte(state, 114);
-  drop emit_qemu_uart_byte(state, 101);
-  drop emit_qemu_uart_byte(state, 97);
-  drop emit_qemu_uart_byte(state, 100);
-  drop emit_qemu_uart_byte(state, 121);
-  drop emit_qemu_uart_byte(state, 10);
+  drop emit_push(state, 0);
   return 0;
 }
 

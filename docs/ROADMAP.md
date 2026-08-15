@@ -32,31 +32,42 @@
 - external command IDs store and run one named source without adding keywords
 - eight fixed source slots support deterministic replacement and survive a
   compile rejection within the same boot
+- profiles `1` and `2` supply `platform` as ordinary Gaut source instead of
+  compiler-reserved `platform.run` or `platform.ready` effects
+- the QEMU adapter implements its ready message with Gaut memory operations
+  and wraps the single lower `call_image(address)` control transfer
+- a profile `3` program can define its own `platform.run()` and resolve it as a
+  normal module call
+- `call_image` carries the child's returned `main()` word back to the resident
+  Gaut caller
 
-## Next: persistent source storage
+## Next: Gaut-native test result protocol
 
-The resident named table currently disappears at machine shutdown. The next
-gate preserves explicitly stored sources across boots without changing Gaut
-syntax or adding hidden allocation.
+The compiler, platform adapter, and programs can now all be tested as Gaut
+source, but the resident supervisor still discards the word returned by a
+child. The next gate turns that existing return path into a small deterministic
+test protocol without adding test syntax.
 
 Required implementation:
 
-1. define one explicit block-storage adapter outside Gaut syntax;
-2. retain exact name, length, source bytes, and replacement behavior;
-3. recover a complete stored table after a clean reboot;
-4. reject torn or malformed stored data without losing the last valid table;
-5. keep compilation and execution separate from persistence; and
-6. retain the networkless, low-power, and clean-shutdown contracts.
+1. add an external test command without adding a Gaut keyword;
+2. compile it through the same source-unit and compiler path as a normal run;
+3. observe the word returned through `platform.run` and `call_image`;
+4. define zero as pass and nonzero as failure;
+5. emit one deterministic passed or failed supervisor record; and
+6. retain the networkless, low-power, rejection-recovery, and clean-shutdown
+   contracts.
 
 ## Later
 
-1. malformed-frame recovery;
-2. EL0 process isolation, exception recovery, and MMU-backed physical pages;
-3. timer and scheduler;
-4. rendering and input;
-5. networking and browser runtime;
-6. CPU-oriented numerical and AI runtime.
+1. persistent named-source storage across shutdown;
+2. malformed-frame recovery;
+3. EL0 process isolation, exception recovery, and MMU-backed physical pages;
+4. timer and scheduler;
+5. rendering and input;
+6. networking and browser runtime;
+7. CPU-oriented numerical and AI runtime.
 
 Each gate adds only behavior required by its acceptance program. An editor,
 file system, optimizer, package manager, graphics, networking, browser work,
-and AI work do not enter the persistent-storage gate.
+and AI work do not enter the native-test gate.

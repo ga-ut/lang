@@ -30,7 +30,8 @@ The resident compiler:
 2. receives one complete serial request into its fixed source region;
 3. reports the received request number;
 4. parses Gaut and emits a raw AArch64 child image into its output region;
-5. uses `platform.run(address)` to call the child entry;
+5. calls the Gaut module function `platform.run(address)`, whose QEMU adapter
+   wraps the lower `call_image(address)` operation;
 6. restores its own runtime and repeats from the ready marker; and
 7. on the zero terminator, requests
    machine shutdown through PSCI `SYSTEM_OFF`.
@@ -71,8 +72,9 @@ after completion fails this contract.
 - the profile `2` supervisor owns `0x47f00000` through `0x47ffffff`;
 - a profile `3` child owns `0x47e00000` through `0x47efffff`;
 - the supervisor output image remains in the supervisor region while executing;
-- `platform.run` preserves the supervisor stack, local base, evaluation stack,
-  return stack, and request cursor across the child call; and
+- `call_image` preserves the supervisor stack, local base, evaluation stack,
+  return stack, and request cursor across the child call, and returns the
+  child's `main()` word through the Gaut `platform.run` module function; and
 - one child finishes before the next image replaces the output buffer.
 
 The two regions prevent ordinary Gaut locals and fixed memory in a child from
@@ -110,13 +112,15 @@ Named sources do not survive shutdown, and one stored name currently contains
 one source unit. A malformed length that cannot be safely framed and a child
 hardware fault also do not yet recover.
 
-The next implementation adds explicit persistent source storage while
-preserving the low-power wait, compile rejection, and memory contracts. No
-editor, scheduler, MMU, or optimizer enters that gate.
+The next implementation adds a Gaut-native test result protocol. It observes
+the word already returned through `platform.run`, treats zero as pass and a
+nonzero word as failure, and emits one deterministic supervisor result record.
+It adds no `assert` keyword, second compiler path, editor, scheduler, MMU, or
+optimizer.
 
 ## Later kernel boundary
 
-After the resident loop, Gaut OS adds explicit exception vectors, EL0 task
-isolation, an MMU-backed page allocator, timer interrupts, scheduling,
-persistent storage, rendering, networking, and higher-level services in that
-order as concrete programs demand them.
+After the native test result protocol, Gaut OS adds persistent source storage,
+explicit exception vectors, EL0 task isolation, an MMU-backed page allocator,
+timer interrupts, scheduling, rendering, networking, and higher-level services
+in that order as concrete programs demand them.

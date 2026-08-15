@@ -22,6 +22,8 @@ bootstrap layers live in Git history, not in the current tree.
   the compiler source through two following byte-identical generations in the
   networkless QEMU AArch64 machine.
 - Keep platform effects separate from canonical language primitives.
+- Keep platform policy in profile-supplied Gaut modules. Only irreducible
+  hardware actions may remain in the compiler effect inventory.
 - Select architecture, ABI, container, board, and effect adapter through the
   external build request. Adding a platform must not change Gaut grammar or
   reserve a source name.

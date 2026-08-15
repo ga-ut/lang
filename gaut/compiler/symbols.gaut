@@ -258,8 +258,7 @@ fn init_canonical(state) {
   drop canonical_add(state, 7018141138174570344, 100, 9, 33620800);
   drop canonical_add(state, 7598266562733371240, 25972, 10, 33620801);
   drop canonical_add(state, 7599935621384335208, 116, 9, 33554754);
-  drop canonical_add(state, 7886488383309048944, 1853190702, 12, 33554755);
-  drop canonical_add(state, 7886488383309048944, 133472037728814, 14, 33554500);
+  drop canonical_add(state, 7020383252702323043, 25959, 10, 33620293);
   return 0;
 }
 

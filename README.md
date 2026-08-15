@@ -31,6 +31,12 @@ Passing a directory frames every `.gaut` file below it as one named source
 unit. A relative path such as `math/vector.gaut` becomes module `math.vector`;
 source still contains no `module` or `import` declaration.
 
+Profiles `1` and `2` also supply an ordinary source unit named `platform` from
+`gaut/adapters/`. `platform.run()` and `platform.ready()` are therefore Gaut
+module functions, not compiler-reserved effects. The only lower execution
+operation is `call_image(address)`, which calls an image and returns its
+`main()` word.
+
 Gaut OS also accepts external `store` and `run` commands. They keep a named
 source in fixed supervisor memory, replace the same name deterministically,
 and compile it only when requested. These commands are host protocol data and
@@ -72,6 +78,7 @@ contract.
 ## Current files
 
 - `gaut/compiler/`: readable self-hosted compiler source units
+- `gaut/adapters/`: profile-selected Gaut platform modules
 - `gaut/request.sh`: external build-profile request framer
 - `gaut/examples/`: language regression programs
 - `dist/gaut.elf`: retained hosted AArch64 compiler for fixed-point rebuilds
@@ -105,5 +112,6 @@ The launcher still supplies a deliberately bounded session, but the resident
 compiler can now wait for delayed serial input through `WFI` without consuming
 a host CPU core. A rejected Gaut source emits the canonical compiler diagnostic
 and returns to `ready` without rebooting. Named in-memory sources survive that
-rejection but not a machine restart. See `docs/ROADMAP.md` for the next
-boundary.
+rejection but not a machine restart. The next gate observes a child's returned
+word as a Gaut-native test result without adding an `assert` keyword. See
+`docs/ROADMAP.md` for the exact boundary.

@@ -91,27 +91,15 @@ fn emit_callable(state, info, address, length, arguments) {
                                             }
                                           }
                                         } else {
-                                          if eq(id, 67) {
+                                          if eq(id, 69) {
                                             drop emitter.emit_pop(state, 0);
                                             if eq(compiler.state_get(state, 160), 1) {
-                                              drop emitter.emit_qemu_run(state);
-                                            } else {
-                                              if compiler.state_get(state, 160) {
-                                                drop compiler.fail(state);
-                                              }
-                                            }
-                                          } else {
-                                            if eq(id, 68) {
-                                              if eq(compiler.state_get(state, 160), 1) {
-                                                drop emitter.emit_qemu_ready(state);
-                                              } else {
-                                                if eq(compiler.state_get(state, 160), 2) {
-                                                  drop compiler.fail(state);
-                                                }
-                                              }
+                                              drop emitter.emit_call_image(state);
                                             } else {
                                               drop compiler.fail(state);
                                             }
+                                          } else {
+                                            drop compiler.fail(state);
                                           }
                                         }
                                       }

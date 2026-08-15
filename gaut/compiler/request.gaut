@@ -181,7 +181,7 @@ fn compile_request(source, input_size, output, state) {
   }
 
   if eq(compiler.state_get(state, 160), 2) {
-    platform.run(output);
+    drop platform.run(output);
   } else {
     drop host.write(1, output, file_size);
   }
