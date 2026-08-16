@@ -18,12 +18,14 @@ trap cleanup EXIT INT TERM
 PASS_ONE="$TEST_TEMP/pass-one.request"
 FAIL="$TEST_TEMP/fail.request"
 PASS_TWO="$TEST_TEMP/pass-two.request"
+PLATFORM_MODULE="$TEST_TEMP/platform-module.request"
 STREAM="$TEST_TEMP/serial.stream"
 
 "$ROOT/gaut/request.sh" test "$ROOT/tests/fixtures/native-test/success.gaut" "$PASS_ONE"
 "$ROOT/gaut/request.sh" test "$ROOT/tests/fixtures/native-test/failure.gaut" "$FAIL"
 "$ROOT/gaut/request.sh" test "$ROOT/tests/fixtures/native-test/success.gaut" "$PASS_TWO"
-/bin/cat "$PASS_ONE" "$FAIL" "$PASS_TWO" > "$STREAM"
+"$ROOT/gaut/request.sh" test "$ROOT/tests/fixtures/platform-module" "$PLATFORM_MODULE"
+/bin/cat "$PASS_ONE" "$FAIL" "$PASS_TWO" "$PLATFORM_MODULE" > "$STREAM"
 /bin/dd if=/dev/zero bs=16 count=1 >> "$STREAM" 2>/dev/null
 
 ACTUAL=$(qemu-system-aarch64 \
@@ -47,6 +49,10 @@ gaut-os: test failed
 gaut-os: ready
 gaut-os: received 3
 gaut-os: test passed
+gaut-os: ready
+gaut-os: received 4
+platform module ok
+gaut-os: test passed
 gaut-os: ready'
 
 if [ "$ACTUAL" != "$EXPECTED" ]; then
@@ -55,4 +61,4 @@ if [ "$ACTUAL" != "$EXPECTED" ]; then
     exit 1
 fi
 
-echo "Gaut-native test result protocol passed."
+echo "Gaut-native test and platform-module protocols passed."

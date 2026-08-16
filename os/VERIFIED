@@ -38,7 +38,8 @@ Gaut-native test proof:
    an ordinary Gaut failure program returned nonzero
 3. Gaut OS received the child `main()` word through `platform.run` and judged
    the result inside the resident Gaut compiler
-4. one boot ran pass, fail, and pass again, then shut down cleanly
+4. one boot ran pass, fail, pass again, and a cross-module platform test, then
+   shut down cleanly
 5. the exact transcript was:
 
 gaut-os: ready
@@ -49,6 +50,10 @@ gaut-os: received 2
 gaut-os: test failed
 gaut-os: ready
 gaut-os: received 3
+gaut-os: test passed
+gaut-os: ready
+gaut-os: received 4
+platform module ok
 gaut-os: test passed
 gaut-os: ready
 
@@ -63,7 +68,8 @@ Platform module proof:
 3. the QEMU adapter writes its ready message in Gaut with ordered PL011 memory
    operations and implements `run` as a Gaut wrapper around `call_image`
 4. a profile 3 fixture supplied its own zero-argument `platform.run()`, printed
-   `platform module ok`, returned to ready, and shut down cleanly
+   `platform module ok`, received a Gaut-native passed verdict, returned to
+   ready, and shut down cleanly
 5. the original two-child Gaut OS transcript remained byte-for-byte unchanged
 
 Module v0 proof:

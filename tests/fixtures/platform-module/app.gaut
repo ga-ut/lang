@@ -1,6 +1,7 @@
 fn main() {
   memory message 19;
   let result = platform.run();
+  let failed = 1;
 
   if eq(result, 42) {
     store8(112, message);
@@ -23,7 +24,8 @@ fn main() {
     store8(107, add(message, 17));
     store8(10, add(message, 18));
     drop host.write(1, message, 19);
+    failed = 0;
   }
 
-  return result;
+  return failed;
 }
