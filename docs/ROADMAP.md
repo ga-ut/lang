@@ -40,21 +40,27 @@
   normal module call
 - `call_image` carries the child's returned `main()` word back to the resident
   Gaut caller
+- external command `4` uses the ordinary source compiler and child execution
+  path without adding `test` or `assert` syntax
+- Gaut OS judges the returned `main()` word itself: zero passes and every
+  nonzero word fails
+- one boot distinguishes pass, fail, and pass again with deterministic result
+  records while the host only transports and observes the stream
 
-## Next: Gaut-native test result protocol
+## Next: Gaut-native fixed-point verifier
 
-The compiler, platform adapter, and programs can now all be tested as Gaut
-source, but the resident supervisor still discards the word returned by a
-child. The next gate turns that existing return path into a small deterministic
-test protocol without adding test syntax.
+Gaut now compiles, runs, and judges ordinary Gaut test programs, but the host
+still compares compiler generations with `cmp` and reports their hash. The next
+gate moves the equality decision into Gaut without adding syntax or a hash
+dependency.
 
 Required implementation:
 
-1. add an external test command without adding a Gaut keyword;
-2. compile it through the same source-unit and compiler path as a normal run;
-3. observe the word returned through `platform.run` and `call_image`;
-4. define zero as pass and nonzero as failure;
-5. emit one deterministic passed or failed supervisor record; and
+1. build two following compiler generations inside the resident machine;
+2. retain both generated image sizes and byte regions;
+3. compare the sizes and every byte with ordinary Gaut memory operations;
+4. return zero only when the generations are identical;
+5. report the result through the existing Gaut-native test protocol; and
 6. retain the networkless, low-power, rejection-recovery, and clean-shutdown
    contracts.
 
@@ -70,4 +76,4 @@ Required implementation:
 
 Each gate adds only behavior required by its acceptance program. An editor,
 file system, optimizer, package manager, graphics, networking, browser work,
-and AI work do not enter the native-test gate.
+and AI work do not enter the native fixed-point gate.

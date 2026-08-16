@@ -63,6 +63,12 @@ compiler and retains the artifact framed between its two ready markers. This
 lets Gaut OS rebuild the split compiler through a byte-identical fixed point
 using QEMU without booting a Linux guest.
 
+A command `4` request compiles the same ordinary profile `3` Gaut source and
+observes the word returned through `platform.run`. Gaut OS itself writes
+`gaut-os: test passed` for zero and `gaut-os: test failed` for every nonzero
+word. `test` and `assert` are not Gaut keywords, no test runtime is linked into
+the child, and the host does not decide the result.
+
 The QEMU process must exit by itself with status zero after the ready marker.
 Manual interruption, a surviving emulator process, or measurable idle CPU use
 after completion fails this contract.
@@ -112,15 +118,16 @@ Named sources do not survive shutdown, and one stored name currently contains
 one source unit. A malformed length that cannot be safely framed and a child
 hardware fault also do not yet recover.
 
-The next implementation adds a Gaut-native test result protocol. It observes
-the word already returned through `platform.run`, treats zero as pass and a
-nonzero word as failure, and emits one deterministic supervisor result record.
-It adds no `assert` keyword, second compiler path, editor, scheduler, MMU, or
-optimizer.
+The next implementation moves fixed-point equality judgment into Gaut. The
+resident machine must build two following compiler generations and compare
+their size and every byte with Gaut memory operations. The host may boot QEMU
+and observe the final result record but must not perform the equality decision.
+No hashing dependency, second compiler path, editor, scheduler, MMU, or
+optimizer enters that gate.
 
 ## Later kernel boundary
 
-After the native test result protocol, Gaut OS adds persistent source storage,
+After the native fixed-point verifier, Gaut OS adds persistent source storage,
 explicit exception vectors, EL0 task isolation, an MMU-backed page allocator,
 timer interrupts, scheduling, rendering, networking, and higher-level services
 in that order as concrete programs demand them.

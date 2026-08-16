@@ -288,7 +288,11 @@ Command `2` is valid only for profile `3` and stores exactly one source-unit
 record without compiling it. Command `3` is valid only for profile `3` and is
 followed by an eight-byte module-name length and the exact name bytes. It finds
 that stored source, reconstructs one command `1` request, and runs it. Command
-IDs, names, and storage are supervisor protocol data, not Gaut syntax.
+`4` is valid only for profile `3` and carries the same source-unit payload as
+command `1`. The supervisor compiles and runs it through the same path, treats
+the returned `main()` word as a test result, and emits one result record: zero
+passes and every nonzero word fails. Command IDs, names, storage, and test mode
+are supervisor protocol data, not Gaut syntax.
 
 Profile `1` selects the current AArch64 Linux static ELF adapter. Profile `2`
 selects the current AArch64 QEMU virt boot-image adapter. Profile `3` selects

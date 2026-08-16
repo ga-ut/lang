@@ -1,0 +1,10 @@
+fn main() {
+  let failed = 0;
+
+  if eq(add(20, 21), 42) {
+  } else {
+    failed = 7;
+  }
+
+  return failed;
+}

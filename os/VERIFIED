@@ -1,37 +1,59 @@
 Gaut current verification
-Date: 2026-08-15
+Date: 2026-08-16
 
 Retained source and artifacts:
-- gaut/compiler/, 7 source units, 2,094 lines, 62,948 bytes
+- gaut/compiler/, 7 source units, 2,122 lines, 63,639 bytes
 - gaut/adapters/gaut-os/platform.gaut, 33 lines, 603 bytes, SHA-256:
   f3f7b2fef7fd083b48c9227d72b1f3c7acdb1707e374ec678a1644dddd0e60cc
-- profile 2 compiler request, 8 source units, 63,766 bytes, SHA-256:
-  e4c6422af0f70a1382c4746144a6c40aae0bef48694dc0f6e5871bb0aed982c8
+- profile 2 compiler request, 8 source units, 64,457 bytes, SHA-256:
+  60b436142029da6bccc44bd464baabde33f2069d12a13deb8cf260a2060e50bc
 - os/examples/child1.gaut, 792 bytes, SHA-256:
   beae4a0687c8ab9bee67409e7f90d9784ab1b98a774ced2085a318c245e261fa
 - os/examples/child2.gaut, 793 bytes, SHA-256:
   7ce5d3e709a92b413720d0070f9b00380406c7da060fa7d1aaefa6ffea0a6193
 - dist/gaut.elf, 86,016-byte static AArch64 Linux bootstrap compiler
 - hosted compiler SHA-256:
-  9265edccb85f504530b4a08be8d8deee4ce26e8f9b62f7f7c2f1140a7a289151
+  0455128269b95680b579272241e1b8ffca5786f6268aa1e55cbc6612b332aae0
 - dist/gaut-os.img, 86,016-byte raw AArch64 resident compiler
 - freestanding compiler SHA-256:
-  354276e3f8cf0c6503dc86e1d148216a7910bf55c2f01004838f87ba38505868
+  e52e6e6e2ca96842088b3701649546ffa178af30738d28269c15ecb10e1afb99
 
 Self-host proof:
-1. a one-use unretained bridge taught the previous Gaut OS compiler the lower
-   `call_image` effect and child return-word path
-2. that bridge built the final eight-unit profile 2 request, including the
-   Gaut `platform` adapter, as generation 1 at 86,016 bytes with SHA-256:
-   cec14cb6487dafebda26c821d8aeaa4697343b10764f4125bfcfb40d87cc2b44
-3. generation 1 rebuilt the same final request twice; generations 2 and 3 were
-   byte-identical at 86,016 bytes with SHA-256:
-   354276e3f8cf0c6503dc86e1d148216a7910bf55c2f01004838f87ba38505868
+1. the previous retained Gaut OS compiler built the final eight-unit profile 2
+   request, including the Gaut `platform` adapter, as generation 1
+2. generation 1 rebuilt the same request as generation 2, and generation 2
+   rebuilt it as generation 3
+3. all three generations were byte-identical at 86,016 bytes with SHA-256:
+   e52e6e6e2ca96842088b3701649546ffa178af30738d28269c15ecb10e1afb99
 4. the fixed-point compiler emitted the retained profile 1 static ELF at
    86,016 bytes with SHA-256:
-   9265edccb85f504530b4a08be8d8deee4ce26e8f9b62f7f7c2f1140a7a289151
+   0455128269b95680b579272241e1b8ffca5786f6268aa1e55cbc6612b332aae0
 5. this fixed-point path used QEMU and Gaut OS without a Linux guest or foreign
    compiler
+
+Gaut-native test proof:
+1. command 4 remained external supervisor protocol data and added no Gaut
+   keyword, `assert` form, type, parser path, or child test runtime
+2. an ordinary Gaut success program calculated its result and returned zero;
+   an ordinary Gaut failure program returned nonzero
+3. Gaut OS received the child `main()` word through `platform.run` and judged
+   the result inside the resident Gaut compiler
+4. one boot ran pass, fail, and pass again, then shut down cleanly
+5. the exact transcript was:
+
+gaut-os: ready
+gaut-os: received 1
+gaut-os: test passed
+gaut-os: ready
+gaut-os: received 2
+gaut-os: test failed
+gaut-os: ready
+gaut-os: received 3
+gaut-os: test passed
+gaut-os: ready
+
+6. the host framed, transported, and observed the stream but did not calculate
+   or decide any child test result
 
 Platform module proof:
 1. the compiler effect inventory contains `call_image` and no
@@ -164,5 +186,7 @@ Boundary:
   host.read path can wait for delayed input without consuming a host CPU core
 - complete invalid Gaut source requests recover to ready, but malformed lengths
   and child hardware faults do not yet recover
-- the next verified gate is a Gaut-native child test result protocol in
+- Gaut OS judges child test results, but the host still compares and hashes
+  compiler generations
+- the next verified gate moves fixed-point equality judgment into Gaut in
   docs/ROADMAP.md

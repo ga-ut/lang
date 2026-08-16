@@ -37,11 +37,12 @@ module functions, not compiler-reserved effects. The only lower execution
 operation is `call_image(address)`, which calls an image and returns its
 `main()` word.
 
-Gaut OS also accepts external `store` and `run` commands. They keep a named
-source in fixed supervisor memory, replace the same name deterministically,
-and compile it only when requested. These commands are host protocol data and
-do not add Gaut keywords. `tests/source-storage.sh` demonstrates the complete
-store, replace, rejection recovery, and run session.
+Gaut OS also accepts external `store`, `run`, and `test` commands. Stored
+sources remain in fixed supervisor memory and compile only when requested. A
+test request compiles an ordinary Gaut program and lets Gaut OS judge its
+returned `main()` word: zero passes and every nonzero word fails. These commands
+are host protocol data, not Gaut keywords. No `assert` syntax or test runtime is
+added.
 
 ## Run inside Gaut OS
 
@@ -112,6 +113,6 @@ The launcher still supplies a deliberately bounded session, but the resident
 compiler can now wait for delayed serial input through `WFI` without consuming
 a host CPU core. A rejected Gaut source emits the canonical compiler diagnostic
 and returns to `ready` without rebooting. Named in-memory sources survive that
-rejection but not a machine restart. The next gate observes a child's returned
-word as a Gaut-native test result without adding an `assert` keyword. See
-`docs/ROADMAP.md` for the exact boundary.
+rejection but not a machine restart. Gaut OS now judges ordinary Gaut test
+programs itself. The next gate moves compiler-generation byte comparison from
+the host into Gaut. See `docs/ROADMAP.md` for the exact boundary.

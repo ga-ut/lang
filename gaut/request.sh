@@ -2,7 +2,7 @@
 set -eu
 
 if [ "$#" -ne 3 ]; then
-    echo "usage: $0 <linux|gaut-os|gaut-child|store|run> <source|name> <request.bin>" >&2
+    echo "usage: $0 <linux|gaut-os|gaut-child|test|store|run> <source|name> <request.bin>" >&2
     exit 2
 fi
 
@@ -18,6 +18,7 @@ case "$PROFILE_NAME" in
     linux) PROFILE=1; ADAPTER_FILE="$GAUT_ROOT/adapters/linux/platform.gaut" ;;
     gaut-os) PROFILE=2; ADAPTER_FILE="$GAUT_ROOT/adapters/gaut-os/platform.gaut" ;;
     gaut-child) PROFILE=3 ;;
+    test) PROFILE=3; COMMAND=4 ;;
     store) PROFILE=3; COMMAND=2 ;;
     run) PROFILE=3; COMMAND=3; INPUT_KIND=name ;;
     *)

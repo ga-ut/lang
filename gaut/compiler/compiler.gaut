@@ -18,6 +18,19 @@ fn fail(state) {
   return 0;
 }
 
+fn report_test(state, result) {
+  store64(4211832317539606887, add(state, 64912));
+  if result {
+    store64(7018332753827820576, add(state, 64920));
+    store64(44634041449, add(state, 64928));
+  } else {
+    store64(7021147503594927136, add(state, 64920));
+    store64(44634043251, add(state, 64928));
+  }
+  drop host.write(1, add(state, 64912), 21);
+  return 0;
+}
+
 fn main() {
   memory source 131072;
   memory output 262144;
@@ -27,6 +40,8 @@ fn main() {
   let received = 49;
   let command = 0;
   let named_run = 0;
+  let test_mode = 0;
+  let result = 0;
 
   store64(7955925652160733543, add(state, 65000));
   store64(8030798176169255286, add(state, 65008));
@@ -44,6 +59,14 @@ fn main() {
     }
     command = load64(add(source, 16));
     named_run = 0;
+    test_mode = eq(command, 4);
+
+    if test_mode {
+      if eq(eq(load64(source), 3), 0) {
+        drop fail(state);
+      }
+      store64(1, add(source, 16));
+    }
 
     if eq(command, 2) {
       drop storage.store_request(source, input_size, storage_memory, state);
@@ -64,7 +87,10 @@ fn main() {
         received = add(received, 1);
       }
 
-      drop request.compile_request(source, input_size, output, state);
+      result = request.compile_request(source, input_size, output, state);
+      if test_mode {
+        drop report_test(state, result);
+      }
     }
     drop platform.ready();
     input_size = host.read(0, source, 131072);

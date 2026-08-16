@@ -28,6 +28,7 @@ fn compile_request(source, input_size, output, state) {
   let module_index = 0;
   let function_count = 0;
   let clear_index = 0;
+  let result = 0;
 
 
   if lt(input_size, 32) {
@@ -181,10 +182,11 @@ fn compile_request(source, input_size, output, state) {
   }
 
   if eq(compiler.state_get(state, 160), 2) {
-    drop platform.run(output);
+    result = platform.run(output);
   } else {
     drop host.write(1, output, file_size);
+    result = file_size;
   }
 
-  return file_size;
+  return result;
 }
