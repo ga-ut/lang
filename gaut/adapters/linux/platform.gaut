@@ -2,6 +2,18 @@ fn run(address) {
   return 0;
 }
 
+fn fixed_point(address, size) {
+  return 1;
+}
+
+fn workspace_load(storage_memory) {
+  return 0;
+}
+
+fn workspace_save(storage_memory) {
+  return 0;
+}
+
 fn ready() {
   return 0;
 }

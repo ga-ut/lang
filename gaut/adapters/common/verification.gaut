@@ -1,0 +1,23 @@
+fn bytes_equal(left, right, size) {
+  let index = 0;
+  let equal = 1;
+
+  while bitand(equal, lt(index, size)) {
+    if eq(eq(load8(add(left, index)), load8(add(right, index))), 0) {
+      equal = 0;
+    }
+    index = add(index, 1);
+  }
+
+  return equal;
+}
+
+fn images_differ(left, left_size, right, right_size) {
+  let different = 1;
+
+  if eq(left_size, right_size) {
+    different = eq(bytes_equal(left, right, left_size), 0);
+  }
+
+  return different;
+}

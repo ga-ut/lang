@@ -132,7 +132,7 @@ fn function_add(state, address, length, arity, code_index, module_index) {
 
   entry = add(add(state, 8192), mul(index, 32));
   store64(address, entry);
-  store64(add(length, mul(module_index, 4294967296)), add(entry, 8));
+  store64(add(length, mul(module_index, 0x100000000)), add(entry, 8));
   store64(arity, add(entry, 16));
   store64(code_index, add(entry, 24));
   drop compiler.state_set(state, 64, add(index, 1));
@@ -149,7 +149,7 @@ fn function_find_in_module(state, address, length, module_index) {
     entry = add(add(state, 8192), mul(index, 32));
     packed = load64(add(entry, 8));
     if eq(shr(packed, 32), module_index) {
-      if span_equal(address, length, load64(entry), bitand(packed, 4294967295)) {
+      if span_equal(address, length, load64(entry), bitand(packed, 0xffffffff)) {
         result = entry;
       }
     }
@@ -355,14 +355,14 @@ fn reject_call_cycles(state) {
       drop compiler.fail(state);
     }
 
-    store64(18446744073709551615, add(add(state, 60928), mul(candidate, 8)));
+    store64(0xffffffffffffffff, add(add(state, 60928), mul(candidate, 8)));
     processed = add(processed, 1);
     callee = 0;
     while lt(callee, function_count) {
       edge = add(add(state, 52736), add(mul(candidate, 32), mul(shr(callee, 6), 8)));
       mask = shl(1, bitand(callee, 63));
       if bitand(load64(edge), mask) {
-        if eq(eq(load64(add(add(state, 60928), mul(callee, 8))), 18446744073709551615), 0) {
+        if eq(eq(load64(add(add(state, 60928), mul(callee, 8))), 0xffffffffffffffff), 0) {
           store64(
             sub(load64(add(add(state, 60928), mul(callee, 8))), 1),
             add(add(state, 60928), mul(callee, 8))

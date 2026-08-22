@@ -1,0 +1,5 @@
+fn main() {
+  memory value 8;
+  store64(7, value);
+  return load64(value);
+}

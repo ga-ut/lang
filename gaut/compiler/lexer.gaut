@@ -27,6 +27,20 @@ fn is_name_continue(byte) {
   return result;
 }
 
+fn hex_digit(byte) {
+  let result = 16;
+
+  if bitand(lt(47, byte), lt(byte, 58)) {
+    result = sub(byte, 48);
+  } else {
+    if bitand(lt(96, byte), lt(byte, 103)) {
+      result = sub(byte, 87);
+    }
+  }
+
+  return result;
+}
+
 fn next_token(state) {
   let skipping = 1;
   let cursor = 0;
@@ -35,6 +49,8 @@ fn next_token(state) {
   let scanning = 0;
   let digit = 0;
   let value = 0;
+  let hexadecimal = 0;
+  let digits = 0;
 
   while skipping {
     cursor = compiler.state_get(state, 0);
@@ -93,19 +109,43 @@ fn next_token(state) {
       if bitand(lt(47, byte), lt(byte, 58)) {
         value = 0;
         scanning = 1;
+        if bitand(eq(byte, 48), lt(add(cursor, 1), end)) {
+          if eq(load8(add(cursor, 1)), 120) {
+            hexadecimal = 1;
+            cursor = add(cursor, 2);
+          }
+        }
 
         while bitand(scanning, lt(cursor, end)) {
           byte = load8(cursor);
-          if bitand(lt(47, byte), lt(byte, 58)) {
-            digit = sub(byte, 48);
-            if bitor(lt(1844674407370955161, value), bitand(eq(value, 1844674407370955161), lt(5, digit))) {
-              drop compiler.fail(state);
+          if hexadecimal {
+            digit = hex_digit(byte);
+            if lt(digit, 16) {
+              if lt(0x0fffffffffffffff, value) {
+                drop compiler.fail(state);
+              }
+              value = bitor(shl(value, 4), digit);
+              cursor = add(cursor, 1);
+              digits = add(digits, 1);
+            } else {
+              scanning = 0;
             }
-            value = add(mul(value, 10), digit);
-            cursor = add(cursor, 1);
           } else {
-            scanning = 0;
+            if bitand(lt(47, byte), lt(byte, 58)) {
+              digit = sub(byte, 48);
+              if bitor(lt(1844674407370955161, value), bitand(eq(value, 1844674407370955161), lt(5, digit))) {
+                drop compiler.fail(state);
+              }
+              value = add(mul(value, 10), digit);
+              cursor = add(cursor, 1);
+            } else {
+              scanning = 0;
+            }
           }
+        }
+
+        if bitand(hexadecimal, eq(digits, 0)) {
+          drop compiler.fail(state);
         }
 
         drop compiler.state_set(state, 0, cursor);

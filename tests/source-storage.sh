@@ -2,6 +2,7 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+COMPILER=${GAUT_OS_IMAGE:-"$ROOT/dist/gaut-os.img"}
 
 if ! command -v qemu-system-aarch64 >/dev/null 2>&1; then
     echo "qemu-system-aarch64 is required for source-storage verification." >&2
@@ -49,7 +50,7 @@ ACTUAL=$(qemu-system-aarch64 \
     -serial stdio \
     -nic none \
     -no-reboot \
-    -kernel "$ROOT/dist/gaut-os.img" \
+    -kernel "$COMPILER" \
     < "$STREAM")
 
 EXPECTED='gaut-os: ready

@@ -1,0 +1,7 @@
+fn identity(value) {
+  return value;
+}
+
+fn main() {
+  return identity(7);
+}

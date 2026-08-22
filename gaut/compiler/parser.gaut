@@ -5,59 +5,60 @@ fn emit_callable(state, info, address, length, arguments) {
 
   if eq(info, 0) {
     entry = symbols.function_resolve(state, address, length, compiler.state_get(state, 176));
-    branch = emitter.emit_word(state, 2483027968);
+    drop emitter.flush_pending(state);
+    branch = emitter.emit_word(state, 0x94000000);
     if entry {
       drop emitter.patch_branch(state, branch, load64(add(entry, 24)), 1);
     }
     drop symbols.call_add(state, address, length, compiler.state_get(state, 176), arguments, branch, entry);
   } else {
     if eq(id, 16) {
-      drop emitter.emit_binary(state, 2332098560);
+      drop emitter.emit_binary(state, 0x8b010000);
     } else {
       if eq(id, 17) {
-        drop emitter.emit_binary(state, 3405840384);
+        drop emitter.emit_binary(state, 0xcb010000);
       } else {
         if eq(id, 18) {
-          drop emitter.emit_binary(state, 2600565760);
+          drop emitter.emit_binary(state, 0x9b017c00);
         } else {
           if eq(id, 19) {
-            drop emitter.emit_binary(state, 2315321344);
+            drop emitter.emit_binary(state, 0x8a010000);
           } else {
             if eq(id, 20) {
-              drop emitter.emit_binary(state, 2852192256);
+              drop emitter.emit_binary(state, 0xaa010000);
             } else {
               if eq(id, 21) {
-                drop emitter.emit_binary(state, 3389063168);
+                drop emitter.emit_binary(state, 0xca010000);
               } else {
                 if eq(id, 22) {
-                  drop emitter.emit_binary(state, 2596347904);
+                  drop emitter.emit_binary(state, 0x9ac12000);
                 } else {
                   if eq(id, 23) {
-                    drop emitter.emit_binary(state, 2596348928);
+                    drop emitter.emit_binary(state, 0x9ac12400);
                   } else {
                     if eq(id, 24) {
-                      drop emitter.emit_compare(state, 2594117600);
+                      drop emitter.emit_compare(state, 0x9a9f17e0);
                     } else {
                       if eq(id, 25) {
-                        drop emitter.emit_compare(state, 2594121696);
+                        drop emitter.emit_compare(state, 0x9a9f27e0);
                       } else {
                         if eq(id, 32) {
-                          drop emitter.emit_load(state, 960495616);
+                          drop emitter.emit_load(state, 0x39400000);
                         } else {
                           if eq(id, 33) {
-                            drop emitter.emit_load(state, 3107979264);
+                            drop emitter.emit_load(state, 0xb9400000);
                           } else {
                             if eq(id, 34) {
-                              drop emitter.emit_load(state, 4181721088);
+                              drop emitter.emit_load(state, 0xf9400000);
                             } else {
                               if eq(id, 35) {
-                                drop emitter.emit_store(state, 956301344);
+                                drop emitter.emit_store(state, 0x39000020);
                               } else {
                                 if eq(id, 36) {
-                                  drop emitter.emit_store(state, 3103784992);
+                                  drop emitter.emit_store(state, 0xb9000020);
                                 } else {
                                   if eq(id, 37) {
-                                    drop emitter.emit_store(state, 4177526816);
+                                    drop emitter.emit_store(state, 0xf9000020);
                                   } else {
                                     if eq(id, 64) {
                                       if eq(compiler.state_get(state, 160), 1) {
@@ -87,7 +88,7 @@ fn emit_callable(state, info, address, length, arguments) {
                                             } else {
                                               drop emitter.emit_pop(state, 0);
                                               drop emitter.emit_move(state, 8, 93);
-                                              drop emitter.emit_word(state, 3556769793);
+                                              drop emitter.emit_word(state, 0xd4000001);
                                             }
                                           }
                                         } else {
@@ -267,7 +268,7 @@ fn parse_expression(state) {
               }
             } else {
               user_entry = symbols.function_resolve(state, address, length, compiler.state_get(state, 176));
-              arity = 18446744073709551615;
+              arity = 0xffffffffffffffff;
               if user_entry {
                 arity = load64(add(user_entry, 16));
               }
@@ -278,7 +279,7 @@ fn parse_expression(state) {
             drop lexer.next_token(state);
 
             if eq(compiler.state_get(state, 32), 4) {
-              if eq(eq(arity, 18446744073709551615), 0) {
+              if eq(eq(arity, 0xffffffffffffffff), 0) {
                 if arity {
                   drop compiler.fail(state);
                 }
@@ -328,7 +329,7 @@ fn parse_expression(state) {
             need_value = 1;
           } else {
             if eq(compiler.state_get(state, 32), 4) {
-              if eq(eq(load64(add(frame, 32)), 18446744073709551615), 0) {
+              if eq(eq(load64(add(frame, 32)), 0xffffffffffffffff), 0) {
                 if eq(eq(arguments, load64(add(frame, 32))), 0) {
                   drop compiler.fail(state);
                 }
@@ -471,8 +472,8 @@ fn parse_function(state) {
     drop compiler.state_set(state, 144, code_start);
     drop compiler.state_set(state, 104, 1);
   }
-  drop emitter.emit_word(state, 4177527486);
-  drop emitter.emit_word(state, 2432705205);
+  drop emitter.emit_word(state, 0xf90002be);
+  drop emitter.emit_word(state, 0x910022b5);
 
   slot = parameter_count;
   while lt(0, slot) {
@@ -508,7 +509,7 @@ fn parse_function(state) {
         }
 
         if eq(bitand(info, 255), 6) {
-          branch = emitter.emit_word(state, 335544320);
+          branch = emitter.emit_word(state, 0x14000000);
           drop emitter.patch_zero_branch(state, load64(add(block_entry, 8)), compiler.state_get(state, 136));
           drop lexer.next_token(state);
           if eq(eq(compiler.state_get(state, 32), 5), 0) {
@@ -527,7 +528,7 @@ fn parse_function(state) {
           drop lexer.next_token(state);
         } else {
           if eq(block_kind, 3) {
-            branch = emitter.emit_word(state, 335544320);
+            branch = emitter.emit_word(state, 0x14000000);
             drop emitter.patch_branch(state, branch, load64(add(block_entry, 8)), 0);
             drop emitter.patch_zero_branch(state, load64(add(block_entry, 16)), compiler.state_get(state, 136));
             drop block_pop(state);
@@ -563,9 +564,10 @@ fn parse_function(state) {
           drop compiler.fail(state);
         }
 
-        drop emitter.emit_word(state, 3506447029);
-        drop emitter.emit_word(state, 4181721790);
-        drop emitter.emit_word(state, 3596551104);
+        drop emitter.flush_pending(state);
+        drop emitter.emit_word(state, 0xd10022b5);
+        drop emitter.emit_word(state, 0xf94002be);
+        drop emitter.emit_word(state, 0xd65f03c0);
         drop lexer.next_token(state);
         parsing = 0;
       } else {
@@ -625,7 +627,7 @@ fn parse_function(state) {
               drop compiler.fail(state);
             }
 
-            offset = bitand(add(compiler.state_get(state, 88), 7), 18446744073709551608);
+            offset = bitand(add(compiler.state_get(state, 88), 7), 0xfffffffffffffff8);
             if lt(sub(917504, offset), size) {
               drop compiler.fail(state);
             }
@@ -657,7 +659,7 @@ fn parse_function(state) {
                   drop compiler.fail(state);
                 }
                 drop emitter.emit_pop(state, 0);
-                branch = emitter.emit_word(state, 3019898880);
+                branch = emitter.emit_word(state, 0xb4000000);
                 if eq(eq(compiler.state_get(state, 32), 5), 0) {
                   drop compiler.fail(state);
                 }
@@ -672,7 +674,7 @@ fn parse_function(state) {
                     drop compiler.fail(state);
                   }
                   drop emitter.emit_pop(state, 0);
-                  entry = emitter.emit_word(state, 3019898880);
+                  entry = emitter.emit_word(state, 0xb4000000);
                   if eq(eq(compiler.state_get(state, 32), 5), 0) {
                     drop compiler.fail(state);
                   }

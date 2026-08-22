@@ -1,5 +1,5 @@
 id	canonical_name	class	inputs	outputs	source_form
-00	constant	value	0	1	decimal literal
+00	constant	value	0	1	decimal or lowercase 0x hexadecimal literal
 01	local.get	value	0	1	value name
 02	local.set	statement	1	0	let or assignment
 03	drop	statement	1	0	drop statement

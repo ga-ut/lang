@@ -1,0 +1,41 @@
+fn main() {
+  memory message 19;
+  let generation = platform.retained_compiler_base();
+  let maximum_image_size = platform.maximum_image_size();
+  let workspace_flash = platform.workspace_flash_base();
+  let workspace_sector = platform.workspace_sector_size();
+  let workspace_slot = platform.workspace_slot_size();
+  let failed = 1;
+
+  if bitand(
+    bitand(eq(generation, 1204813824), eq(maximum_image_size, 262144)),
+    bitand(
+      eq(workspace_flash, 67108864),
+      bitand(eq(workspace_sector, 262144), eq(workspace_slot, 32768))
+    )
+  ) {
+    store8(112, message);
+    store8(108, add(message, 1));
+    store8(97, add(message, 2));
+    store8(116, add(message, 3));
+    store8(102, add(message, 4));
+    store8(111, add(message, 5));
+    store8(114, add(message, 6));
+    store8(109, add(message, 7));
+    store8(32, add(message, 8));
+    store8(108, add(message, 9));
+    store8(97, add(message, 10));
+    store8(121, add(message, 11));
+    store8(111, add(message, 12));
+    store8(117, add(message, 13));
+    store8(116, add(message, 14));
+    store8(32, add(message, 15));
+    store8(111, add(message, 16));
+    store8(107, add(message, 17));
+    store8(10, add(message, 18));
+    drop host.write(1, message, 19);
+    failed = 0;
+  }
+
+  return failed;
+}

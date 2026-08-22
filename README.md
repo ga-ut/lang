@@ -9,6 +9,11 @@ one runtime value type (`word`), named functions and values, structured
 conditions and loops, fixed memory, explicit platform effects, and no hidden
 allocation or foreign runtime.
 
+Unsigned `word` literals use ordinary decimal notation for quantities and a
+lowercase `0x` hexadecimal notation for addresses, masks, flags, and instruction
+bit patterns. Both spellings produce the same runtime value; hexadecimal
+notation adds no type or operator.
+
 ```text
 Gaut source -> Gaut compiler -> AArch64 program
 ```
@@ -31,18 +36,28 @@ Passing a directory frames every `.gaut` file below it as one named source
 unit. A relative path such as `math/vector.gaut` becomes module `math.vector`;
 source still contains no `module` or `import` declaration.
 
-Profiles `1` and `2` also supply an ordinary source unit named `platform` from
-`gaut/adapters/`. `platform.run()` and `platform.ready()` are therefore Gaut
-module functions, not compiler-reserved effects. The only lower execution
-operation is `call_image(address)`, which calls an image and returns its
-`main()` word.
+Profiles `1` and `2` also supply ordinary `platform` and `verification` source
+units from `gaut/adapters/`. `platform.run()`, `platform.ready()`, and the
+byte-comparison helpers are therefore Gaut functions, not compiler-reserved
+effects. The only lower execution operation is `call_image(address)`, which
+calls an image and returns its `main()` word.
 
-Gaut OS also accepts external `store`, `run`, and `test` commands. Stored
-sources remain in fixed supervisor memory and compile only when requested. A
-test request compiles an ordinary Gaut program and lets Gaut OS judge its
+Gaut OS also accepts external `store`, `run`, `test`, `fixed-point`,
+`workspace-test`, and `workspace-fixed-point` commands. Stored sources remain
+in fixed supervisor memory and compile only when requested. A test request
+compiles an ordinary Gaut program and lets Gaut OS judge its
 returned `main()` word: zero passes and every nonzero word fails. These commands
 are host protocol data, not Gaut keywords. No `assert` syntax or test runtime is
-added.
+added. A fixed-point request retains one generated compiler, transfers control
+to it, and lets that compiler compare the size and every byte of its following
+generation before reporting through the same Gaut-native verdict.
+
+The workspace commands carry no source bytes. Gaut OS restores up to ten named
+source slots from the QEMU `virt` second CFI flash bank, reconstructs the same
+unpadded multi-unit command `1` request in memory, and uses the existing parser
+and compiler path. Profile `3` executes and judges the workspace; profile `2`
+performs the same native fixed-point check. Replacement keeps the slot order
+across shutdown without adding project, file-system, or import syntax.
 
 ## Run inside Gaut OS
 
@@ -71,10 +86,49 @@ gaut-os: ready
 
 QEMU is a replaceable host-side hardware emulator. The launcher creates only a
 temporary unpadded serial request stream and deletes it on exit. The compiler
-and child use separate 1 MiB runtime arenas, and the compiler survives each
-child return. After a sixteen-byte zero terminator, Gaut requests PSCI machine
-shutdown and QEMU exits by itself; manual interruption is not part of the run
-contract.
+and child use separate 1 MiB runtime arenas, and a third arena can retain one
+compiler generation. The compiler survives each child return. After a
+sixteen-byte zero terminator, Gaut requests PSCI machine shutdown and QEMU exits
+by itself; manual interruption is not part of the run contract.
+
+`os/boot.sh` accepts one complete serial stream. Setting
+`GAUT_WORKSPACE_FLASH` attaches or creates one 64 MiB backing file as the second
+QEMU CFI flash bank while preserving direct `-kernel` boot:
+
+```sh
+GAUT_WORKSPACE_FLASH="$PWD/workspace.flash" ./os/boot.sh requests.stream
+```
+
+The file is host transport. Gaut validates slot headers, lengths, exact bytes,
+and checksums and decides whether the restored workspace is usable.
+
+`tests/self-host-qemu.sh` sends the compiler request twice in one serial stream.
+The first generated compiler is retained in a third machine arena and builds
+the second. Gaut compares both images and emits the final verdict; the script
+does not use `cmp`, a hash, or artifact extraction to decide success.
+
+`tests/self-host-workspace-qemu.sh` stores the nine compiler, platform, and
+verification units once. Two following 24-byte workspace requests rebuild the
+compiler from the resident inventory, and Gaut OS judges the following
+generations byte-identical without receiving the source bytes again.
+
+`tests/persistent-workspace-qemu.sh` stores, restores, replaces, and corrupts
+source slots across separate QEMU boots.
+`tests/persistent-self-host-workspace-qemu.sh` stores the compiler sources in
+one boot and reaches the Gaut-native fixed point after reboot without
+retransmitting them.
+
+`tests/codegen-baseline.sh` records deterministic generated instruction and
+evaluation-stack counts for small Gaut programs. `tests/capacity-baseline.sh`
+checks the accepted and rejected sides of the current request, module, function,
+local, fixed-memory, and output-image bounds. These are implementation and
+platform capacities rather than new Gaut syntax; see `docs/PERFORMANCE.md`.
+`tests/direct-expression-lowering.sh` builds the current compiler source with
+the retained compiler, verifies reduced stack traffic, and lets Gaut OS judge
+nested arithmetic, memory, and call results from the generated code.
+`tests/hex-literals.sh` verifies decimal/hexadecimal byte equivalence, the full
+64-bit range, malformed and overflow rejection, and a following decimal
+recovery build.
 
 ## Current files
 
@@ -90,6 +144,7 @@ contract.
 - `docs/OS.md`: current machine and runtime boundary
 - `docs/ROADMAP.md`: next implementation gates
 - `os/run.sh`: disposable QEMU launcher
+- `os/boot.sh`: serial-stream launcher with optional persistent CFI flash
 - `os/build.sh`: QEMU and Gaut OS artifact builder
 - `os/VERIFIED`: current fixed-point and machine verification
 
@@ -100,8 +155,9 @@ remain available through Git history but are not part of the current tree.
 
 A compiler change is complete only when the retained Gaut OS compiler builds
 the readable compiler through two following byte-identical generations in
-QEMU. This fixed-point path contains no Linux guest. A freestanding change
-additionally requires a clean networkless QEMU boot.
+QEMU and Gaut itself judges their sizes and bytes equal. This fixed-point path
+contains no Linux guest. A freestanding change additionally requires a clean
+networkless QEMU boot.
 Source implementation, fixed point, boot proof, commit, and remote push remain
 separate gates.
 
@@ -112,7 +168,9 @@ second parser.
 The launcher still supplies a deliberately bounded session, but the resident
 compiler can now wait for delayed serial input through `WFI` without consuming
 a host CPU core. A rejected Gaut source emits the canonical compiler diagnostic
-and returns to `ready` without rebooting. Named in-memory sources survive that
-rejection but not a machine restart. Gaut OS now judges ordinary Gaut test
-programs itself. The next gate moves compiler-generation byte comparison from
-the host into Gaut. See `docs/ROADMAP.md` for the exact boundary.
+and returns to `ready` without rebooting. Named sources, replacement order, and
+the compiler workspace survive clean shutdown through the profile-supplied CFI
+adapter. The emitter now retains one pending expression value in an existing
+register and uses the previous evaluation stack only when that bounded contract
+is insufficient. The next measured backend gate is local-slot lifetime reuse;
+see `docs/ROADMAP.md` for the exact boundary.

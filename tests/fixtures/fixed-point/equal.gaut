@@ -1,0 +1,13 @@
+fn main() {
+  memory left 3;
+  memory right 3;
+
+  store8(17, left);
+  store8(23, add(left, 1));
+  store8(42, add(left, 2));
+  store8(17, right);
+  store8(23, add(right, 1));
+  store8(42, add(right, 2));
+
+  return verification.images_differ(left, 3, right, 3);
+}

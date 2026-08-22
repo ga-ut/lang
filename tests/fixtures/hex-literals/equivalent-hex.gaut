@@ -1,0 +1,5 @@
+fn main() {
+  let address = 0x09000000;
+  let mask = 0xffffffff;
+  return bitor(address, mask);
+}

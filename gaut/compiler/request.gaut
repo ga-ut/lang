@@ -10,7 +10,7 @@ fn request_u64(address) {
   return value;
 }
 
-fn compile_request(source, input_size, output, state) {
+fn compile_request(source, input_size, output, state, retain_output) {
   let info = 0;
   let entry_call = 0;
   let file_size = 0;
@@ -71,6 +71,7 @@ fn compile_request(source, input_size, output, state) {
   drop compiler.state_set(state, 176, 0);
   drop compiler.state_set(state, 184, 0);
   drop compiler.state_set(state, 192, 0);
+  drop emitter.reset_pending(state);
   while lt(clear_index, 256) {
     store64(0, add(add(state, 52736), mul(clear_index, 32)));
     store64(0, add(add(state, 52744), mul(clear_index, 32)));
@@ -166,7 +167,7 @@ fn compile_request(source, input_size, output, state) {
   drop symbols.reject_call_cycles(state);
   drop emitter.patch_branch(state, entry_call, compiler.state_get(state, 144), 1);
 
-  file_size = bitand(add(sub(compiler.state_get(state, 16), output), 4095), 18446744073709547520);
+  file_size = bitand(add(sub(compiler.state_get(state, 16), output), 4095), 0xfffffffffffff000);
   if lt(262144, file_size) {
     drop compiler.fail(state);
   }
@@ -184,7 +185,9 @@ fn compile_request(source, input_size, output, state) {
   if eq(compiler.state_get(state, 160), 2) {
     result = platform.run(output);
   } else {
-    drop host.write(1, output, file_size);
+    if eq(retain_output, 0) {
+      drop host.write(1, output, file_size);
+    }
     result = file_size;
   }
 

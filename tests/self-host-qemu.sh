@@ -3,6 +3,7 @@ set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 SOURCE="$ROOT/gaut/compiler"
+COMPILER=${GAUT_OS_IMAGE:-"$ROOT/dist/gaut-os.img"}
 
 if ! command -v qemu-system-aarch64 >/dev/null 2>&1; then
     echo "qemu-system-aarch64 is required for self-host verification." >&2
@@ -15,18 +16,36 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-STAGE1="$TEST_TEMP/stage1.img"
-STAGE2="$TEST_TEMP/stage2.img"
-STAGE3="$TEST_TEMP/stage3.img"
+REQUEST_ONE="$TEST_TEMP/fixed-point-one.request"
+REQUEST_TWO="$TEST_TEMP/fixed-point-two.request"
+STREAM="$TEST_TEMP/serial.stream"
 
-"$ROOT/os/build.sh" "$ROOT/dist/gaut-os.img" gaut-os "$SOURCE" "$STAGE1"
-"$ROOT/os/build.sh" "$STAGE1" gaut-os "$SOURCE" "$STAGE2"
-"$ROOT/os/build.sh" "$STAGE2" gaut-os "$SOURCE" "$STAGE3"
+"$ROOT/gaut/request.sh" fixed-point "$SOURCE" "$REQUEST_ONE"
+"$ROOT/gaut/request.sh" fixed-point "$SOURCE" "$REQUEST_TWO"
+/bin/cat "$REQUEST_ONE" "$REQUEST_TWO" > "$STREAM"
+/bin/dd if=/dev/zero bs=16 count=1 >> "$STREAM" 2>/dev/null
 
-if ! /usr/bin/cmp -s "$STAGE1" "$STAGE2" || ! /usr/bin/cmp -s "$STAGE2" "$STAGE3"; then
-    echo "Gaut compiler did not reach a byte-identical fixed point." >&2
+ACTUAL=$(qemu-system-aarch64 \
+    -machine virt,virtualization=off \
+    -cpu cortex-a53 \
+    -m 128M \
+    -display none \
+    -monitor none \
+    -serial stdio \
+    -nic none \
+    -no-reboot \
+    -kernel "$COMPILER" \
+    < "$STREAM")
+
+EXPECTED='gaut-os: ready
+gaut-os: ready
+gaut-os: test passed
+gaut-os: ready'
+
+if [ "$ACTUAL" != "$EXPECTED" ]; then
+    echo "Gaut did not judge its compiler generations byte-identical." >&2
+    /usr/bin/printf '%s\n' "$ACTUAL" >&2
     exit 1
 fi
 
-HASH=$(/usr/bin/shasum -a 256 "$STAGE3" | /usr/bin/awk '{print $1}')
-echo "QEMU self-host fixed point passed: $HASH"
+echo "Gaut-native QEMU self-host fixed point passed."

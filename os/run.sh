@@ -45,14 +45,5 @@ done
 /bin/dd if=/dev/zero bs=16 count=1 >> "$STREAM" 2>/dev/null
 
 echo "Gaut OS is compiling and running $# child request(s)."
-/bin/cat "$STREAM" | qemu-system-aarch64 \
-    -machine virt,virtualization=off \
-    -cpu cortex-a53 \
-    -m 128M \
-    -display none \
-    -monitor none \
-    -serial stdio \
-    -nic none \
-    -no-reboot \
-    -kernel "$COMPILER"
+GAUT_OS_IMAGE="$COMPILER" "$ROOT/os/boot.sh" "$STREAM"
 echo "Gaut OS shut down cleanly."

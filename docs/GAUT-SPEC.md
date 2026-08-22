@@ -62,15 +62,18 @@ Source is ASCII. Other input bytes are rejected. Space, tab, LF, and CR are
 equivalent whitespace and separate tokens. A `#` begins a comment through LF
 or end of file.
 
-- A literal is one or more decimal digits from `0` through `9`.
+- A decimal literal is one or more digits from `0` through `9`.
+- A hexadecimal literal starts with lowercase `0x` and contains one or more
+  lowercase digits from `0` through `9` or `a` through `f`.
 - A name starts with an ASCII letter or underscore and continues with ASCII
   letters, digits, underscore, or dot.
 - Punctuation is limited to `(`, `)`, `{`, `}`, `,`, `;`, and `=`.
 
 Whitespace is ignored outside tokens; indentation and line breaks have no
-meaning. A value above the maximum 64-bit unsigned word or any malformed
-literal is rejected rather than truncated. There are no hexadecimal literals,
-strings, escapes, or alternative numeric spellings.
+meaning. Decimal and hexadecimal literals produce the same `word`; the notation
+does not select a type. A value above the maximum 64-bit unsigned word or any
+malformed literal is rejected rather than truncated. Uppercase `0X` and `A-F`
+are not alternative spellings. There are no strings or escapes.
 
 ## 5. The only runtime type
 
@@ -123,7 +126,7 @@ call       := name "(" arguments? ")"
 arguments  := expression ("," expression)*
 ```
 
-The lexer has ten token kinds: name, decimal literal, left/right parenthesis,
+The lexer has ten token kinds: name, unsigned literal, left/right parenthesis,
 left/right brace, comma, equals, semicolon, and end-of-file. Keywords are
 ordinary names interpreted by statement position. Expression parsing needs one
 token of lookahead and three cases: literal, name, or call. There is no Pratt
@@ -199,7 +202,7 @@ human author must simulate.
 ## 8. Canonical memory primitives
 
 `memory name literal;` declares one fixed byte region. Its size is a positive
-decimal compile-time constant. The compiler aligns the region's base to eight
+compile-time constant. The compiler aligns the region's base to eight
 bytes and decides its physical placement; no allocator is called at runtime.
 
 - The name evaluates to the region's base byte address but cannot be assigned.
@@ -291,8 +294,16 @@ that stored source, reconstructs one command `1` request, and runs it. Command
 `4` is valid only for profile `3` and carries the same source-unit payload as
 command `1`. The supervisor compiles and runs it through the same path, treats
 the returned `main()` word as a test result, and emits one result record: zero
-passes and every nonzero word fails. Command IDs, names, storage, and test mode
-are supervisor protocol data, not Gaut syntax.
+passes and every nonzero word fails. Command `5` is valid only for profile `2`
+and also carries the command `1` source-unit payload. It retains the generated
+compiler, transfers control to it, and has that compiler build and compare the
+following generation before emitting the same test result record. Command `6`
+carries no source-unit payload. It walks every occupied resident source slot in
+slot order and reconstructs one ordinary unpadded command `1` request. Under
+profile `3` the result is executed and judged like command `4`; under profile
+`2` it is retained and judged like command `5`. Other profiles reject command
+`6`. Command IDs, names, storage, test mode, fixed-point mode, and workspace
+selection are supervisor protocol data, not Gaut syntax.
 
 Profile `1` selects the current AArch64 Linux static ELF adapter. Profile `2`
 selects the current AArch64 QEMU virt boot-image adapter. Profile `3` selects
@@ -302,10 +313,14 @@ request protocol, not the language inventory. A command `1` request contains
 between one and 64 units. Every request occupies at most 131072 bytes and
 contains no trailing bytes.
 
-The current resident table has eight fixed 32768-byte slots. Each slot holds
+The current resident table has ten fixed 32768-byte slots. Each slot holds
 an occupied word, exact name and source lengths, up to 64 name bytes, and up to
 32680 source bytes. Storing an existing name replaces that slot. No allocator
-or implicit growth exists, and the table disappears at machine shutdown.
+or implicit growth exists. Under profile `2`, ordinary platform functions load
+and save those exact slots through the board adapter; persistence remains
+platform behavior rather than Gaut syntax. The workspace reconstruction writes
+each unaligned length bytewise, matching the ordinary request reader instead of
+requiring padding.
 
 The resident Gaut OS input channel may place multiple requests consecutively.
 Serial requests have no padding because `host.read` consumes the exact declared
@@ -314,10 +329,12 @@ Termination is supervisor framing rather than Gaut source or a build profile.
 
 A build profile selects the architecture backend, ABI, container, entry
 adapter, available effect lowering, and any profile-supplied source units.
-Profiles `1` and `2` append one ordinary source unit externally named
-`platform`; this does not add syntax, perform an import search, or reserve the
-name for other profiles. Adding a new platform changes that external profile
-table and its adapters; it must not change the Gaut grammar.
+Profiles `1` and `2` append ordinary source units externally named `platform`
+and `verification`; this does not add syntax, perform an import search, or
+reserve either name for other profiles. `verification` compares explicit byte
+regions and sizes using ordinary Gaut primitives. Adding a new platform changes
+that external profile table and its adapters; it must not change the Gaut
+grammar.
 
 Profile selection does not grant an implicit UART operation. Gaut board source
 performs device access through the same ordered `load32` and `store32`
@@ -347,16 +364,24 @@ lowerings may differ only where the selected machine boundary requires it:
   a fallback when the machine does not implement the shutdown contract.
 - `call_image(address)` is the irreducible profile `2` control-transfer
   operation. It preserves the resident supervisor continuation and runtime
-  registers, calls the generated profile `3` entry, and returns that child's
-  `main()` word. Other profiles currently reject this effect.
+  registers and calls a generated raw-image entry. An ordinary profile `3`
+  child returns its `main()` word. A retained profile `2` compiler takes over
+  the supervisor arena and continues the serial session instead of returning
+  to the overwritten generation. Other profiles currently reject this effect.
 
-`platform.run(address)` and `platform.ready()` are not effects. They are
-ordinary functions in the profile-supplied `platform` module. The profile `2`
-module implements `run` by returning `call_image(address)` and implements
-`ready` in Gaut with ordered PL011 `load32` and `store32` operations. The
-profile `1` module supplies hosted no-op implementations. A profile `3`
-request receives no implicit `platform` module, so a program may provide its
-own module with that name and ordinary module resolution applies.
+`platform.run(address)`, `platform.fixed_point(address, size)`,
+`platform.workspace_load(storage)`, `platform.workspace_save(storage)`, and
+`platform.ready()` are not effects. They are ordinary functions in the
+profile-supplied `platform` module. The profile `2` module implements `run` by
+returning `call_image(address)`, stages a fixed-point generation with ordinary
+loads and stores before the same control transfer, and owns the retained-image
+and CFI workspace layout behind ordinary Gaut functions. Workspace functions
+use the same ordered memory primitives as other RAM and device access. Layout
+values are called outside byte-copy loops and reused as locals. `ready` is
+implemented in Gaut with ordered PL011 `load32` and `store32` operations. The
+profile `1` module supplies hosted no-op or rejection implementations. A
+profile `3` request receives no implicit `platform` or `verification` module,
+so a program may provide either name and ordinary module resolution applies.
 
 The complete effect IDs and arities are in `EFFECTS.tsv`. These are ordered,
 observable effects, not value primitives. The current freestanding adapter
@@ -399,7 +424,7 @@ A compiler conforms only after all of these pass:
 2. parser and arity rejection vectors with zero artifact bytes;
 3. an inventory proving one spelling and one lowering per primitive ID;
 4. repeated-build artifact equality;
-5. self-host generations N and N+1 byte equality;
+5. Gaut-native size and byte equality for self-host generations N and N+1;
 6. the same primitive vectors on every new platform;
 7. human review showing maintained source uses names rather than numbered slots
    or exposed evaluation-stack bookkeeping.
@@ -409,5 +434,7 @@ A compiler conforms only after all of these pass:
 The source units in `gaut/compiler/` implement this grammar and directly emit
 a static AArch64 Linux ELF or an explicit QEMU `virt` raw image selected by the
 external build profile. The resident compiler accepts consecutive returnable
-children with non-overlapping compiler and child arenas. Draft 0.5 adds
-externally named source units without adding module or import syntax.
+children with non-overlapping compiler and child arenas and can hand control to
+one retained compiler generation. That generation builds and judges its
+successor with ordinary Gaut byte operations. Draft 0.5 adds externally named
+source units without adding module or import syntax.

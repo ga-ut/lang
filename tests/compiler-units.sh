@@ -22,6 +22,10 @@ for ADAPTER in linux gaut-os; do
         exit 1
     fi
 done
+if [ ! -f "$ROOT/gaut/adapters/common/verification.gaut" ]; then
+    echo "Missing common verification module." >&2
+    exit 1
+fi
 
 TEST_TEMP=$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/gaut-compiler-units.XXXXXX")
 cleanup() {
@@ -33,9 +37,20 @@ REQUEST="$TEST_TEMP/compiler.request"
 "$ROOT/gaut/request.sh" gaut-os "$SOURCE_ROOT" "$REQUEST"
 
 UNIT_COUNT=$(/usr/bin/od -An -tu8 -j24 -N8 "$REQUEST" | /usr/bin/tr -d ' ')
-if [ "$UNIT_COUNT" -ne 8 ]; then
-    echo "Expected 7 compiler units and 1 platform adapter, got $UNIT_COUNT." >&2
+if [ "$UNIT_COUNT" -ne 9 ]; then
+    echo "Expected 7 compiler units, 1 platform adapter, and 1 verification module, got $UNIT_COUNT." >&2
     exit 1
 fi
+
+for MODE in workspace-test workspace-fixed-point; do
+    WORKSPACE_REQUEST="$TEST_TEMP/$MODE.request"
+    "$ROOT/gaut/request.sh" "$MODE" - "$WORKSPACE_REQUEST"
+    REQUEST_SIZE=$(/usr/bin/wc -c < "$WORKSPACE_REQUEST" | /usr/bin/tr -d ' ')
+    COMMAND=$(/usr/bin/od -An -tu8 -j16 -N8 "$WORKSPACE_REQUEST" | /usr/bin/tr -d ' ')
+    if [ "$REQUEST_SIZE" -ne 24 ] || [ "$COMMAND" -ne 6 ]; then
+        echo "$MODE must be one 24-byte command 6 request without source bytes." >&2
+        exit 1
+    fi
+done
 
 echo "Compiler source-unit layout passed."

@@ -2,7 +2,7 @@
 set -eu
 
 if [ "$#" -ne 3 ]; then
-    echo "usage: $0 <linux|gaut-os|gaut-child|test|store|run> <source|name> <request.bin>" >&2
+    echo "usage: $0 <linux|gaut-os|gaut-child|test|fixed-point|store|run|workspace-test|workspace-fixed-point> <source|name|-> <request.bin>" >&2
     exit 2
 fi
 
@@ -14,13 +14,17 @@ GAUT_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 COMMAND=1
 INPUT_KIND=source
 ADAPTER_FILE=
+COMMON_FILE=
 case "$PROFILE_NAME" in
-    linux) PROFILE=1; ADAPTER_FILE="$GAUT_ROOT/adapters/linux/platform.gaut" ;;
-    gaut-os) PROFILE=2; ADAPTER_FILE="$GAUT_ROOT/adapters/gaut-os/platform.gaut" ;;
+    linux) PROFILE=1; ADAPTER_FILE="$GAUT_ROOT/adapters/linux/platform.gaut"; COMMON_FILE="$GAUT_ROOT/adapters/common/verification.gaut" ;;
+    gaut-os) PROFILE=2; ADAPTER_FILE="$GAUT_ROOT/adapters/gaut-os/platform.gaut"; COMMON_FILE="$GAUT_ROOT/adapters/common/verification.gaut" ;;
     gaut-child) PROFILE=3 ;;
     test) PROFILE=3; COMMAND=4 ;;
+    fixed-point) PROFILE=2; COMMAND=5; ADAPTER_FILE="$GAUT_ROOT/adapters/gaut-os/platform.gaut"; COMMON_FILE="$GAUT_ROOT/adapters/common/verification.gaut" ;;
     store) PROFILE=3; COMMAND=2 ;;
     run) PROFILE=3; COMMAND=3; INPUT_KIND=name ;;
+    workspace-test) PROFILE=3; COMMAND=6; INPUT_KIND=none ;;
+    workspace-fixed-point) PROFILE=2; COMMAND=6; INPUT_KIND=none ;;
     *)
         echo "unknown Gaut build profile: $PROFILE_NAME" >&2
         exit 2
@@ -60,7 +64,9 @@ BODY="$REQUEST_TEMP/body"
 : > "$BODY"
 append_u64 "$COMMAND" "$BODY"
 
-if [ "$INPUT_KIND" = name ]; then
+if [ "$INPUT_KIND" = none ]; then
+    :
+elif [ "$INPUT_KIND" = name ]; then
     NAME=$SOURCE
     NAME_SIZE=$(/usr/bin/printf '%s' "$NAME" | /usr/bin/wc -c | /usr/bin/tr -d ' ')
     if [ "$NAME_SIZE" -eq 0 ] || [ "$NAME_SIZE" -gt 64 ]; then
@@ -80,6 +86,9 @@ else
 
     UNIT_COUNT=$(/usr/bin/wc -l < "$FILES" | /usr/bin/tr -d ' ')
     if [ -n "$ADAPTER_FILE" ]; then
+        UNIT_COUNT=$((UNIT_COUNT + 1))
+    fi
+    if [ -n "$COMMON_FILE" ]; then
         UNIT_COUNT=$((UNIT_COUNT + 1))
     fi
     if [ "$UNIT_COUNT" -eq 0 ] || [ "$UNIT_COUNT" -gt 64 ]; then
@@ -117,6 +126,16 @@ else
         append_u64 "$SOURCE_SIZE" "$BODY"
         /usr/bin/printf '%s' "$NAME" >> "$BODY"
         /bin/cat "$ADAPTER_FILE" >> "$BODY"
+    fi
+
+    if [ -n "$COMMON_FILE" ]; then
+        NAME=verification
+        NAME_SIZE=12
+        SOURCE_SIZE=$(/usr/bin/wc -c < "$COMMON_FILE" | /usr/bin/tr -d ' ')
+        append_u64 "$NAME_SIZE" "$BODY"
+        append_u64 "$SOURCE_SIZE" "$BODY"
+        /usr/bin/printf '%s' "$NAME" >> "$BODY"
+        /bin/cat "$COMMON_FILE" >> "$BODY"
     fi
 fi
 

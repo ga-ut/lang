@@ -35,18 +35,22 @@ fn main() {
   memory source 131072;
   memory output 262144;
   memory state 65536;
-  memory storage_memory 262144;
+  memory storage_memory 327680;
   let input_size = 0;
   let received = 49;
   let command = 0;
   let named_run = 0;
   let test_mode = 0;
+  let fixed_point_mode = 0;
+  let workspace_mode = 0;
   let result = 0;
 
   store64(7955925652160733543, add(state, 65000));
   store64(8030798176169255286, add(state, 65008));
   store64(44650689141, add(state, 65016));
 
+  drop storage.clear(storage_memory);
+  drop platform.workspace_load(storage_memory);
   drop platform.ready();
   input_size = host.read(0, source, 131072);
   while input_size {
@@ -60,6 +64,21 @@ fn main() {
     command = load64(add(source, 16));
     named_run = 0;
     test_mode = eq(command, 4);
+    fixed_point_mode = eq(command, 5);
+    workspace_mode = eq(command, 6);
+
+    if workspace_mode {
+      if eq(load64(source), 3) {
+        test_mode = 1;
+      } else {
+        if eq(load64(source), 2) {
+          fixed_point_mode = 1;
+        } else {
+          drop fail(state);
+        }
+      }
+      input_size = storage.restore_workspace_request(source, storage_memory, state);
+    }
 
     if test_mode {
       if eq(eq(load64(source), 3), 0) {
@@ -68,8 +87,16 @@ fn main() {
       store64(1, add(source, 16));
     }
 
+    if fixed_point_mode {
+      if eq(eq(load64(source), 2), 0) {
+        drop fail(state);
+      }
+      store64(1, add(source, 16));
+    }
+
     if eq(command, 2) {
       drop storage.store_request(source, input_size, storage_memory, state);
+      drop platform.workspace_save(storage_memory);
     } else {
       if eq(command, 3) {
         input_size = storage.restore_request(source, input_size, storage_memory, state);
@@ -87,8 +114,12 @@ fn main() {
         received = add(received, 1);
       }
 
-      result = request.compile_request(source, input_size, output, state);
+      result = request.compile_request(source, input_size, output, state, fixed_point_mode);
       if test_mode {
+        drop report_test(state, result);
+      }
+      if fixed_point_mode {
+        result = platform.fixed_point(output, result);
         drop report_test(state, result);
       }
     }

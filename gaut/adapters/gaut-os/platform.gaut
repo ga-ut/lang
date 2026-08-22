@@ -2,9 +2,299 @@ fn run(address) {
   return call_image(address);
 }
 
+fn retained_compiler_base() {
+  # Gaut OS retained compiler arena base: 0x47d00000.
+  return 0x47d00000;
+}
+
+fn maximum_image_size() {
+  return 262144;
+}
+
+fn copy_image(source, destination, size) {
+  let index = 0;
+
+  while lt(index, size) {
+    store8(load8(add(source, index)), add(destination, index));
+    index = add(index, 1);
+  }
+
+  return 0;
+}
+
+fn fixed_point(address, size) {
+  let generation = retained_compiler_base();
+  let generation_size = add(generation, maximum_image_size());
+  let generation_ready = add(generation_size, 8);
+  let result = 1;
+
+  if eq(load64(generation_ready), 0) {
+    drop copy_image(address, generation, size);
+    store64(size, generation_size);
+    store64(1, generation_ready);
+    drop call_image(generation);
+  } else {
+    result = verification.images_differ(generation, load64(generation_size), address, size);
+  }
+
+  return result;
+}
+
+fn workspace_flash_base() {
+  # QEMU virt second CFI flash bank: 0x04000000.
+  return 0x04000000;
+}
+
+fn workspace_sector_size() {
+  return 262144;
+}
+
+fn workspace_slot_size() {
+  return 32768;
+}
+
+fn workspace_magic() {
+  # Little-endian bytes for GAUTWS01.
+  return 0x3130535754554147;
+}
+
+fn workspace_clear_slot(slot) {
+  let offset = 0;
+  let size = workspace_slot_size();
+
+  while lt(offset, size) {
+    store64(0, add(slot, offset));
+    offset = add(offset, 8);
+  }
+
+  return 0;
+}
+
+fn workspace_checksum(slot) {
+  let offset = 0;
+  let checksum = 0xcbf29ce484222325;
+  let size = workspace_slot_size();
+
+  while lt(offset, size) {
+    checksum = mul(bitxor(checksum, load8(add(slot, offset))), 0x100000001b3);
+    offset = add(offset, 1);
+  }
+
+  return checksum;
+}
+
+fn flash_read_u64(address) {
+  return add(load32(address), shl(load32(add(address, 4)), 32));
+}
+
+fn flash_ready(address) {
+  while eq(bitand(load32(address), 0x80), 0) {
+  }
+
+  return 0;
+}
+
+fn flash_read_mode(address) {
+  store32(0xff, address);
+  return 0;
+}
+
+fn flash_erase_sector(address) {
+  store32(0x20, address);
+  store32(0xd0, address);
+  drop flash_ready(address);
+  drop flash_read_mode(address);
+  return 0;
+}
+
+fn flash_write_block(source, destination) {
+  let offset = 0;
+
+  store32(0xe8, destination);
+  drop flash_ready(destination);
+  store32(0x3ff, destination);
+  while lt(offset, 4096) {
+    store32(load32(add(source, offset)), add(destination, offset));
+    offset = add(offset, 4);
+  }
+  store32(0xd0, destination);
+  drop flash_ready(destination);
+  drop flash_read_mode(destination);
+  return 0;
+}
+
+fn flash_write_header(destination, slot_index, checksum) {
+  let index = 10;
+  let magic = workspace_magic();
+
+  store32(0xe8, destination);
+  drop flash_ready(destination);
+  store32(0x3ff, destination);
+  store32(bitand(magic, 0xffffffff), destination);
+  store32(shr(magic, 32), add(destination, 4));
+  store32(1, add(destination, 8));
+  store32(0, add(destination, 12));
+  store32(slot_index, add(destination, 16));
+  store32(0, add(destination, 20));
+  store32(workspace_slot_size(), add(destination, 24));
+  store32(0, add(destination, 28));
+  store32(bitand(checksum, 0xffffffff), add(destination, 32));
+  store32(shr(checksum, 32), add(destination, 36));
+  while lt(index, 1024) {
+    store32(0xffffffff, add(destination, mul(index, 4)));
+    index = add(index, 1);
+  }
+  store32(0xd0, destination);
+  drop flash_ready(destination);
+  drop flash_read_mode(destination);
+  return 0;
+}
+
+fn workspace_slot_valid(slot) {
+  let occupied = load64(slot);
+  let valid = eq(occupied, 0);
+  let name_length = 0;
+  let source_length = 0;
+
+  if eq(occupied, 1) {
+    name_length = load64(add(slot, 8));
+    source_length = load64(add(slot, 16));
+    valid = bitand(
+      bitand(lt(0, name_length), lt(name_length, 65)),
+      bitand(lt(0, source_length), lt(source_length, 32681))
+    );
+  }
+
+  return valid;
+}
+
+fn flash_slot_header_valid(sector, slot_index) {
+  let valid = eq(flash_read_u64(sector), workspace_magic());
+
+  if eq(flash_read_u64(add(sector, 8)), 1) {
+  } else {
+    valid = 0;
+  }
+  if eq(flash_read_u64(add(sector, 16)), slot_index) {
+  } else {
+    valid = 0;
+  }
+  if eq(flash_read_u64(add(sector, 24)), workspace_slot_size()) {
+  } else {
+    valid = 0;
+  }
+
+  return valid;
+}
+
+fn flash_slot_equal(slot, sector, slot_index) {
+  let offset = 0;
+  let equal = flash_slot_header_valid(sector, slot_index);
+  let data = add(sector, 4096);
+  let size = workspace_slot_size();
+
+  if equal {
+    if eq(flash_read_u64(add(sector, 32)), workspace_checksum(slot)) {
+    } else {
+      equal = 0;
+    }
+  }
+  while bitand(equal, lt(offset, size)) {
+    if eq(load32(add(slot, offset)), load32(add(data, offset))) {
+    } else {
+      equal = 0;
+    }
+    offset = add(offset, 4);
+  }
+
+  return equal;
+}
+
+fn flash_load_slot(slot, sector, slot_index) {
+  let offset = 0;
+  let data = add(sector, 4096);
+  let valid = flash_slot_header_valid(sector, slot_index);
+  let loaded = valid;
+  let size = workspace_slot_size();
+
+  if valid {
+    while lt(offset, size) {
+      store32(load32(add(data, offset)), add(slot, offset));
+      offset = add(offset, 4);
+    }
+    if eq(workspace_checksum(slot), flash_read_u64(add(sector, 32))) {
+      valid = workspace_slot_valid(slot);
+    } else {
+      valid = 0;
+    }
+  }
+  if bitand(loaded, eq(valid, 0)) {
+    drop workspace_clear_slot(slot);
+  }
+
+  return valid;
+}
+
+fn flash_save_slot(slot, sector, slot_index) {
+  let block = 0;
+  let data = add(sector, 4096);
+  let checksum = workspace_checksum(slot);
+
+  drop flash_erase_sector(sector);
+  while lt(block, 8) {
+    drop flash_write_block(
+      add(slot, mul(block, 4096)),
+      add(data, mul(block, 4096))
+    );
+    block = add(block, 1);
+  }
+  drop flash_write_header(sector, slot_index, checksum);
+  return 0;
+}
+
+fn workspace_load(storage_memory) {
+  let index = 0;
+  let slot = 0;
+  let sector = 0;
+  let flash = workspace_flash_base();
+  let sector_size = workspace_sector_size();
+  let slot_size = workspace_slot_size();
+
+  while lt(index, 10) {
+    slot = add(storage_memory, mul(index, slot_size));
+    sector = add(flash, mul(index, sector_size));
+    drop flash_load_slot(slot, sector, index);
+    index = add(index, 1);
+  }
+
+  return 0;
+}
+
+fn workspace_save(storage_memory) {
+  let index = 0;
+  let slot = 0;
+  let sector = 0;
+  let flash = workspace_flash_base();
+  let sector_size = workspace_sector_size();
+  let slot_size = workspace_slot_size();
+
+  while lt(index, 10) {
+    slot = add(storage_memory, mul(index, slot_size));
+    if eq(load64(slot), 1) {
+      sector = add(flash, mul(index, sector_size));
+      if eq(flash_slot_equal(slot, sector, index), 0) {
+        drop flash_save_slot(slot, sector, index);
+      }
+    }
+    index = add(index, 1);
+  }
+
+  return 0;
+}
+
 fn uart_write(byte) {
-  let uart = 150994944;
-  let transmit_full = 32;
+  let uart = 0x09000000;
+  let transmit_full = 0x20;
 
   while bitand(load32(add(uart, 24)), transmit_full) {
   }

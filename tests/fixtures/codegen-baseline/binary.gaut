@@ -1,0 +1,5 @@
+fn main() {
+  let left = 7;
+  let right = 5;
+  return add(left, right);
+}

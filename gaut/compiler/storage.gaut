@@ -9,6 +9,28 @@ fn copy_bytes(source, destination, length) {
   return 0;
 }
 
+fn clear(storage_memory) {
+  let offset = 0;
+
+  while lt(offset, 327680) {
+    store64(0, add(storage_memory, offset));
+    offset = add(offset, 8);
+  }
+
+  return 0;
+}
+
+fn write_u64(address, value) {
+  let index = 0;
+
+  while lt(index, 8) {
+    store8(bitand(shr(value, mul(index, 8)), 0xff), add(address, index));
+    index = add(index, 1);
+  }
+
+  return 0;
+}
+
 fn slot_at(storage_memory, index) {
   return add(storage_memory, mul(index, 32768));
 }
@@ -18,7 +40,7 @@ fn find(storage_memory, name, name_length) {
   let slot = 0;
   let result = 0;
 
-  while bitand(eq(result, 0), lt(index, 8)) {
+  while bitand(eq(result, 0), lt(index, 10)) {
     slot = slot_at(storage_memory, index);
     if bitand(load64(slot), eq(load64(add(slot, 8)), name_length)) {
       if symbols.span_equal(add(slot, 24), name_length, name, name_length) {
@@ -36,7 +58,7 @@ fn empty(storage_memory) {
   let slot = 0;
   let result = 0;
 
-  while bitand(eq(result, 0), lt(index, 8)) {
+  while bitand(eq(result, 0), lt(index, 10)) {
     slot = slot_at(storage_memory, index);
     if eq(load64(slot), 0) {
       result = slot;
@@ -162,4 +184,70 @@ fn restore_request(source, input_size, storage_memory, state) {
   drop copy_bytes(add(slot, 24), add(source, 48), name_length);
   drop copy_bytes(add(slot, 88), add(add(source, 48), name_length), source_length);
   return restored_size;
+}
+
+fn append_workspace_unit(source, request_size, slot, state) {
+  let name_length = 0;
+  let source_length = 0;
+  let record_size = 0;
+  let cursor = 0;
+  let copy_index = 0;
+
+  name_length = load64(add(slot, 8));
+  source_length = load64(add(slot, 16));
+  if bitand(lt(0, name_length), lt(name_length, 65)) {
+  } else {
+    drop compiler.fail(state);
+  }
+  if bitand(lt(0, source_length), lt(source_length, 32681)) {
+  } else {
+    drop compiler.fail(state);
+  }
+
+  record_size = add(add(16, name_length), source_length);
+  if lt(131072, add(request_size, record_size)) {
+    drop compiler.fail(state);
+  }
+
+  cursor = add(source, request_size);
+  drop write_u64(cursor, name_length);
+  drop write_u64(add(cursor, 8), source_length);
+  cursor = add(cursor, 16);
+  while lt(copy_index, name_length) {
+    store8(load8(add(add(slot, 24), copy_index)), add(cursor, copy_index));
+    copy_index = add(copy_index, 1);
+  }
+  cursor = add(cursor, name_length);
+  copy_index = 0;
+  while lt(copy_index, source_length) {
+    store8(load8(add(add(slot, 88), copy_index)), add(cursor, copy_index));
+    copy_index = add(copy_index, 1);
+  }
+
+  return add(request_size, record_size);
+}
+
+fn restore_workspace_request(source, storage_memory, state) {
+  let index = 0;
+  let slot = 0;
+  let unit_count = 0;
+  let request_size = 32;
+
+  while lt(index, 10) {
+    slot = slot_at(storage_memory, index);
+    if load64(slot) {
+      request_size = append_workspace_unit(source, request_size, slot, state);
+      unit_count = add(unit_count, 1);
+    }
+    index = add(index, 1);
+  }
+
+  if eq(unit_count, 0) {
+    drop compiler.fail(state);
+  }
+
+  store64(sub(request_size, 16), add(source, 8));
+  store64(1, add(source, 16));
+  store64(unit_count, add(source, 24));
+  return request_size;
 }

@@ -1,0 +1,22 @@
+fn main() {
+  let failed = 0;
+
+  if eq(0x0, 0) {
+  } else {
+    failed = 1;
+  }
+  if eq(0x00000020, 32) {
+  } else {
+    failed = 2;
+  }
+  if eq(0x09000000, 150994944) {
+  } else {
+    failed = 3;
+  }
+  if eq(0xffffffffffffffff, 18446744073709551615) {
+  } else {
+    failed = 4;
+  }
+
+  return failed;
+}
