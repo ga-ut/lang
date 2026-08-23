@@ -1,29 +1,29 @@
 Gaut current verification
-Date: 2026-08-22
+Date: 2026-08-23
 
 Retained source and artifacts:
-- gaut/compiler/, 7 source units, 2,348 lines, 69,113 bytes
-- gaut/adapters/gaut-os/platform.gaut, 323 lines, 7,276 bytes, SHA-256:
-  7122a0e92e3e4764e7892161b619c3bfb9b0e24131be97701b16eaba027f057d
+- gaut/compiler/, 7 source units, 2,729 lines, 80,888 bytes
+- gaut/adapters/gaut-os/platform.gaut, 277 lines, 6,269 bytes, SHA-256:
+  19fcde078797b8047730ae5d810ff9c78acf5b2ea8521f3157daddc24ebe079c
 - gaut/adapters/common/verification.gaut, 23 lines, 453 bytes, SHA-256:
   3d5687f883c91dff5781647c33323c2e8a5209a1e0c2de5005c11f10636f9e1c
-- profile 2 compiler request, 9 source units, 77,085 bytes, SHA-256:
-  0a761b4699f051b00087a713cc753608c0ba362bb164193d244895e0d9918aca
+- profile 2 compiler request, 9 source units, 87,853 bytes, SHA-256:
+  2c11ca0022d74dc00c052dc7250230466190683dd8280bdb67d9509747d9a563
 - os/examples/child1.gaut, 792 bytes, SHA-256:
   beae4a0687c8ab9bee67409e7f90d9784ab1b98a774ced2085a318c245e261fa
 - os/examples/child2.gaut, 793 bytes, SHA-256:
   7ce5d3e709a92b413720d0070f9b00380406c7da060fa7d1aaefa6ffea0a6193
-- dist/gaut.elf, 69,632-byte static AArch64 Linux bootstrap compiler
+- dist/gaut.elf, 77,824-byte static AArch64 Linux bootstrap compiler
 - hosted compiler SHA-256:
-  514fc3abcdd4949a7f22c7e02c57f12e70f5a9b32e98ba22de8eaf9715151883
-- dist/gaut-os.img, 77,824-byte raw AArch64 resident compiler
+  b671c8cfbae894383d03460fa1d88cd12d4aa9eee6222b5ea7f49e322fdcab7d
+- dist/gaut-os.img, 86,016-byte raw AArch64 resident compiler
 - freestanding compiler SHA-256:
-  bd95f3deaab94b228ed14a050df0f2db003127b007dd31aa27d3163dbb872a27
+  7cbd25a2e60cbfac3abb7ff939df6dc6607f6ef330b07f1a7c59f0d37a5f5408
 
 Self-host proof:
 1. the retained Gaut OS compiler built the nine-unit profile 2 request as the
    first following generation inside its ordinary output buffer
-2. Gaut copied that 77,824-byte generation to the fixed generation arena and
+2. Gaut copied that 86,016-byte generation to the fixed generation arena and
    transferred control to it through the existing `call_image` effect
 3. the generated compiler received the same checked source request over PL011,
    built the second following generation, and retained both image sizes and
@@ -40,11 +40,11 @@ gaut-os: ready
 6. `tests/self-host-qemu.sh` only framed the two source requests, booted QEMU,
    and observed that result; it contains no `cmp`, `shasum`, or artifact
    extraction that decides fixed-point success
-7. the retained freestanding compiler is 77,824 bytes with SHA-256:
-   bd95f3deaab94b228ed14a050df0f2db003127b007dd31aa27d3163dbb872a27
-8. the same compiler emitted the retained profile 1 static ELF at 69,632 bytes
+7. the retained freestanding compiler is 86,016 bytes with SHA-256:
+   7cbd25a2e60cbfac3abb7ff939df6dc6607f6ef330b07f1a7c59f0d37a5f5408
+8. the same compiler emitted the retained profile 1 static ELF at 77,824 bytes
    with SHA-256:
-   514fc3abcdd4949a7f22c7e02c57f12e70f5a9b32e98ba22de8eaf9715151883
+   b671c8cfbae894383d03460fa1d88cd12d4aa9eee6222b5ea7f49e322fdcab7d
 9. this fixed-point path used QEMU and Gaut OS without a Linux guest or foreign
    compiler
 
@@ -156,8 +156,8 @@ gaut-os: ready
 gaut-os: child 2
 gaut-os: ready
 
-6. ten fixed 32768-byte slots stayed inside supervisor-owned memory; no
-   allocator, disk image, or extra parser was introduced
+6. the final catalog keeps only bounded metadata in supervisor RAM and reloads
+   the selected source payload without an allocator or extra parser
 7. the zero terminator shut QEMU down with status zero and no residual process
 
 Gaut-native source workspace proof:
@@ -174,8 +174,8 @@ Gaut-native source workspace proof:
    carried no source bytes
 5. the generated compiler reused the resident inventory after control transfer,
    built the following generation, and Gaut reported `test passed`
-6. both following freestanding generations were 77,824 bytes with SHA-256
-   `bd95f3deaab94b228ed14a050df0f2db003127b007dd31aa27d3163dbb872a27`
+6. both following freestanding generations were 86,016 bytes with SHA-256
+   `7cbd25a2e60cbfac3abb7ff939df6dc6607f6ef330b07f1a7c59f0d37a5f5408`
 7. command 6 itself added no Gaut keyword, type, global, parser, compiler path,
    allocator, or host-side image comparison
 
@@ -183,8 +183,8 @@ Persistent workspace proof:
 1. the RED test stored `helper` and `app`, shut QEMU down, booted the same
    retained compiler again, and reached the ordinary invalid-source path because
    no workspace record survived
-2. profile `2` now maps the ten RAM slots to ten 256 KiB sectors beginning at
-   the second QEMU CFI bank address `0x04000000`
+2. profile `2` maps each physical 32768-byte record to one 256 KiB sector
+   beginning at the second QEMU CFI bank address `0x04000000`
 3. Gaut writes each exact 32768-byte slot payload and FNV-1a checksum before
    committing its versioned 4096-byte header block
 4. a following boot restored both modules and command 6 reported `test passed`;
@@ -195,27 +195,92 @@ Persistent workspace proof:
    missing-module compiler rejection without a host storage decision
 6. the nine compiler, platform, and verification units were stored before
    shutdown; after reboot, two 24-byte workspace requests reached the
-   Gaut-native 77824-byte compiler fixed point without source retransmission
+   Gaut-native 86016-byte compiler fixed point without source retransmission
 7. `os/boot.sh` only creates and attaches the 64 MiB backing file and transports
    the serial stream; QEMU shut down with status zero and no process remained
+
+Flash-backed source catalog proof:
+1. the RED retained compiler stored ten named sources and rejected the eleventh
+   through the ordinary `gaut: invalid source` recovery path
+2. the supervisor now reserves 8192 RAM bytes for 64 fixed 112-byte catalog
+   entries instead of 327680 bytes for ten resident payloads, freeing 319488
+   bytes without dynamic allocation
+3. each entry records occupied state, name and source lengths, physical record
+   index, format version, checksum, and up to 64 name bytes; one existing output
+   region is reused as the 32768-byte transfer scratch area
+4. eleven stored modules survived shutdown and rebuilt as one ordinary command
+   1 request after reboot; Gaut OS executed it and reported `test passed`
+5. replacing the eleventh physical record produced `test failed`, restoring the
+   original record produced a following `test passed`, and the physical order
+   remained deterministic
+6. changing the eleventh record header index or one payload byte caused Gaut to
+   exclude that record at the next boot and reach the canonical missing-module
+   compiler rejection path
+7. the catalog gate preserved the then-current generated-program baselines;
+   later unreachable-function removal intentionally reduced them
+8. the following two freestanding generations were byte-identical at 86,016
+   bytes with SHA-256
+   `7cbd25a2e60cbfac3abb7ff939df6dc6607f6ef330b07f1a7c59f0d37a5f5408`;
+   the hosted compiler is 77,824 bytes with SHA-256
+   `b671c8cfbae894383d03460fa1d88cd12d4aa9eee6222b5ea7f49e322fdcab7d`
+9. every retained test passed with the final artifacts, QEMU exited with status
+   zero, and no Gaut QEMU process remained
 
 Performance and capacity baseline proof:
 1. four retained-compiler Linux builds recorded padded and used image bytes,
    AArch64 instruction words, and evaluation-stack push and pop operations
-2. the constant, binary, call, and memory fixtures emitted 198, 208, 210, and
-   218 instruction words and 41, 43, 43, and 47 total stack movements
+2. after unreachable-function removal, the constant, binary, call, and memory
+   fixtures emit 17, 27, 29, and 37 instruction words and 2, 4, 4, and 8 total
+   stack movements
 3. request framing accepted exactly 131072 bytes and 64 units, then rejected
    one more byte and a 65th unit with explicit diagnostics
-4. one QEMU boot accepted 256 functions, 512 program local slots, 917504 fixed
-   bytes, and generated code below the 262144-byte rounded-image boundary
-5. the same boot rejected 257 functions, a 513th program local slot, 917505
+4. one QEMU boot accepted 256 functions, a 512-slot active call chain, 917504
+   fixed bytes, and generated code below the 262144-byte rounded-image boundary
+5. the same boot rejected 257 functions, a 513-slot active call chain, 917505
    fixed bytes, and the 5040th retained nested-expression statement beyond the
    output boundary
 6. every guest-side rejection recovered through the existing compiler path; a
    final ordinary Gaut test passed, QEMU shut down with status zero, and no Gaut
    QEMU process remained
-7. these records added no syntax, primitive, effect, type, optimizer, foreign
-   compiler, or host timing dependency
+7. these records added no syntax, primitive, effect, type, foreign compiler, or
+   host timing dependency
+
+Unreachable-function removal proof:
+1. the RED fixture inserted one unused function between a caller and its forward
+   cross-module callee; the retained compiler produced a different Linux ELF
+2. every function is still parsed, calls are resolved, cycles are rejected, and
+   local slots are checked before reachability can change the output
+3. a bounded queue over the existing call graph marks `main` and its transitive
+   callees; a 256-function backward-defined chain reaches the exact table limit
+4. reachable function regions compact forward in source order; internal relative
+   branches move unchanged, while entry and immediate user-call branches are
+   patched from old to new function starts
+5. clean and dead-source Linux images are byte-identical for forward and
+   backward cross-module calls; the moved backward callee executes `while` and
+   `if` control flow and both directions report `test passed` under profile 3
+6. an unresolved call and a call cycle inside unreachable functions each emit
+   the canonical diagnostic, recover to ready, and allow a following pass
+7. each small Linux fixture lost exactly 724 used bytes and 181 instructions;
+   the constant fixture now uses 188 bytes and 17 instructions
+8. final programs carry no reachability data, runtime dispatch, allocator,
+   release operation, new syntax, type, primitive, effect, or alternate lowering
+9. the following two freestanding generations were byte-identical at 86,016
+   bytes with SHA-256
+   `7cbd25a2e60cbfac3abb7ff939df6dc6607f6ef330b07f1a7c59f0d37a5f5408`;
+   the hosted compiler is 77,824 bytes with SHA-256
+   `b671c8cfbae894383d03460fa1d88cd12d4aa9eee6222b5ea7f49e322fdcab7d`
+10. every retained test passed, both retained profiles rebuilt exactly, QEMU
+    exited with status zero, and no Gaut QEMU process remained
+
+Build-adapter framing proof:
+1. the RED adapter accepted the canonical 21-byte `gaut: invalid source`
+   diagnostic between ready markers, returned success, and copied it as an ELF
+2. `os/build.sh` now accepts only a nonempty, at-most-262144-byte payload aligned
+   to the documented 4096-byte artifact frame
+3. the same invalid source returns failure and leaves no output, while a valid
+   Linux source still produces a 4096-byte ELF with the expected magic
+4. this check validates transport framing only; Gaut remains the source-validity
+   authority and the shell does not parse or reinterpret the diagnostic
 
 Direct expression lowering proof:
 1. the RED candidate retained the previous binary baseline of 43 pushes and 46
@@ -259,6 +324,31 @@ Lowercase hexadecimal literal proof:
    an 8192-byte Gaut OS image, and a Gaut-native profile 3 passing verdict
 10. every retained test passed with the final artifacts, QEMU exited with
     status zero, and no Gaut QEMU process remained
+
+Local-slot lifetime reuse proof:
+1. the RED compiler rejected three mutually non-overlapping 200-local functions
+   because their monotonically assigned total exceeded 512 slots
+2. functions now emit relative local offsets; after resolving calls, the same
+   acyclic graph rejection pass computes topological activation depths
+3. each depth owns the largest local range needed by any function at that depth;
+   same-depth functions reuse it, while every call edge moves to a disjoint range
+4. the 600-local sibling program passed using 200 physical slots, and a caller
+   retained all 256 locals across a 256-local child at the exact 512-slot boundary
+5. a child with one further active local was rejected at 513 slots, an explicit
+   call cycle remained rejected, and a following ordinary test passed in one boot
+6. generated local instructions are patched once after allocation; the four
+   instruction and evaluation-stack baselines did not move and runtime gained no
+   allocator, release, branch, call, keyword, type, primitive, or effect
+7. the previous retained compiler built a 77824-byte bridge with SHA-256
+   `ad1bb4b0eb41a02d357d64f6eb4102f4f4160ea94d8a1b2fa74cfb1fc33ab70b`;
+   that bridge applied the new allocation while compiling the following image
+8. the following two freestanding generations were byte-identical at 77824 bytes
+   with SHA-256
+   `98ae383a5c1821cad45f1185f88bed1d3f0dde0bc4f21fb41789d4ce0c2a6c3d`
+9. the retained hosted ELF is 73728 bytes with SHA-256
+   `16edf5d4af61ff900f02d00ccc4fe99d69eed801e6cf3100bc90c5a0d68fc614`
+10. every retained test passed with the final artifacts, QEMU exited with status
+    zero, and no Gaut QEMU process remained
 
 Resident execution proof:
 1. profile 2 initialized the compiler arena at 0x47f00000 and read exact
@@ -336,8 +426,8 @@ Boundary:
   machine
 - compiler and child ordinary Gaut memory are separated, but there is no MMU
   or malicious-child fault containment
-- ten named source slots persist across requests, compile rejection, and clean
-  machine shutdown when `os/boot.sh` attaches the explicit workspace flash
+- up to 64 named source records persist across requests, compile rejection, and
+  clean machine shutdown while only bounded catalog metadata remains in RAM
 - the retained launcher supplies a bounded serial stream, while the resident
   host.read path can wait for delayed input without consuming a host CPU core
 - complete invalid Gaut source requests recover to ready, but malformed lengths
@@ -345,5 +435,7 @@ Boundary:
 - Gaut OS judges child tests, stored multi-unit workspaces, and compiler
   fixed-point equality; the workspace path stores source once and reuses the
   inventory across generated compiler handoff
-- the next verified gate reuses non-overlapping local slots without changing
-  Gaut source in docs/ROADMAP.md
+- final images retain only functions reachable from `main`, but all source still
+  consumes temporary one-pass lowering space before post-validation compaction
+- the next verified gate measures whole-workspace rebuild work before Gaut owns
+  any retained module artifact, as specified in docs/ROADMAP.md

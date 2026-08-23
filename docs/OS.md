@@ -28,7 +28,7 @@ low-power receiver exactly how many additional bytes to read.
 
 The resident compiler:
 
-1. clears its RAM source table and restores valid persistent slots;
+1. clears its bounded RAM catalog and scans valid persistent records into it;
 2. emits `gaut-os: ready`;
 3. receives one complete serial request into its fixed source region;
 4. reports the received request number;
@@ -65,6 +65,10 @@ assembler, linker, or foreign runtime.
 compiler and retains the artifact framed between its two ready markers. This
 lets Gaut OS rebuild the split compiler through a byte-identical fixed point
 using QEMU without booting a Linux guest.
+The adapter accepts only a nonempty, at-most-262144-byte payload aligned to the
+compiler's 4096-byte artifact frame. A Gaut diagnostic between ready markers is
+therefore a failed build and never replaces the requested output file; the host
+does not reinterpret the diagnostic or decide source validity.
 
 A command `4` request compiles the same ordinary profile `3` Gaut source and
 observes the word returned through `platform.run`. Gaut OS itself writes
@@ -82,9 +86,10 @@ through the command `4` result protocol. The host neither extracts the two
 images nor compares or hashes them to decide success.
 
 A command `6` request contains only the normal profile, length, and command
-words. Gaut OS walks every occupied named-source slot in deterministic slot
-order and reconstructs the same unpadded command `1` record accepted by
-`compile_request`. Profile `3` executes and judges the stored workspace through
+words. Gaut OS walks every occupied named-source catalog entry in deterministic
+physical order, loads one payload at a time into a reusable scratch region, and
+reconstructs the same unpadded command `1` record accepted by `compile_request`.
+Profile `3` executes and judges the stored workspace through
 the command `4` result protocol. Profile `2` retains and judges compiler
 generations through the command `5` fixed-point path. The second profile `2`
 workspace request is 24 bytes and reuses the resident source inventory instead
@@ -126,27 +131,34 @@ malicious-child isolation.
 
 ## Named source storage contract
 
-The supervisor owns ten fixed 32768-byte source slots inside its existing
-1 MiB runtime arena. A slot stores one name of at most 64 bytes and one source
-of at most 32680 bytes. `store` fills the first empty slot or replaces the slot
-with the same name; `run` reconstructs one ordinary profile `3` build request
-for that slot. A workspace request reconstructs one ordinary multi-unit build
-from all occupied slots and uses the same parser and emitter as immediate
-execution. Because records are unpadded, their two length words are written as
-little-endian bytes and may begin at unaligned addresses.
+The supervisor owns an 8192-byte RAM catalog with capacity for 64 fixed
+112-byte entries. An occupied entry retains a name of at most 64 bytes, source
+length, physical record index, format version, and checksum. The corresponding
+source payload does not remain resident: one reusable 32768-byte region holds a
+record only while it is validated, stored, selected, or appended to a build.
+This replaces the previous ten simultaneously resident payloads without adding
+dynamic allocation.
 
-The table is not cleared when compile rejection returns to the resident entry,
-so another stored source remains runnable after an invalid stored source is
-rejected. Before each ready cycle completes a successful `store`, the profile
-`2` platform adapter synchronizes only the changed slot to the second QEMU CFI
-flash bank.
+`store` fills the first empty catalog entry or replaces the entry with the same
+name and synchronizes only that physical record before reporting success. `run`
+loads the selected record and reconstructs one ordinary profile `3` build
+request. A workspace request streams all occupied records into the existing
+131072-byte checked request region and uses the same parser and emitter as an
+immediate build. Because records are unpadded, their two request length words
+are written as little-endian bytes and may begin at unaligned addresses.
+The scratch transfer contract places the physical record index in the word
+immediately following its 32768-byte payload, preserving the existing
+one-argument platform load/save surface.
 
-Each RAM slot owns one 256 KiB flash sector. The first 4096 bytes contain a
-versioned header with the slot index, exact 32768-byte payload size, and FNV-1a
-checksum; the remaining payload begins at offset 4096. Gaut erases the sector,
-writes the eight payload blocks, and commits the header block last. A missing,
-partial, wrongly indexed, out-of-bounds, or checksum-mismatched slot is left
-empty at the next boot. Physical sector order is workspace order.
+Compile rejection restarts the resident entry and reconstructs the catalog by
+scanning flash, so a valid stored source remains runnable after an invalid one
+is rejected. Each catalog location owns one 256 KiB flash sector. The first
+4096 bytes contain a versioned header with the physical index, exact
+32768-byte payload size, and FNV-1a checksum; the remaining payload begins at
+offset 4096. Gaut erases the sector, writes the eight payload blocks, and
+commits the header block last. A missing, partial, wrongly indexed,
+out-of-bounds, or checksum-mismatched record is absent from the next catalog.
+Physical sector order is workspace order.
 
 `os/boot.sh` creates or attaches the exact 64 MiB backing file selected by
 `GAUT_WORKSPACE_FLASH` and maps it as QEMU `pflash1`. The host does not parse,
@@ -167,9 +179,11 @@ and shut down through the existing zero terminator.
 ## Current limitations
 
 A malformed serial length that cannot be safely framed and a child hardware
-fault do not yet recover. Persistent records are deliberately ten fixed slots,
-not a filesystem, and the current CFI adapter assumes the documented QEMU
-`virt` flash address, bank width, sector size, and buffered-write contract.
+fault do not yet recover. Persistent records are deliberately capped at 64,
+each source remains capped at 32680 bytes, and the selected workspace must fit
+the existing 131072-byte request region. This catalog is not a filesystem. The
+current CFI adapter assumes the documented QEMU `virt` flash address, bank
+width, sector size, and buffered-write contract.
 
 ## Later kernel boundary
 

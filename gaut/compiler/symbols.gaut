@@ -159,6 +159,11 @@ fn function_find_in_module(state, address, length, module_index) {
   return result;
 }
 
+fn function_locals_set(state, function_index, local_count) {
+  store64(local_count, add(add(state, 38912), mul(function_index, 8)));
+  return 0;
+}
+
 fn function_find(state, address, length) {
   return function_find_in_module(state, address, length, compiler.state_get(state, 176));
 }
@@ -332,7 +337,183 @@ fn resolve_calls(state) {
   return 0;
 }
 
-fn reject_call_cycles(state) {
+fn mark_reachable_functions(state) {
+  let function_count = compiler.state_get(state, 64);
+  let function_index = 0;
+  let main_index = 0;
+  let found_main = 0;
+  let queue_head = 0;
+  let queue_tail = 1;
+  let caller = 0;
+  let callee = 0;
+  let edge = 0;
+  let mask = 0;
+  let reachable = 0;
+
+  while lt(function_index, function_count) {
+    if eq(
+      load64(add(add(add(state, 8192), mul(function_index, 32)), 24)),
+      compiler.state_get(state, 144)
+    ) {
+      main_index = function_index;
+      found_main = 1;
+    }
+    function_index = add(function_index, 1);
+  }
+  if eq(found_main, 0) {
+    drop compiler.fail(state);
+  }
+
+  store64(1, add(add(state, 45056), mul(main_index, 8)));
+  store64(main_index, add(state, 47104));
+  while lt(queue_head, queue_tail) {
+    caller = load64(add(add(state, 47104), mul(queue_head, 8)));
+    callee = 0;
+    while lt(callee, function_count) {
+      edge = add(add(state, 52736), add(mul(caller, 32), mul(shr(callee, 6), 8)));
+      mask = shl(1, bitand(callee, 63));
+      if bitand(load64(edge), mask) {
+        reachable = add(add(state, 45056), mul(callee, 8));
+        if eq(load64(reachable), 0) {
+          store64(1, reachable);
+          if eq(lt(queue_tail, function_count), 0) {
+            drop compiler.fail(state);
+          }
+          store64(callee, add(add(state, 47104), mul(queue_tail, 8)));
+          queue_tail = add(queue_tail, 1);
+        }
+      }
+      callee = add(callee, 1);
+    }
+    queue_head = add(queue_head, 1);
+  }
+
+  return main_index;
+}
+
+fn function_index_at_code(state, code_index) {
+  let function_index = 0;
+  let result = 0;
+
+  while bitand(eq(result, 0), lt(function_index, compiler.state_get(state, 64))) {
+    if eq(
+      load64(add(add(add(state, 8192), mul(function_index, 32)), 24)),
+      code_index
+    ) {
+      result = add(function_index, 1);
+    }
+    function_index = add(function_index, 1);
+  }
+
+  return result;
+}
+
+fn compact_reachable_functions(state) {
+  let function_count = compiler.state_get(state, 64);
+  let old_code_end = compiler.state_get(state, 136);
+  let main_index = mark_reachable_functions(state);
+  let function_index = 0;
+  let function_entry = 0;
+  let old_start = 0;
+  let old_end = 0;
+  let new_start = 0;
+  let new_end = 0;
+  let old_index = 0;
+  let new_index = 0;
+  let instruction = 0;
+  let immediate = 0;
+  let old_target = 0;
+  let target_result = 0;
+  let target_index = 0;
+  let new_target = 0;
+
+  if eq(function_count, 0) {
+    drop compiler.fail(state);
+  }
+  new_end = load64(add(add(state, 8192), 24));
+
+  while lt(function_index, function_count) {
+    store64(0, add(add(state, 47104), mul(function_index, 8)));
+    function_index = add(function_index, 1);
+  }
+
+  function_index = 0;
+  while lt(function_index, function_count) {
+    function_entry = add(add(state, 8192), mul(function_index, 32));
+    old_start = load64(add(function_entry, 24));
+    if lt(add(function_index, 1), function_count) {
+      old_end = load64(add(add(function_entry, 32), 24));
+    } else {
+      old_end = old_code_end;
+    }
+
+    if load64(add(add(state, 45056), mul(function_index, 8))) {
+      store64(new_end, add(add(state, 47104), mul(function_index, 8)));
+      new_end = add(new_end, sub(old_end, old_start));
+    }
+    function_index = add(function_index, 1);
+  }
+
+  function_index = 0;
+  while lt(function_index, function_count) {
+    if load64(add(add(state, 45056), mul(function_index, 8))) {
+      function_entry = add(add(state, 8192), mul(function_index, 32));
+      old_start = load64(add(function_entry, 24));
+      if lt(add(function_index, 1), function_count) {
+        old_end = load64(add(add(function_entry, 32), 24));
+      } else {
+        old_end = old_code_end;
+      }
+      new_start = load64(add(add(state, 47104), mul(function_index, 8)));
+      old_index = old_start;
+      new_index = new_start;
+
+      while lt(old_index, old_end) {
+        instruction = load32(add(compiler.state_get(state, 152), mul(old_index, 4)));
+        drop emitter.patch_word(state, new_index, instruction);
+
+        if eq(bitand(instruction, 0xfc000000), 0x94000000) {
+          immediate = bitand(instruction, 0x3ffffff);
+          if bitand(immediate, 0x2000000) {
+            old_target = sub(old_index, sub(0x4000000, immediate));
+          } else {
+            old_target = add(old_index, immediate);
+          }
+          target_result = function_index_at_code(state, old_target);
+          if eq(target_result, 0) {
+            drop compiler.fail(state);
+          }
+          target_index = sub(target_result, 1);
+          new_target = load64(add(add(state, 47104), mul(target_index, 8)));
+          if eq(load64(add(add(state, 45056), mul(target_index, 8))), 0) {
+            drop compiler.fail(state);
+          }
+          drop emitter.patch_branch(state, new_index, new_target, 1);
+        }
+
+        old_index = add(old_index, 1);
+        new_index = add(new_index, 1);
+      }
+    }
+    function_index = add(function_index, 1);
+  }
+
+  function_index = 0;
+  while lt(function_index, function_count) {
+    store64(
+      load64(add(add(state, 47104), mul(function_index, 8))),
+      add(add(add(state, 8192), mul(function_index, 32)), 24)
+    );
+    function_index = add(function_index, 1);
+  }
+
+  drop compiler.state_set(state, 144, load64(add(add(state, 47104), mul(main_index, 8))));
+  drop compiler.state_set(state, 136, new_end);
+  drop compiler.state_set(state, 16, add(compiler.state_get(state, 152), mul(new_end, 4)));
+  return 0;
+}
+
+fn allocate_local_slots(state) {
   let function_count = compiler.state_get(state, 64);
   let callee = 0;
   let processed = 0;
@@ -340,7 +521,22 @@ fn reject_call_cycles(state) {
   let found = 0;
   let edge = 0;
   let mask = 0;
+  let depth = 0;
+  let next_depth = 0;
+  let local_count = 0;
+  let level_address = 0;
+  let level = 0;
+  let base = 0;
+  let function_index = 0;
+  let code_index = 0;
+  let code_end = 0;
+  let instruction = 0;
+  let signature = 0;
+  let relative_slot = 0;
+  let absolute_slot = 0;
 
+  # Topological depth gives every caller and reachable callee different ranges.
+  # Functions at the same depth cannot be active together and share one range.
   while lt(processed, function_count) {
     candidate = 0;
     found = 0;
@@ -355,6 +551,13 @@ fn reject_call_cycles(state) {
       drop compiler.fail(state);
     }
 
+    depth = load64(add(add(state, 40960), mul(candidate, 8)));
+    local_count = load64(add(add(state, 38912), mul(candidate, 8)));
+    level_address = add(add(state, 43008), mul(depth, 8));
+    if lt(load64(level_address), local_count) {
+      store64(local_count, level_address);
+    }
+
     store64(0xffffffffffffffff, add(add(state, 60928), mul(candidate, 8)));
     processed = add(processed, 1);
     callee = 0;
@@ -363,6 +566,10 @@ fn reject_call_cycles(state) {
       mask = shl(1, bitand(callee, 63));
       if bitand(load64(edge), mask) {
         if eq(eq(load64(add(add(state, 60928), mul(callee, 8))), 0xffffffffffffffff), 0) {
+          next_depth = add(depth, 1);
+          if lt(load64(add(add(state, 40960), mul(callee, 8))), next_depth) {
+            store64(next_depth, add(add(state, 40960), mul(callee, 8)));
+          }
           store64(
             sub(load64(add(add(state, 60928), mul(callee, 8))), 1),
             add(add(state, 60928), mul(callee, 8))
@@ -371,6 +578,49 @@ fn reject_call_cycles(state) {
       }
       callee = add(callee, 1);
     }
+  }
+
+  level = 0;
+  base = 0;
+  while lt(level, function_count) {
+    level_address = add(add(state, 43008), mul(level, 8));
+    local_count = load64(level_address);
+    store64(base, level_address);
+    base = add(base, local_count);
+    if lt(512, base) {
+      drop compiler.fail(state);
+    }
+    level = add(level, 1);
+  }
+
+  # Local instructions were emitted with function-relative slots. Patch only
+  # 64-bit local loads and stores whose base register is the Gaut local base.
+  function_index = 0;
+  while lt(function_index, function_count) {
+    depth = load64(add(add(state, 40960), mul(function_index, 8)));
+    base = load64(add(add(state, 43008), mul(depth, 8)));
+    code_index = load64(add(add(add(state, 8192), mul(function_index, 32)), 24));
+    if lt(add(function_index, 1), function_count) {
+      code_end = load64(add(add(add(state, 8192), mul(add(function_index, 1), 32)), 24));
+    } else {
+      code_end = compiler.state_get(state, 136);
+    }
+
+    while lt(code_index, code_end) {
+      instruction = load32(add(compiler.state_get(state, 152), mul(code_index, 4)));
+      signature = bitand(instruction, 0xffc003e0);
+      if bitor(eq(signature, 0xf9400260), eq(signature, 0xf9000260)) {
+        relative_slot = bitand(shr(instruction, 10), 0xfff);
+        absolute_slot = add(base, relative_slot);
+        if eq(lt(absolute_slot, 512), 0) {
+          drop compiler.fail(state);
+        }
+        instruction = bitor(bitand(instruction, 0xffc003ff), shl(absolute_slot, 10));
+        drop emitter.patch_word(state, code_index, instruction);
+      }
+      code_index = add(code_index, 1);
+    }
+    function_index = add(function_index, 1);
   }
 
   return 0;

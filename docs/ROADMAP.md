@@ -30,8 +30,9 @@
 - Gaut OS rebuilds those units through a byte-identical fixed point in QEMU
   without a Linux guest
 - external command IDs store and run one named source without adding keywords
-- ten fixed source slots support deterministic replacement and survive a
-  compile rejection within the same boot
+- a 64-entry bounded RAM catalog keeps source payloads in platform storage;
+  deterministic replacement and compile-rejection recovery do not require
+  resident payload slots
 - profiles `1` and `2` supply `platform` as ordinary Gaut source instead of
   compiler-reserved `platform.run` or `platform.ready` effects
 - the QEMU adapter implements its ready message with Gaut memory operations
@@ -54,8 +55,8 @@
   existing Gaut-native test result protocol
 - `tests/self-host-qemu.sh` supplies the source records and observes the final
   verdict without using `cmp`, a hash, or host artifact extraction to decide it
-- command `6` reconstructs one ordinary multi-unit command `1` request from all
-  occupied resident source slots without receiving source bytes
+- command `6` reconstructs one ordinary multi-unit command `1` request by
+  loading occupied catalog records one at a time without receiving source bytes
 - profile `3` workspace execution distinguishes an initial failing helper from
   its same-name replacement and reports both through Gaut-native verdicts
 - the nine compiler, platform, and verification units can be stored once and
@@ -67,7 +68,7 @@
 - capacity fixtures exercise the accepted and rejected sides of request,
   module, function, local, fixed-memory, and output-image limits, then recover
   to a following passing Gaut-native test in the same boot
-- profile `2` maps each 32768-byte source slot to one 256 KiB sector in the
+- profile `2` maps each 32768-byte source record to one 256 KiB sector in the
   second QEMU CFI flash bank and commits the validated slot header last
 - a workspace stored in one boot is restored and executed from a 24-byte
   command `6` request after shutdown without retransmitting source bytes
@@ -93,39 +94,68 @@
   same 77824-byte compiler image
 - maintained hardware addresses, masks, flags, ELF fields, and AArch64
   instruction words use hexadecimal notation while quantities remain decimal
+- functions emit relative local slots and the resolved acyclic call graph assigns
+  one fixed slot range per activation depth without runtime allocation
+- functions at the same activation depth reuse the largest range at that depth,
+  while every caller and reachable callee retain disjoint local storage
+- three sibling functions with 600 total locals pass using 200 physical slots;
+  a 512-slot active chain preserves caller values, while 513 slots are rejected
+- call cycles remain rejected, generated-program instruction and stack-traffic
+  baselines do not move, and the compiler reaches its Gaut-native fixed point
+- eleven sources cross the former ten-payload RAM boundary, survive reboot,
+  and rebuild as one Gaut-native workspace
+- the eleventh physical record supports deterministic same-name replacement;
+  wrong-index and checksum-corrupted copies are excluded after reboot
+- the catalog occupies 8192 bounded RAM bytes and records name, source size,
+  physical location, format version, and checksum for up to 64 sources
+- after full validation, a bounded call-graph queue retains `main` and all
+  transitive callees while unreachable function bodies are compacted away
+- dead functions inserted around forward and backward cross-module calls produce
+  the same Linux bytes as clean source; moved `while` and `if` branches execute
+  correctly under profile `3`
+- a 256-function reachable chain passes, while unresolved calls and call cycles
+  inside unreachable functions still reject through the ordinary recovery path
+- the constant Linux fixture falls from 912 to 188 used bytes and from 198 to
+  17 instructions without new syntax, runtime tables, dispatch, or allocation
 
 ## Performance and capacity discipline
 
 The current fixed limits are compiler-table and platform-memory capacities, not
 Gaut grammar. Performance work begins from the reproducible records in
 `docs/PERFORMANCE.md`. Direct expression lowering removed the first measured
-stack traffic. Local lifetime reuse, register allocation, and measured inlining
-follow only when an acceptance program justifies them. None requires new Gaut
-keywords or types.
+stack traffic, local lifetime reuse removed the global accumulation of mutually
+exclusive function slots, and unreachable-function removal deleted profile code
+that `main` cannot call. Register allocation and measured inlining follow only
+when an acceptance program justifies them. None requires new Gaut keywords or
+types.
 
 The persistent workspace and direct-expression gates changed the baseline
 deliberately. Later work must now reduce a measured capacity or cost without
 weakening storage, fixed-point, ordered-effect, and recovery contracts.
 
-## Next: local-slot lifetime reuse
+## Next: measured incremental workspace compilation
 
-The current compiler assigns local slots monotonically across all functions in
-one program. Call-cycle rejection makes lifetimes statically bounded, but the
-backend does not yet reuse slots whose functions cannot be active together.
-The next gate should improve that measured capacity without exposing frames,
-slots, or allocation policy in Gaut source.
+The final image no longer retains functions that the selected `main` cannot
+reach, but the one-pass compiler still validates and temporarily emits every
+function on every workspace build. This deliberately preserves strict source
+validation, yet repeated large workspaces redo unchanged module work and dead
+code still consumes the bounded temporary output arena before compaction. The
+next gate must first measure that work deterministically, then retain reusable
+module artifacts only if the acceptance program justifies the added format.
 
 Required implementation:
 
-1. add a failing multi-function program that exceeds the current global
-   512-local total while keeping every individual function within 256 locals;
-2. derive reusable slot ranges from the already rejected acyclic call graph;
-3. preserve caller locals across every reachable callee and reuse slots only
-   between functions that cannot be active together;
-4. keep the existing 256-local per-function and fixed-memory boundaries unless
-   a separate acceptance program justifies changing them;
-5. rebuild through the Gaut-native fixed point and retain direct-expression,
-   persistent workspace, boot, rejection, low-power, and shutdown regressions.
+1. record source bytes, functions lowered, and emitted instruction work for a
+   reproducible multi-module rebuild without relying on host wall-clock time;
+2. show that replacing one stored leaf module currently rebuilds unchanged
+   modules before introducing retained compilation state;
+3. key any retained module artifact by exact source checksum, compiler
+   generation, output profile, and resolved dependency metadata owned by Gaut;
+4. invalidate the changed module and its transitive dependents, then assemble
+   reachable functions through the same validated lowering and compaction path;
+5. preserve complete-source error detection, fixed-point identity, catalog
+   corruption recovery, boot, and clean shutdown without adding imports,
+   keywords, types, macros, hidden allocation, or a host-owned cache decision.
 
 ## Later
 
@@ -136,6 +166,7 @@ Required implementation:
 5. networking and browser runtime;
 6. CPU-oriented numerical and AI runtime.
 
-Each gate adds only behavior required by its acceptance program. Local-slot
-lifetime reuse must not add source types, keywords, aliases, implicit source
-allocation, a second parser, or a platform-specific Gaut spelling.
+Each gate adds only behavior required by its acceptance program. Incremental
+compilation must not add source types, keywords, aliases, implicit source
+allocation, a second parser, a host-owned cache decision, or a platform-specific
+Gaut spelling.

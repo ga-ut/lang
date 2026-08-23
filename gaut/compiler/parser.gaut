@@ -416,6 +416,7 @@ fn parse_function(state) {
   drop lexer.next_token(state);
 
   drop compiler.state_set(state, 72, 0);
+  drop compiler.state_set(state, 80, 0);
 
   if eq(eq(compiler.state_get(state, 32), 4), 0) {
     parsing = 1;
@@ -429,7 +430,7 @@ fn parse_function(state) {
       if eq(name_available(state, name_address, name_length, function_address, function_length), 0) {
         drop compiler.fail(state);
       }
-      if eq(lt(compiler.state_get(state, 80), 512), 0) {
+      if eq(lt(compiler.state_get(state, 80), 256), 0) {
         drop compiler.fail(state);
       }
 
@@ -592,7 +593,7 @@ fn parse_function(state) {
           if eq(eq(expression_outputs, 1), 0) {
             drop compiler.fail(state);
           }
-          if eq(lt(compiler.state_get(state, 80), 512), 0) {
+          if eq(lt(compiler.state_get(state, 80), 256), 0) {
             drop compiler.fail(state);
           }
 
@@ -733,5 +734,6 @@ fn parse_function(state) {
     }
   }
 
+  drop symbols.function_locals_set(state, function_index, compiler.state_get(state, 80));
   return 0;
 }

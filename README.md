@@ -24,6 +24,11 @@ build request selects the output profile, so the same Gaut bytes can be built
 for both without changing the language or parser. The compiler does not invoke
 C, Rust, LLVM, an assembler, a linker, libc, or a dynamic loader.
 
+Every function is parsed and validated. After calls and local storage resolve,
+the compiler retains only `main` and its transitive callees in the final image.
+This removes unused profile and module code without adding imports, annotations,
+runtime reachability tables, or a second lowering path.
+
 ```sh
 ./gaut/request.sh linux program.gaut program.request
 ./dist/gaut.elf < program.request > program.elf
@@ -43,8 +48,9 @@ effects. The only lower execution operation is `call_image(address)`, which
 calls an image and returns its `main()` word.
 
 Gaut OS also accepts external `store`, `run`, `test`, `fixed-point`,
-`workspace-test`, and `workspace-fixed-point` commands. Stored sources remain
-in fixed supervisor memory and compile only when requested. A test request
+`workspace-test`, and `workspace-fixed-point` commands. Stored-source metadata
+remains in a bounded supervisor catalog while payloads remain in platform
+storage and load only when selected. A test request
 compiles an ordinary Gaut program and lets Gaut OS judge its
 returned `main()` word: zero passes and every nonzero word fails. These commands
 are host protocol data, not Gaut keywords. No `assert` syntax or test runtime is
@@ -52,11 +58,12 @@ added. A fixed-point request retains one generated compiler, transfers control
 to it, and lets that compiler compare the size and every byte of its following
 generation before reporting through the same Gaut-native verdict.
 
-The workspace commands carry no source bytes. Gaut OS restores up to ten named
-source slots from the QEMU `virt` second CFI flash bank, reconstructs the same
-unpadded multi-unit command `1` request in memory, and uses the existing parser
-and compiler path. Profile `3` executes and judges the workspace; profile `2`
-performs the same native fixed-point check. Replacement keeps the slot order
+The workspace commands carry no source bytes. Gaut OS scans up to 64 named
+records from the QEMU `virt` second CFI flash bank into an 8192-byte metadata
+catalog, reads one selected payload at a time, reconstructs the same unpadded
+multi-unit command `1` request in memory, and uses the existing parser and
+compiler path. Profile `3` executes and judges the workspace; profile `2`
+performs the same native fixed-point check. Replacement keeps physical order
 across shutdown without adding project, file-system, or import syntax.
 
 ## Run inside Gaut OS
@@ -117,6 +124,9 @@ source slots across separate QEMU boots.
 `tests/persistent-self-host-workspace-qemu.sh` stores the compiler sources in
 one boot and reaches the Gaut-native fixed point after reboot without
 retransmitting them.
+`tests/flash-source-catalog.sh` crosses the previous ten-source boundary,
+replaces the eleventh record, and checks wrong-index and checksum rejection
+across reboot.
 
 `tests/codegen-baseline.sh` records deterministic generated instruction and
 evaluation-stack counts for small Gaut programs. `tests/capacity-baseline.sh`
@@ -129,6 +139,15 @@ nested arithmetic, memory, and call results from the generated code.
 `tests/hex-literals.sh` verifies decimal/hexadecimal byte equivalence, the full
 64-bit range, malformed and overflow rejection, and a following decimal
 recovery build.
+`tests/local-slot-reuse.sh` verifies that non-overlapping functions reuse fixed
+local storage, caller values survive reachable callees, a 513-slot active call
+chain and call cycles are rejected, and the resident compiler recovers.
+`tests/unreachable-functions.sh` verifies byte-identical clean/dead images,
+forward and backward cross-module calls, moved structured control flow, the
+256-function reachability boundary, and full validation of unreachable source.
+`tests/build-rejection.sh` verifies that the host build adapter accepts only the
+documented page-framed artifact and never saves Gaut's rejection diagnostic as
+an output file.
 
 ## Current files
 
@@ -172,5 +191,10 @@ and returns to `ready` without rebooting. Named sources, replacement order, and
 the compiler workspace survive clean shutdown through the profile-supplied CFI
 adapter. The emitter now retains one pending expression value in an existing
 register and uses the previous evaluation stack only when that bounded contract
-is insufficient. The next measured backend gate is local-slot lifetime reuse;
-see `docs/ROADMAP.md` for the exact boundary.
+is insufficient. The compiler now assigns fixed local ranges from its acyclic
+call graph, so non-overlapping functions reuse storage without runtime work. The
+bounded catalog now keeps source payloads out of resident RAM and supports the
+full 64-unit request inventory. The final image now removes unreachable
+functions from profile-selected modules after full validation. The next gate
+measures whole-workspace rebuild work before retaining any reusable module
+artifact; see `docs/ROADMAP.md` for the exact contract.

@@ -73,6 +73,11 @@ fn compile_request(source, input_size, output, state, retain_output) {
   drop compiler.state_set(state, 192, 0);
   drop emitter.reset_pending(state);
   while lt(clear_index, 256) {
+    # Function local counts, activation depths, and per-depth slot ranges.
+    store64(0, add(add(state, 38912), mul(clear_index, 8)));
+    store64(0, add(add(state, 40960), mul(clear_index, 8)));
+    store64(0, add(add(state, 43008), mul(clear_index, 8)));
+    store64(0, add(add(state, 45056), mul(clear_index, 8)));
     store64(0, add(add(state, 52736), mul(clear_index, 32)));
     store64(0, add(add(state, 52744), mul(clear_index, 32)));
     store64(0, add(add(state, 52752), mul(clear_index, 32)));
@@ -164,7 +169,8 @@ fn compile_request(source, input_size, output, state, retain_output) {
   }
 
   drop symbols.resolve_calls(state);
-  drop symbols.reject_call_cycles(state);
+  drop symbols.allocate_local_slots(state);
+  drop symbols.compact_reachable_functions(state);
   drop emitter.patch_branch(state, entry_call, compiler.state_get(state, 144), 1);
 
   file_size = bitand(add(sub(compiler.state_get(state, 16), output), 4095), 0xfffffffffffff000);

@@ -248,6 +248,10 @@ produce a target fault; no hidden check is inserted.
 numeric branches, fallthrough cases, or second control-flow representation.
 
 Each function invocation receives fresh storage for its parameters and locals.
+The backend may assign the same physical slot range to functions that cannot be
+active together. Every caller and reachable callee receive disjoint ranges, so
+this compile-time reuse changes neither value lifetime nor call behavior. Slot
+selection is not source syntax and adds no runtime allocation or release step.
 The backend has one calling convention. Stack underflow cannot be a source
 concept because the maintained language has expression arity; arity mismatch
 is rejected before emission.
@@ -298,8 +302,9 @@ passes and every nonzero word fails. Command `5` is valid only for profile `2`
 and also carries the command `1` source-unit payload. It retains the generated
 compiler, transfers control to it, and has that compiler build and compare the
 following generation before emitting the same test result record. Command `6`
-carries no source-unit payload. It walks every occupied resident source slot in
-slot order and reconstructs one ordinary unpadded command `1` request. Under
+carries no source-unit payload. It walks every occupied source-catalog entry in
+physical storage order, reads each selected payload into one reusable scratch
+region, and reconstructs one ordinary unpadded command `1` request. Under
 profile `3` the result is executed and judged like command `4`; under profile
 `2` it is retained and judged like command `5`. Other profiles reject command
 `6`. Command IDs, names, storage, test mode, fixed-point mode, and workspace
@@ -313,14 +318,17 @@ request protocol, not the language inventory. A command `1` request contains
 between one and 64 units. Every request occupies at most 131072 bytes and
 contains no trailing bytes.
 
-The current resident table has ten fixed 32768-byte slots. Each slot holds
-an occupied word, exact name and source lengths, up to 64 name bytes, and up to
-32680 source bytes. Storing an existing name replaces that slot. No allocator
-or implicit growth exists. Under profile `2`, ordinary platform functions load
-and save those exact slots through the board adapter; persistence remains
-platform behavior rather than Gaut syntax. The workspace reconstruction writes
-each unaligned length bytewise, matching the ordinary request reader instead of
-requiring padding.
+The current resident catalog has 64 fixed 112-byte entries in an 8192-byte
+region. Each occupied entry holds exact name and source lengths, a physical
+record index, format version, checksum, and up to 64 name bytes. Source payloads
+remain in platform storage instead of reserving one full RAM slot per name.
+Storing an existing name replaces the same physical record; a new name takes
+the first empty catalog entry. No allocator or implicit growth exists. Under
+profile `2`, ordinary platform functions read or write one exact 32768-byte
+record through the board adapter; persistence remains platform behavior rather
+than Gaut syntax. Workspace reconstruction reuses the existing output region as
+its one-record scratch buffer and writes each unaligned request length bytewise,
+matching the ordinary request reader instead of requiring padding.
 
 The resident Gaut OS input channel may place multiple requests consecutively.
 Serial requests have no padding because `host.read` consumes the exact declared
@@ -370,14 +378,17 @@ lowerings may differ only where the selected machine boundary requires it:
   to the overwritten generation. Other profiles currently reject this effect.
 
 `platform.run(address)`, `platform.fixed_point(address, size)`,
-`platform.workspace_load(storage)`, `platform.workspace_save(storage)`, and
+`platform.workspace_load(record)`, `platform.workspace_save(record)`, and
 `platform.ready()` are not effects. They are ordinary functions in the
 profile-supplied `platform` module. The profile `2` module implements `run` by
 returning `call_image(address)`, stages a fixed-point generation with ordinary
 loads and stores before the same control transfer, and owns the retained-image
 and CFI workspace layout behind ordinary Gaut functions. Workspace functions
 use the same ordered memory primitives as other RAM and device access. Layout
-values are called outside byte-copy loops and reused as locals. `ready` is
+values are called outside byte-copy loops and reused as locals. For one-record
+transfers, the 32768-byte record is followed by one explicit physical-index
+word in the reusable scratch region; this adapter contract is not Gaut syntax
+or an implicit allocation. `ready` is
 implemented in Gaut with ordered PL011 `load32` and `store32` operations. The
 profile `1` module supplies hosted no-op or rejection implementations. A
 profile `3` request receives no implicit `platform` or `verification` module,
@@ -413,8 +424,14 @@ programs use the same primitive inventory and lowering. Container headers,
 entry setup, and image metadata remain separate platform construction.
 
 Each platform owns exactly one lowering function for each supported primitive.
-An unsupported primitive is a compile error. Optimizations are absent in draft
-0.5.
+An unsupported primitive is a compile error. After every function has been
+parsed, calls have resolved, call cycles and local capacity have been checked,
+the compiler marks `main` and its transitive callees in the existing call graph.
+It compacts those already-lowered function regions in source order and patches
+only relocated entry and user-call branches. An unreachable function is still
+fully validated and can still reject the request. This post-validation removal
+adds no second parser, lowering, runtime dispatch, source form, or observable
+effect.
 
 ## 13. Conformance gate
 

@@ -9,17 +9,6 @@ fn copy_bytes(source, destination, length) {
   return 0;
 }
 
-fn clear(storage_memory) {
-  let offset = 0;
-
-  while lt(offset, 327680) {
-    store64(0, add(storage_memory, offset));
-    offset = add(offset, 8);
-  }
-
-  return 0;
-}
-
 fn write_u64(address, value) {
   let index = 0;
 
@@ -31,20 +20,90 @@ fn write_u64(address, value) {
   return 0;
 }
 
-fn slot_at(storage_memory, index) {
-  return add(storage_memory, mul(index, 32768));
+fn catalog_capacity() {
+  return 64;
 }
 
-fn find(storage_memory, name, name_length) {
+fn catalog_entry_size() {
+  return 112;
+}
+
+fn source_record_size() {
+  return 32768;
+}
+
+fn record_checksum(record) {
+  let offset = 0;
+  let checksum = 0xcbf29ce484222325;
+
+  while lt(offset, source_record_size()) {
+    checksum = mul(bitxor(checksum, load8(add(record, offset))), 0x100000001b3);
+    offset = add(offset, 1);
+  }
+
+  return checksum;
+}
+
+fn catalog_entry(catalog, index) {
+  return add(catalog, mul(index, catalog_entry_size()));
+}
+
+fn clear(catalog) {
+  let offset = 0;
+  let size = mul(catalog_capacity(), catalog_entry_size());
+
+  while lt(offset, size) {
+    store64(0, add(catalog, offset));
+    offset = add(offset, 8);
+  }
+
+  return 0;
+}
+
+fn clear_record(record) {
+  let offset = 0;
+
+  while lt(offset, source_record_size()) {
+    store64(0, add(record, offset));
+    offset = add(offset, 8);
+  }
+
+  return 0;
+}
+
+fn record_valid(record) {
+  let valid = eq(load64(record), 1);
+  let name_length = load64(add(record, 8));
+  let source_length = load64(add(record, 16));
+
+  if bitand(lt(0, name_length), lt(name_length, 65)) {
+  } else {
+    valid = 0;
+  }
+  if bitand(lt(0, source_length), lt(source_length, 32681)) {
+  } else {
+    valid = 0;
+  }
+  if lt(source_record_size(), add(88, source_length)) {
+    valid = 0;
+  }
+  if valid {
+    valid = symbols.module_name_valid(add(record, 24), name_length);
+  }
+
+  return valid;
+}
+
+fn catalog_find(catalog, name, name_length) {
   let index = 0;
-  let slot = 0;
+  let entry = 0;
   let result = 0;
 
-  while bitand(eq(result, 0), lt(index, 10)) {
-    slot = slot_at(storage_memory, index);
-    if bitand(load64(slot), eq(load64(add(slot, 8)), name_length)) {
-      if symbols.span_equal(add(slot, 24), name_length, name, name_length) {
-        result = slot;
+  while bitand(eq(result, 0), lt(index, catalog_capacity())) {
+    entry = catalog_entry(catalog, index);
+    if bitand(load64(entry), eq(load64(add(entry, 8)), name_length)) {
+      if symbols.span_equal(add(entry, 48), name_length, name, name_length) {
+        result = entry;
       }
     }
     index = add(index, 1);
@@ -53,15 +112,16 @@ fn find(storage_memory, name, name_length) {
   return result;
 }
 
-fn empty(storage_memory) {
+fn catalog_empty(catalog) {
   let index = 0;
-  let slot = 0;
+  let entry = 0;
   let result = 0;
 
-  while bitand(eq(result, 0), lt(index, 10)) {
-    slot = slot_at(storage_memory, index);
-    if eq(load64(slot), 0) {
-      result = slot;
+  while bitand(eq(result, 0), lt(index, catalog_capacity())) {
+    entry = catalog_entry(catalog, index);
+    if eq(load64(entry), 0) {
+      store64(index, add(entry, 24));
+      result = entry;
     }
     index = add(index, 1);
   }
@@ -69,12 +129,78 @@ fn empty(storage_memory) {
   return result;
 }
 
-fn store_request(source, input_size, storage_memory, state) {
+fn catalog_set(catalog, index, record) {
+  let entry = catalog_entry(catalog, index);
+  let name_length = load64(add(record, 8));
+
+  store64(1, entry);
+  store64(name_length, add(entry, 8));
+  store64(load64(add(record, 16)), add(entry, 16));
+  store64(index, add(entry, 24));
+  store64(1, add(entry, 32));
+  store64(record_checksum(record), add(entry, 40));
+  drop copy_bytes(add(record, 24), add(entry, 48), name_length);
+  return 0;
+}
+
+fn catalog_index(entry) {
+  return load64(add(entry, 24));
+}
+
+fn record_matches_entry(record, entry) {
+  let name_length = load64(add(entry, 8));
+  let matches = record_valid(record);
+
+  if eq(load64(add(record, 8)), name_length) {
+  } else {
+    matches = 0;
+  }
+  if eq(load64(add(record, 16)), load64(add(entry, 16))) {
+  } else {
+    matches = 0;
+  }
+  if eq(load64(add(entry, 32)), 1) {
+  } else {
+    matches = 0;
+  }
+  if eq(record_checksum(record), load64(add(entry, 40))) {
+  } else {
+    matches = 0;
+  }
+  if matches {
+    matches = symbols.span_equal(add(record, 24), name_length, add(entry, 48), name_length);
+  }
+
+  return matches;
+}
+
+fn load_catalog(catalog, scratch) {
+  let index = 0;
+  let name_length = 0;
+
+  while lt(index, catalog_capacity()) {
+    store64(index, add(scratch, source_record_size()));
+    if platform.workspace_load(scratch) {
+      if record_valid(scratch) {
+        name_length = load64(add(scratch, 8));
+        if eq(catalog_find(catalog, add(scratch, 24), name_length), 0) {
+          drop catalog_set(catalog, index, scratch);
+        }
+      }
+    }
+    index = add(index, 1);
+  }
+
+  return 0;
+}
+
+fn store_request(source, input_size, scratch, catalog, state) {
   let name_length = 0;
   let source_length = 0;
   let name = 0;
   let source_bytes = 0;
-  let slot = 0;
+  let entry = 0;
+  let index = 0;
 
   if lt(input_size, 50) {
     drop compiler.fail(state);
@@ -112,19 +238,24 @@ fn store_request(source, input_size, storage_memory, state) {
     drop compiler.fail(state);
   }
 
-  slot = find(storage_memory, name, name_length);
-  if eq(slot, 0) {
-    slot = empty(storage_memory);
+  entry = catalog_find(catalog, name, name_length);
+  if eq(entry, 0) {
+    entry = catalog_empty(catalog);
   }
-  if eq(slot, 0) {
+  if eq(entry, 0) {
     drop compiler.fail(state);
   }
+  index = catalog_index(entry);
 
-  store64(1, slot);
-  store64(name_length, add(slot, 8));
-  store64(source_length, add(slot, 16));
-  drop copy_bytes(name, add(slot, 24), name_length);
-  drop copy_bytes(source_bytes, add(slot, 88), source_length);
+  drop clear_record(scratch);
+  store64(1, scratch);
+  store64(name_length, add(scratch, 8));
+  store64(source_length, add(scratch, 16));
+  drop copy_bytes(name, add(scratch, 24), name_length);
+  drop copy_bytes(source_bytes, add(scratch, 88), source_length);
+  store64(index, add(scratch, source_record_size()));
+  drop platform.workspace_save(scratch);
+  drop catalog_set(catalog, index, scratch);
 
   store64(4211832317539606887, add(state, 64912));
   store64(2334102049055339296, add(state, 64920));
@@ -135,10 +266,11 @@ fn store_request(source, input_size, storage_memory, state) {
   return 0;
 }
 
-fn restore_request(source, input_size, storage_memory, state) {
+fn restore_request(source, input_size, scratch, catalog, state) {
   let name_length = 0;
   let name = 0;
-  let slot = 0;
+  let entry = 0;
+  let index = 0;
   let source_length = 0;
   let restored_size = 0;
 
@@ -168,12 +300,20 @@ fn restore_request(source, input_size, storage_memory, state) {
   if eq(symbols.module_name_valid(name, name_length), 0) {
     drop compiler.fail(state);
   }
-  slot = find(storage_memory, name, name_length);
-  if eq(slot, 0) {
+  entry = catalog_find(catalog, name, name_length);
+  if eq(entry, 0) {
+    drop compiler.fail(state);
+  }
+  index = catalog_index(entry);
+  store64(index, add(scratch, source_record_size()));
+  if eq(platform.workspace_load(scratch), 0) {
+    drop compiler.fail(state);
+  }
+  if eq(record_matches_entry(scratch, entry), 0) {
     drop compiler.fail(state);
   }
 
-  source_length = load64(add(slot, 16));
+  source_length = load64(add(entry, 16));
   restored_size = add(add(48, name_length), source_length);
   store64(3, source);
   store64(sub(restored_size, 16), add(source, 8));
@@ -181,30 +321,17 @@ fn restore_request(source, input_size, storage_memory, state) {
   store64(1, add(source, 24));
   store64(name_length, add(source, 32));
   store64(source_length, add(source, 40));
-  drop copy_bytes(add(slot, 24), add(source, 48), name_length);
-  drop copy_bytes(add(slot, 88), add(add(source, 48), name_length), source_length);
+  drop copy_bytes(add(scratch, 24), add(source, 48), name_length);
+  drop copy_bytes(add(scratch, 88), add(add(source, 48), name_length), source_length);
   return restored_size;
 }
 
-fn append_workspace_unit(source, request_size, slot, state) {
-  let name_length = 0;
-  let source_length = 0;
-  let record_size = 0;
+fn append_workspace_unit(source, request_size, record, state) {
+  let name_length = load64(add(record, 8));
+  let source_length = load64(add(record, 16));
+  let record_size = add(add(16, name_length), source_length);
   let cursor = 0;
-  let copy_index = 0;
 
-  name_length = load64(add(slot, 8));
-  source_length = load64(add(slot, 16));
-  if bitand(lt(0, name_length), lt(name_length, 65)) {
-  } else {
-    drop compiler.fail(state);
-  }
-  if bitand(lt(0, source_length), lt(source_length, 32681)) {
-  } else {
-    drop compiler.fail(state);
-  }
-
-  record_size = add(add(16, name_length), source_length);
   if lt(131072, add(request_size, record_size)) {
     drop compiler.fail(state);
   }
@@ -212,31 +339,28 @@ fn append_workspace_unit(source, request_size, slot, state) {
   cursor = add(source, request_size);
   drop write_u64(cursor, name_length);
   drop write_u64(add(cursor, 8), source_length);
-  cursor = add(cursor, 16);
-  while lt(copy_index, name_length) {
-    store8(load8(add(add(slot, 24), copy_index)), add(cursor, copy_index));
-    copy_index = add(copy_index, 1);
-  }
-  cursor = add(cursor, name_length);
-  copy_index = 0;
-  while lt(copy_index, source_length) {
-    store8(load8(add(add(slot, 88), copy_index)), add(cursor, copy_index));
-    copy_index = add(copy_index, 1);
-  }
-
+  drop copy_bytes(add(record, 24), add(cursor, 16), name_length);
+  drop copy_bytes(add(record, 88), add(add(cursor, 16), name_length), source_length);
   return add(request_size, record_size);
 }
 
-fn restore_workspace_request(source, storage_memory, state) {
+fn restore_workspace_request(source, scratch, catalog, state) {
   let index = 0;
-  let slot = 0;
+  let entry = 0;
   let unit_count = 0;
   let request_size = 32;
 
-  while lt(index, 10) {
-    slot = slot_at(storage_memory, index);
-    if load64(slot) {
-      request_size = append_workspace_unit(source, request_size, slot, state);
+  while lt(index, catalog_capacity()) {
+    entry = catalog_entry(catalog, index);
+    if load64(entry) {
+      store64(index, add(scratch, source_record_size()));
+      if eq(platform.workspace_load(scratch), 0) {
+        drop compiler.fail(state);
+      }
+      if eq(record_matches_entry(scratch, entry), 0) {
+        drop compiler.fail(state);
+      }
+      request_size = append_workspace_unit(source, request_size, scratch, state);
       unit_count = add(unit_count, 1);
     }
     index = add(index, 1);

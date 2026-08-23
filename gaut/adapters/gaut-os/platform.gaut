@@ -58,18 +58,6 @@ fn workspace_magic() {
   return 0x3130535754554147;
 }
 
-fn workspace_clear_slot(slot) {
-  let offset = 0;
-  let size = workspace_slot_size();
-
-  while lt(offset, size) {
-    store64(0, add(slot, offset));
-    offset = add(offset, 8);
-  }
-
-  return 0;
-}
-
 fn workspace_checksum(slot) {
   let offset = 0;
   let checksum = 0xcbf29ce484222325;
@@ -150,24 +138,6 @@ fn flash_write_header(destination, slot_index, checksum) {
   return 0;
 }
 
-fn workspace_slot_valid(slot) {
-  let occupied = load64(slot);
-  let valid = eq(occupied, 0);
-  let name_length = 0;
-  let source_length = 0;
-
-  if eq(occupied, 1) {
-    name_length = load64(add(slot, 8));
-    source_length = load64(add(slot, 16));
-    valid = bitand(
-      bitand(lt(0, name_length), lt(name_length, 65)),
-      bitand(lt(0, source_length), lt(source_length, 32681))
-    );
-  }
-
-  return valid;
-}
-
 fn flash_slot_header_valid(sector, slot_index) {
   let valid = eq(flash_read_u64(sector), workspace_magic());
 
@@ -214,7 +184,6 @@ fn flash_load_slot(slot, sector, slot_index) {
   let offset = 0;
   let data = add(sector, 4096);
   let valid = flash_slot_header_valid(sector, slot_index);
-  let loaded = valid;
   let size = workspace_slot_size();
 
   if valid {
@@ -223,13 +192,9 @@ fn flash_load_slot(slot, sector, slot_index) {
       offset = add(offset, 4);
     }
     if eq(workspace_checksum(slot), flash_read_u64(add(sector, 32))) {
-      valid = workspace_slot_valid(slot);
     } else {
       valid = 0;
     }
-  }
-  if bitand(loaded, eq(valid, 0)) {
-    drop workspace_clear_slot(slot);
   }
 
   return valid;
@@ -252,41 +217,30 @@ fn flash_save_slot(slot, sector, slot_index) {
   return 0;
 }
 
-fn workspace_load(storage_memory) {
-  let index = 0;
-  let slot = 0;
-  let sector = 0;
+fn workspace_load(destination) {
+  let index = load64(add(destination, workspace_slot_size()));
+  let result = 0;
   let flash = workspace_flash_base();
   let sector_size = workspace_sector_size();
-  let slot_size = workspace_slot_size();
 
-  while lt(index, 10) {
-    slot = add(storage_memory, mul(index, slot_size));
-    sector = add(flash, mul(index, sector_size));
-    drop flash_load_slot(slot, sector, index);
-    index = add(index, 1);
+  if lt(index, 64) {
+    result = flash_load_slot(destination, add(flash, mul(index, sector_size)), index);
   }
 
-  return 0;
+  return result;
 }
 
-fn workspace_save(storage_memory) {
-  let index = 0;
-  let slot = 0;
-  let sector = 0;
+fn workspace_save(source) {
+  let index = load64(add(source, workspace_slot_size()));
   let flash = workspace_flash_base();
   let sector_size = workspace_sector_size();
-  let slot_size = workspace_slot_size();
+  let sector = 0;
 
-  while lt(index, 10) {
-    slot = add(storage_memory, mul(index, slot_size));
-    if eq(load64(slot), 1) {
-      sector = add(flash, mul(index, sector_size));
-      if eq(flash_slot_equal(slot, sector, index), 0) {
-        drop flash_save_slot(slot, sector, index);
-      }
+  if lt(index, 64) {
+    sector = add(flash, mul(index, sector_size));
+    if eq(flash_slot_equal(source, sector, index), 0) {
+      drop flash_save_slot(source, sector, index);
     }
-    index = add(index, 1);
   }
 
   return 0;

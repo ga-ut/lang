@@ -110,23 +110,32 @@ done
 /usr/bin/printf 'fn main() { return 0; }\n' >> "$FUNCTIONS_AT_LIMIT"
 /usr/bin/printf 'fn main() { return 0; }\n' >> "$FUNCTIONS_OVER_LIMIT"
 
-: > "$LOCALS_AT_LIMIT"
-for FUNCTION_NAME in first second; do
-    /usr/bin/printf 'fn %s() {\n' "$FUNCTION_NAME" >> "$LOCALS_AT_LIMIT"
-    LOCAL=0
-    while [ "$LOCAL" -lt 256 ]; do
-        /usr/bin/printf '  let %s%s = 0;\n' "$FUNCTION_NAME" "$LOCAL" >> "$LOCALS_AT_LIMIT"
-        LOCAL=$((LOCAL + 1))
+for DESTINATION in "$LOCALS_AT_LIMIT" "$LOCALS_OVER_LIMIT"; do
+    : > "$DESTINATION"
+    for FUNCTION_NAME in first second; do
+        /usr/bin/printf 'fn %s() {\n' "$FUNCTION_NAME" >> "$DESTINATION"
+        LOCAL=0
+        while [ "$LOCAL" -lt 256 ]; do
+            /usr/bin/printf '  let %s%s = 0;\n' "$FUNCTION_NAME" "$LOCAL" >> "$DESTINATION"
+            LOCAL=$((LOCAL + 1))
+        done
+        if [ "$FUNCTION_NAME" = first ]; then
+            /usr/bin/printf '  drop second();\n' >> "$DESTINATION"
+        fi
+        if [ "$FUNCTION_NAME" = second ] && [ "$DESTINATION" = "$LOCALS_OVER_LIMIT" ]; then
+            /usr/bin/printf '  drop third();\n' >> "$DESTINATION"
+        fi
+        /usr/bin/printf '  return %s255;\n}\n' "$FUNCTION_NAME" >> "$DESTINATION"
     done
-    /usr/bin/printf '  return %s255;\n}\n' "$FUNCTION_NAME" >> "$LOCALS_AT_LIMIT"
+    if [ "$DESTINATION" = "$LOCALS_OVER_LIMIT" ]; then
+        /usr/bin/printf '%s\n' \
+            'fn third() {' \
+            '  let extra = 0;' \
+            '  return extra;' \
+            '}' >> "$DESTINATION"
+    fi
+    /usr/bin/printf 'fn main() { return first(); }\n' >> "$DESTINATION"
 done
-/usr/bin/printf 'fn main() { return 0; }\n' >> "$LOCALS_AT_LIMIT"
-/bin/cp "$LOCALS_AT_LIMIT" "$LOCALS_OVER_LIMIT"
-/usr/bin/printf '%s\n' \
-    'fn over() {' \
-    '  let extra = 0;' \
-    '  return extra;' \
-    '}' >> "$LOCALS_OVER_LIMIT"
 
 : > "$OUTPUT_NEAR_LIMIT"
 /usr/bin/printf 'fn main() {\n' >> "$OUTPUT_NEAR_LIMIT"

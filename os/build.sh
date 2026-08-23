@@ -71,6 +71,12 @@ if [ "$SERIAL_SIZE" -le $((MARKER_SIZE * 2)) ]; then
 fi
 
 ARTIFACT_SIZE=$((SERIAL_SIZE - MARKER_SIZE * 2))
+if [ "$ARTIFACT_SIZE" -le 0 ] \
+    || [ "$ARTIFACT_SIZE" -gt 262144 ] \
+    || [ $((ARTIFACT_SIZE % 4096)) -ne 0 ]; then
+    echo "Gaut OS build channel returned a non-artifact payload." >&2
+    exit 1
+fi
 /bin/dd if="$SERIAL" of="$PREFIX" bs=1 count="$MARKER_SIZE" 2>/dev/null
 /bin/dd if="$SERIAL" of="$SUFFIX" bs=1 skip=$((MARKER_SIZE + ARTIFACT_SIZE)) count="$MARKER_SIZE" 2>/dev/null
 if ! /usr/bin/cmp -s "$MARKER" "$PREFIX" || ! /usr/bin/cmp -s "$MARKER" "$SUFFIX"; then

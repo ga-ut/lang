@@ -1,5 +1,5 @@
 program	image_bytes	used_bytes	instructions	evaluation_pushes	evaluation_pops
-constant	4096	912	198	19	22
-binary	4096	952	208	20	23
-call	4096	960	210	20	23
-memory	4096	992	218	22	25
+constant	4096	188	17	1	1
+binary	4096	228	27	2	2
+call	4096	236	29	2	2
+memory	4096	268	37	4	4
